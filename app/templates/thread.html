@@ -122,6 +122,29 @@
   }
   .conversation-header__name-text{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .conversation-verified{ width:18px; height:18px; flex:0 0 auto; object-fit:contain; }
+  .conversation-presence{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    min-height:16px;
+    margin:2px 0 0;
+    color:#837c93;
+    font-size:.72rem;
+    font-weight:700;
+    line-height:1.2;
+  }
+  .conversation-presence__dot{
+    width:7px;
+    height:7px;
+    flex:0 0 7px;
+    background:#a49cac;
+    border-radius:50%;
+  }
+  .conversation-presence[data-online="true"] .conversation-presence__dot{
+    background:#31be7f;
+    box-shadow:0 0 0 3px rgba(49,190,127,.12);
+  }
+  .conversation-presence[data-online="true"]{ color:#357f61; }
 
   .conversation-item-context{
     display:grid;
@@ -271,6 +294,68 @@
     font-size:.96rem;
     line-height:1.48;
   }
+  .conversation-bubble__attachments{
+    display:grid;
+    gap:8px;
+    min-width:0;
+  }
+  .conversation-bubble__text + .conversation-bubble__attachments{ margin-top:9px; }
+  .conversation-attachment-image{
+    display:block;
+    max-width:min(100%,300px);
+    padding:0;
+    overflow:hidden;
+    background:transparent;
+    border:0;
+    border-radius:12px;
+    cursor:zoom-in;
+  }
+  .conversation-attachment-image img{
+    display:block;
+    width:100%;
+    max-height:300px;
+    object-fit:contain;
+    background:rgba(26,22,55,.08);
+    border-radius:inherit;
+  }
+  .conversation-attachment-file{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    gap:9px;
+    align-items:center;
+    min-width:0;
+    padding:9px 10px;
+    color:inherit;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:12px;
+    text-decoration:none;
+  }
+  .conversation-bubble--other .conversation-attachment-file{
+    background:rgba(255,255,255,.6);
+    border-color:rgba(87,72,143,.1);
+  }
+  .conversation-attachment-file__icon{ font-size:1.18rem; line-height:1; }
+  .conversation-attachment-file__body{ min-width:0; }
+  .conversation-attachment-file__name{
+    display:block;
+    overflow:hidden;
+    font-size:.82rem;
+    font-weight:800;
+    line-height:1.25;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .conversation-attachment-file__meta{ display:block; margin-top:2px; font-size:.7rem; opacity:.78; }
+  .conversation-voice{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:7px;
+    align-items:center;
+    min-width:0;
+  }
+  .conversation-voice audio{ width:min(100%,250px); height:34px; }
+  .conversation-voice__duration{ color:inherit; font-size:.7rem; font-variant-numeric:tabular-nums; opacity:.82; }
   .conversation-message__meta{
     display:flex;
     align-items:center;
@@ -372,6 +457,111 @@
     gap:10px;
     min-width:0;
   }
+  .conversation-composer__media{
+    display:inline-grid;
+    place-items:center;
+    flex:0 0 36px;
+    width:36px;
+    height:36px;
+    margin-bottom:5px;
+    padding:0;
+    color:#665b84;
+    background:#f1f1f7;
+    border:1px solid rgba(91,78,157,.08);
+    border-radius:12px;
+    font-size:1rem;
+    cursor:pointer;
+    transition:background .18s ease, color .18s ease, transform .18s ease;
+  }
+  .conversation-composer__media:hover{ color:#5e48cb; background:#ebe8fb; }
+  .conversation-composer__media:active{ transform:scale(.95); }
+  .conversation-composer__media:disabled{ cursor:not-allowed; opacity:.48; }
+  .conversation-composer__media:focus-visible{ outline:3px solid rgba(91,141,244,.33); outline-offset:3px; }
+  .conversation-composer__previews{
+    display:flex;
+    gap:8px;
+    min-width:0;
+    margin:0 0 9px;
+    overflow-x:auto;
+    scrollbar-width:thin;
+  }
+  .conversation-composer__previews[hidden],
+  .conversation-recording[hidden]{ display:none; }
+  .conversation-composer-preview{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    min-width:0;
+    max-width:210px;
+    padding:5px 7px 5px 5px;
+    color:#433b62;
+    background:#f4f3fa;
+    border:1px solid rgba(91,78,157,.1);
+    border-radius:11px;
+  }
+  .conversation-composer-preview__image{
+    width:42px;
+    height:42px;
+    flex:0 0 42px;
+    object-fit:cover;
+    background:#e8e7f0;
+    border-radius:8px;
+  }
+  .conversation-composer-preview__icon{ width:30px; flex:0 0 30px; color:#6353af; font-size:1rem; text-align:center; }
+  .conversation-composer-preview__name{
+    overflow:hidden;
+    font-size:.74rem;
+    font-weight:750;
+    line-height:1.25;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .conversation-composer-preview__remove{
+    display:inline-grid;
+    place-items:center;
+    width:23px;
+    height:23px;
+    flex:0 0 23px;
+    margin-left:auto;
+    padding:0;
+    color:#655e78;
+    background:transparent;
+    border:0;
+    border-radius:50%;
+    cursor:pointer;
+  }
+  .conversation-composer-preview__remove:hover{ color:#3c3552; background:rgba(91,78,157,.11); }
+  .conversation-recording{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+    margin:0 0 9px;
+    padding:8px 10px;
+    color:#514966;
+    background:#f5f3fa;
+    border:1px solid rgba(91,78,157,.11);
+    border-radius:13px;
+    font-size:.78rem;
+    font-weight:750;
+  }
+  .conversation-recording__live{ display:inline-flex; align-items:center; gap:5px; color:#c84758; }
+  .conversation-recording__dot{ width:7px; height:7px; background:#d4495b; border-radius:50%; }
+  .conversation-recording__timer{ font-variant-numeric:tabular-nums; }
+  .conversation-recording__action{
+    min-height:30px;
+    margin-left:auto;
+    padding:4px 8px;
+    color:#5f4fc0;
+    background:#fff;
+    border:1px solid rgba(91,78,157,.14);
+    border-radius:9px;
+    font:inherit;
+    font-size:.74rem;
+    cursor:pointer;
+  }
+  .conversation-recording__action + .conversation-recording__action{ margin-left:0; }
   .conversation-composer__input{
     box-sizing:border-box;
     flex:1 1 auto;
@@ -420,6 +610,34 @@
   .conversation-send:not(:disabled):active{ transform:scale(.96); }
   .conversation-send:disabled{ cursor:not-allowed; opacity:.48; box-shadow:none; }
   .conversation-composer__error{ margin:8px 2px 0; color:#a3294b; font-size:.82rem; font-weight:700; }
+  .conversation-image-lightbox{
+    position:fixed;
+    inset:0;
+    display:grid;
+    place-items:center;
+    padding:max(18px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
+    background:rgba(15,13,29,.78);
+    z-index:1200;
+  }
+  .conversation-image-lightbox[hidden]{ display:none; }
+  .conversation-image-lightbox__dialog{ position:relative; max-width:min(92vw,900px); max-height:90dvh; }
+  .conversation-image-lightbox img{ display:block; max-width:100%; max-height:88dvh; object-fit:contain; border-radius:15px; box-shadow:0 20px 60px rgba(0,0,0,.34); }
+  .conversation-image-lightbox__close{
+    position:absolute;
+    top:8px;
+    right:8px;
+    display:grid;
+    place-items:center;
+    width:36px;
+    height:36px;
+    padding:0;
+    color:#fff;
+    background:rgba(18,16,32,.72);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:50%;
+    font-size:1.15rem;
+    cursor:pointer;
+  }
 
   @keyframes conversation-message-in{
     from{ opacity:0; transform:translateY(5px); }
@@ -493,6 +711,13 @@
   [data-theme="dark"] .typing-indicator__bubble{ color:#f5f3ff; background:#2a2b42; }
   [data-theme="dark"] .conversation-composer__input{ color:#f5f3ff; background:#292a40; }
   [data-theme="dark"] .conversation-empty{ color:#b9b4c9; background:#202136; }
+  [data-theme="dark"] .conversation-presence{ color:#bbb5c8; }
+  [data-theme="dark"] .conversation-presence[data-online="true"]{ color:#70d5a4; }
+  [data-theme="dark"] .conversation-composer__media,
+  [data-theme="dark"] .conversation-composer-preview,
+  [data-theme="dark"] .conversation-recording{ color:#e8e4f2; background:#2a2b42; border-color:rgba(255,255,255,.1); }
+  [data-theme="dark"] .conversation-composer-preview__remove,
+  [data-theme="dark"] .conversation-recording__action{ color:#d8d0ff; background:#202136; }
 
   @media (prefers-reduced-motion:reduce){
     .page--focused-conversation *, .page--focused-conversation *::before, .page--focused-conversation *::after{
@@ -516,6 +741,10 @@
           <span class="conversation-header__name-text">{{ other_name or 'SEVOR member' }}</span>
           {% if other and other.is_verified %}<img src="/static/img/violet.png" class="conversation-verified" alt="Verified account" title="Verified account">{% endif %}
         </h1>
+        <p id="conversationPresence" class="conversation-presence" data-online="{{ 'true' if other_presence.online else 'false' }}" data-last-seen="{{ other_presence.last_seen or '' }}" role="status">
+          <span class="conversation-presence__dot" aria-hidden="true"></span>
+          <span class="conversation-presence__text">{% if other_presence.online %}Online{% elif other_presence.last_seen %}Last seen recently{% else %}Offline{% endif %}</span>
+        </p>
       </div>
     </header>
 
@@ -554,7 +783,31 @@
           {% endif %}
           <div class="conversation-message__content">
             <article class="conversation-bubble {% if is_mine %}conversation-bubble--me{% else %}conversation-bubble--other{% endif %}">
-              <p class="conversation-bubble__text">{{ message.body }}</p>
+              {% if message.body %}<p class="conversation-bubble__text">{{ message.body }}</p>{% endif %}
+              {% if message.attachments %}
+                <div class="conversation-bubble__attachments">
+                  {% for attachment in message.attachments %}
+                    {% if attachment.kind == 'image' %}
+                      <button class="conversation-attachment-image" type="button" data-message-image="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" data-image-name="{{ attachment.original_name }}" aria-label="Open image {{ attachment.original_name }}">
+                        <img src="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" alt="{{ attachment.original_name }}" loading="lazy" decoding="async">
+                      </button>
+                    {% elif attachment.kind == 'voice' %}
+                      <div class="conversation-voice">
+                        <audio controls preload="metadata" src="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" data-voice-duration="{{ attachment.duration_ms or '' }}" aria-label="Voice message"></audio>
+                        <span class="conversation-voice__duration" aria-label="Voice message duration">{% if attachment.duration_ms %}{{ '%d:%02d'|format((attachment.duration_ms // 60000), ((attachment.duration_ms // 1000) % 60)) }}{% endif %}</span>
+                      </div>
+                    {% else %}
+                      <a class="conversation-attachment-file" href="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" download>
+                        <i class="bi bi-file-earmark-text conversation-attachment-file__icon" aria-hidden="true"></i>
+                        <span class="conversation-attachment-file__body">
+                          <span class="conversation-attachment-file__name">{{ attachment.original_name }}</span>
+                          <span class="conversation-attachment-file__meta">{% if attachment.size_bytes >= 1048576 %}{{ '%.1f'|format(attachment.size_bytes / 1048576) }} MB{% else %}{{ (attachment.size_bytes / 1024)|round(0)|int }} KB{% endif %}</span>
+                        </span>
+                      </a>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              {% endif %}
             </article>
             {% if message.created_at %}
               <div class="conversation-message__meta">
@@ -581,16 +834,36 @@
       </div>
     </div>
 
-    <form class="conversation-composer" id="conversationComposer" action="/messages/{{ thread.id }}" method="post">
+    <form class="conversation-composer" id="conversationComposer" action="/messages/{{ thread.id }}" method="post" enctype="multipart/form-data" novalidate>
       <label class="visually-hidden" for="conversationMessage">Message</label>
+      <input type="hidden" name="csrf_token" id="conversationCsrf" value="{{ csrf_token }}">
+      <input type="hidden" name="client_message_id" id="conversationClientMessageId" value="{{ client_message_id }}">
+      <input type="hidden" name="voice_duration_ms" id="conversationVoiceDuration" value="">
+      <input id="conversationAttachmentInput" type="file" name="attachments" multiple accept="{{ attachment_accept }}" hidden>
+      <div id="conversationComposerPreviews" class="conversation-composer__previews" hidden aria-live="polite"></div>
+      <div id="conversationRecording" class="conversation-recording" hidden aria-live="polite">
+        <span class="conversation-recording__live"><span class="conversation-recording__dot" aria-hidden="true"></span>Recording</span>
+        <span id="conversationRecordingTimer" class="conversation-recording__timer">00:00</span>
+        <button id="conversationRecordingCancel" class="conversation-recording__action" type="button">Cancel</button>
+        <button id="conversationRecordingStop" class="conversation-recording__action" type="button">Stop</button>
+      </div>
       <div class="conversation-composer__row">
-        <textarea id="conversationMessage" name="body" class="conversation-composer__input" rows="1" required placeholder="Type a message…" aria-describedby="composerError" enterkeyhint="send"></textarea>
+        <button id="conversationAttachmentButton" class="conversation-composer__media" type="button" aria-label="Attach image or file" title="Attach image or file"><i class="bi bi-paperclip" aria-hidden="true"></i></button>
+        <textarea id="conversationMessage" name="body" class="conversation-composer__input" rows="1" placeholder="Type a message…" aria-describedby="composerError" enterkeyhint="send"></textarea>
+        <button id="conversationVoiceButton" class="conversation-composer__media" type="button" aria-label="Record a voice message" title="Record a voice message"><i class="bi bi-mic-fill" aria-hidden="true"></i></button>
         <button class="conversation-send" type="submit" disabled aria-label="Send message"><i class="bi bi-send-fill" aria-hidden="true"></i></button>
       </div>
       <p id="composerError" class="conversation-composer__error" role="alert" hidden>Message could not be sent. Please try again.</p>
     </form>
   </div>
 </section>
+
+<div id="conversationImageLightbox" class="conversation-image-lightbox" hidden role="dialog" aria-modal="true" aria-label="Image preview">
+  <div class="conversation-image-lightbox__dialog">
+    <button id="conversationImageLightboxClose" class="conversation-image-lightbox__close" type="button" aria-label="Close image preview"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    <img id="conversationImageLightboxImage" src="" alt="">
+  </div>
+</div>
 
 <script>
   (() => {
