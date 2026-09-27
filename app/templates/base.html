@@ -11,16 +11,30 @@
   <script id="sv-launch-splash-gate">
   (function () {
     var root = document.documentElement;
+    var internalNavigation = false;
     try {
-      if (window.sessionStorage && sessionStorage.getItem('sevor_launch_splash_seen') === '1') {
-        root.classList.add('sv-launch-seen');
-      } else {
-        root.classList.add('sv-launch-pending');
+      var skipKey = 'sevor_skip_next_launch_splash';
+      if (window.sessionStorage && sessionStorage.getItem(skipKey) === '1') {
+        sessionStorage.removeItem(skipKey);
+        internalNavigation = true;
+      }
+
+      var navigation = window.performance && performance.getEntriesByType
+        ? performance.getEntriesByType('navigation')[0]
+        : null;
+      if (!internalNavigation && navigation && navigation.type === 'back_forward') {
+        internalNavigation = true;
+      }
+
+      // Covers redirects and form navigation that do not pass through the link
+      // handler, while a cold PWA/browser entry has no same-origin referrer.
+      if (!internalNavigation && document.referrer) {
+        internalNavigation = new URL(document.referrer).origin === location.origin;
       }
     } catch (_) {
-      // Private-browser storage failures should still get one graceful launch.
-      root.classList.add('sv-launch-pending');
+      internalNavigation = false;
     }
+    root.classList.add(internalNavigation ? 'sv-launch-seen' : 'sv-launch-pending');
   })();
   </script>
   <style id="sv-launch-splash-critical">
@@ -1686,7 +1700,6 @@ window.onpageshow = function(e){
       didExit = true;
       if (safetyTimer) window.clearTimeout(safetyTimer);
 
-      try { sessionStorage.setItem('sevor_launch_splash_seen', '1'); } catch (_) {}
       splash.classList.add('is-exiting');
 
       window.setTimeout(function () {
@@ -2921,6 +2934,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener('click', function(e){
     const link = e.target.closest('a');
     if (!link || shouldIgnore(link)) return;
+
+    // The launch surface belongs to a fresh browser/PWA entry, not to normal
+    // same-origin navigation.  Set a one-use marker before this document leaves.
+    if (!e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+      try {
+        const destination = new URL(link.href, location.href);
+        if (destination.origin === location.origin && destination.href !== location.href) {
+          sessionStorage.setItem('sevor_skip_next_launch_splash', '1');
+        }
+      } catch (_) {}
+    }
 
     // لا نظهره إذا الرابط هو نفس الصفحة
     if (link.getAttribute('href') === location.pathname) return;
