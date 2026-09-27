@@ -810,10 +810,11 @@ def persist_staged_message_attachments(
                 destination = MESSAGE_ATTACHMENT_ROOT / stored_name
                 os.replace(item.temp_path, destination)
             logger.info(
-                "dm_attachment_upload_persisted attachment_id=%s message_id=%s backend=%s resource_type=%s bytes=%s",
+                "dm_attachment_upload_persisted attachment_id=%s message_id=%s backend=%s storage_key=%s resource_type=%s bytes=%s",
                 record.id,
                 message_id,
                 backend,
+                record.storage_key if backend == "cloudinary" else record.stored_name,
                 remote_object.resource_type if remote_object else "local",
                 item.size_bytes,
             )
