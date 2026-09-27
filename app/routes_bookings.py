@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Optional, Literal
 from datetime import datetime, date, timedelta
+from urllib.parse import urlencode
 import os
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Form, Query
@@ -25,6 +26,74 @@ router = APIRouter(tags=["bookings"])
 
 DISPUTE_WINDOW_HOURS = 48
 RENTER_REPLY_WINDOW_HOURS = 48
+
+# A booking keeps a listing reserved while it is active.  The values below are
+# the terminal states already used by the current booking flow; every other
+# status is intentionally treated as a live reservation.  This makes the
+# availability check safe for both the current states and legacy live records
+# without exposing booking details to another renter.
+BOOKING_RELEASED_STATUSES = frozenset({
+    "rejected",
+    "cancelled",
+    "canceled",
+    "expired",
+    "closed",
+    "completed",
+})
+
+
+def _availability_bookings_query(db: Session, item_id: int):
+    """Return active bookings which reserve dates for one listing."""
+    status_key = func.lower(func.coalesce(Booking.status, ""))
+    return (
+        db.query(Booking)
+        .filter(
+            Booking.item_id == item_id,
+            status_key.notin_(BOOKING_RELEASED_STATUSES),
+        )
+    )
+
+
+def _booking_conflicts(
+    db: Session,
+    item_id: int,
+    start_date: date,
+    end_date: date,
+) -> bool:
+    """Use the existing checkout-exclusive rental dates to detect overlap."""
+    return (
+        _availability_bookings_query(db, item_id)
+        .filter(
+            Booking.start_date < end_date,
+            Booking.end_date > start_date,
+        )
+        .first()
+        is not None
+    )
+
+
+def _booking_form_redirect(
+    item_id: int,
+    error: str,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+) -> RedirectResponse:
+    """Return to the booking form with a safe, user-facing validation state."""
+    params = {"item_id": item_id, "booking_error": error}
+    if start_date:
+        params["start_date"] = start_date.isoformat()
+    if end_date:
+        params["end_date"] = end_date.isoformat()
+    return RedirectResponse(url=f"/bookings/new?{urlencode(params)}", status_code=303)
+
+
+def _valid_date_query_value(value: Optional[str]) -> str:
+    """Keep only an ISO date supplied by the booking form redirect."""
+    raw = (value or "").strip()
+    try:
+        return date.fromisoformat(raw).isoformat()
+    except (TypeError, ValueError):
+        return ""
 
 # =====================================================
 # Auth helpers
@@ -81,55 +150,79 @@ async def create_booking(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid booking data")
 
+    if start_date < date.today():
+        return _booking_form_redirect(item_id, "past_date", start_date, end_date)
+
+    # The current price calculation is checkout-exclusive: a one-day rental
+    # runs from the selected start date to the following return date.
     if end_date <= start_date:
-        raise HTTPException(status_code=400, detail="Invalid dates")
+        return _booking_form_redirect(item_id, "invalid_dates", start_date, end_date)
 
-    item = db.get(Item, item_id)
-    if not item:
-        raise HTTPException(status_code=400, detail="Invalid item")
+    try:
+        # Locking the listing row makes the following availability query and
+        # insert atomic on the production database.  A second request for the
+        # same item waits here, then re-checks after the first request commits.
+        item = (
+            db.query(Item)
+            .filter(Item.id == item_id)
+            .with_for_update()
+            .first()
+        )
+        if not item or item.is_active != "yes":
+            db.rollback()
+            raise HTTPException(status_code=400, detail="Invalid item")
 
-    days = max(1, (end_date - start_date).days)
-    total_amount = days * item.price_per_day
+        # This is the authoritative overlap check.  The client calendar is a
+        # helpful preview only; it never decides whether a booking is created.
+        if _booking_conflicts(db, item.id, start_date, end_date):
+            db.rollback()
+            return _booking_form_redirect(item_id, "unavailable", start_date, end_date)
 
-    bk = Booking(
-        item_id=item.id,
-        renter_id=user.id,
-        owner_id=item.owner_id,
-        start_date=start_date,
-        end_date=end_date,
-        days=days,
-        price_per_day_snapshot=item.price_per_day,
-        total_amount=total_amount,
-        status="requested",
+        days = max(1, (end_date - start_date).days)
+        total_amount = days * item.price_per_day
 
-        payment_provider="paypal",
-        payment_status="pending",
-        online_status="created",
+        bk = Booking(
+            item_id=item.id,
+            renter_id=user.id,
+            owner_id=item.owner_id,
+            start_date=start_date,
+            end_date=end_date,
+            days=days,
+            price_per_day_snapshot=item.price_per_day,
+            total_amount=total_amount,
+            status="requested",
 
-        platform_fee=0,
-        rent_amount=total_amount,
-        hold_deposit_amount=0,
-        owner_payout_amount=0,
-        deposit_amount=0,
-        deposit_charged_amount=0,
-        amount_native=total_amount,
-        amount_display=total_amount,
-        amount_paid_cents=0,
+            payment_provider="paypal",
+            payment_status="pending",
+            online_status="created",
 
-        rent_paid=False,
-        security_paid=False,
-        security_amount=0,
-        security_status="not_paid",
-        refund_done=False,
-        payout_executed=False,
-        owner_due_amount=0,
+            platform_fee=0,
+            rent_amount=total_amount,
+            hold_deposit_amount=0,
+            owner_payout_amount=0,
+            deposit_amount=0,
+            deposit_charged_amount=0,
+            amount_native=total_amount,
+            amount_display=total_amount,
+            amount_paid_cents=0,
 
-        timeline_created_at=datetime.utcnow(),
-    )
+            rent_paid=False,
+            security_paid=False,
+            security_amount=0,
+            security_status="not_paid",
+            refund_done=False,
+            payout_executed=False,
+            owner_due_amount=0,
 
-    db.add(bk)
-    db.commit()
-    db.refresh(bk)
+            timeline_created_at=datetime.utcnow(),
+        )
+
+        db.add(bk)
+        db.commit()
+        db.refresh(bk)
+    except Exception:
+        db.rollback()
+        raise
 
     # ✅ كل شيء ثقيل بالخلفية (إشعار + إيميل)
     background_tasks.add_task(_after_booking_created_bg, bk.id)
@@ -475,6 +568,25 @@ def booking_new_page(
     disp_cur = display_currency(request)
 
     today = date.today()
+    unavailable_ranges = [
+        {
+            "start": booking.start_date.isoformat(),
+            "end": booking.end_date.isoformat(),
+        }
+        for booking in (
+            _availability_bookings_query(db, item.id)
+            .filter(Booking.end_date > today)
+            .order_by(Booking.start_date.asc())
+            .all()
+        )
+        if booking.start_date and booking.end_date and booking.end_date > booking.start_date
+    ]
+    booking_error = (request.query_params.get("booking_error") or "").strip()
+    booking_error_messages = {
+        "past_date": "Past dates can’t be selected. Please choose a future date.",
+        "invalid_dates": "Choose an end date after the start date.",
+        "unavailable": "These dates aren’t available. Please choose another period.",
+    }
     ctx = {
         "request": request,
         "user": user,
@@ -486,6 +598,13 @@ def booking_new_page(
         "start_default": today,
         "end_default": today + timedelta(days=1),
         "days_default": 1,
+        # Only date ranges are passed to the calendar—never renter or booking
+        # details.  The browser receives the same active reservations that the
+        # server validates immediately before creation.
+        "unavailable_ranges": unavailable_ranges,
+        "booking_error_message": booking_error_messages.get(booking_error, ""),
+        "initial_start_date": _valid_date_query_value(request.query_params.get("start_date")),
+        "initial_end_date": _valid_date_query_value(request.query_params.get("end_date")),
     }
 
     return request.app.templates.TemplateResponse(

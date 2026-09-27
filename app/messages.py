@@ -31,7 +31,12 @@ def is_account_limited(request: Request) -> bool:
     u = request.session.get("user")
     if not u:
         return False
-    return u.get("status") != "approved"
+    # Email verification currently places normal users in the `active` state,
+    # while admin approval uses `approved`.  Both are established account
+    # states and may use the existing direct-message flow.
+    status = str(u.get("status") or "").strip().lower()
+    role = str(u.get("role") or "").strip().lower()
+    return role != "admin" and status not in {"active", "approved"}
 
 
 def get_first_admin(db: Session) -> User | None:

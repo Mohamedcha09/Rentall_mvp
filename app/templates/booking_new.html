@@ -1,58 +1,775 @@
 {% extends "base.html" %}
+
 {% block head %}
 <style>
-  .booking-new-card,
-  .booking-new-card .card-body{min-width:0}
-  .booking-new-title,
-  #availability_hint{overflow-wrap:anywhere}
-  .booking-new-actions{display:flex;flex-wrap:wrap;gap:.5rem}
-  .booking-new-actions > *{min-width:0}
-  @media (max-width:359px){
-    .booking-new-actions > *{flex:1 1 100%}
+  /* Booking creation only — shared navigation and other page cards are untouched. */
+  body[data-path="/bookings/new"]{
+    background:#f7f8ff;
+    overflow-x:clip;
+  }
+  body[data-path="/bookings/new"] .page{
+    max-width:none;
+    padding:0 !important;
+    background:
+      radial-gradient(circle at 12% 3%, rgba(114,95,255,.10), transparent 22rem),
+      radial-gradient(circle at 90% 10%, rgba(34,198,239,.08), transparent 20rem),
+      #f7f8ff;
+  }
+
+  .booking-new{
+    --booking-ink:#101938;
+    --booking-muted:#68728d;
+    --booking-line:#e6e9f5;
+    --booking-purple:#7552f4;
+    --booking-blue:#318cf0;
+    --booking-cyan:#19c7e8;
+    --booking-soft:#f5f3ff;
+    --booking-danger:#c93b50;
+    width:min(100%, 790px);
+    margin-inline:auto;
+    padding:max(20px, calc(env(safe-area-inset-top, 0px) + 14px)) clamp(16px, 4vw, 30px) calc(40px + max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)));
+    color:var(--booking-ink);
+    font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .booking-new *, .booking-new *::before, .booking-new *::after{ box-sizing:border-box; }
+  .booking-new button, .booking-new textarea{ font:inherit; }
+
+  .booking-new__header{
+    display:flex;
+    align-items:center;
+    gap:13px;
+    min-width:0;
+    margin-bottom:24px;
+  }
+  .booking-new__back{
+    flex:0 0 auto;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:44px;
+    height:44px;
+    border:1px solid rgba(116,82,244,.16);
+    border-radius:50%;
+    background:rgba(255,255,255,.92);
+    color:var(--booking-ink);
+    box-shadow:0 8px 20px rgba(47,61,121,.10);
+    text-decoration:none;
+    transition:transform .16s ease, box-shadow .16s ease;
+  }
+  .booking-new__back:hover{ color:var(--booking-ink); transform:translateY(-1px); box-shadow:0 10px 24px rgba(47,61,121,.14); }
+  .booking-new__back i{ font-size:1.08rem; }
+  .booking-new__product{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    min-width:0;
+  }
+  .booking-new__thumbnail,
+  .booking-new__thumbnail-fallback{
+    flex:0 0 auto;
+    width:48px;
+    height:48px;
+    border-radius:16px;
+    border:1px solid rgba(99,90,184,.14);
+    box-shadow:0 7px 17px rgba(57,70,125,.10);
+  }
+  .booking-new__thumbnail{ object-fit:cover; background:#eef0fb; }
+  .booking-new__thumbnail-fallback{
+    display:grid;
+    place-items:center;
+    color:var(--booking-purple);
+    background:linear-gradient(145deg, #f2efff, #eefaff);
+    font-size:1.2rem;
+  }
+  .booking-new__eyebrow{
+    margin:0 0 1px;
+    color:var(--booking-muted);
+    font-size:.76rem;
+    font-weight:750;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+  }
+  .booking-new h1{
+    margin:0;
+    color:var(--booking-ink);
+    font-size:clamp(1.32rem, 4.5vw, 1.72rem);
+    line-height:1.18;
+    font-weight:850;
+    overflow-wrap:anywhere;
+  }
+
+  .booking-new__card{
+    position:relative;
+    overflow:hidden;
+    padding:clamp(18px, 4vw, 29px);
+    border:1px solid rgba(92,100,156,.14);
+    border-radius:28px;
+    background:rgba(255,255,255,.96);
+    box-shadow:0 18px 42px rgba(37,49,106,.10);
+  }
+  .booking-new__card::before{
+    content:"";
+    position:absolute;
+    top:-105px;
+    right:-105px;
+    width:220px;
+    height:220px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(102,85,248,.12), rgba(43,194,238,.02) 66%, transparent 70%);
+    pointer-events:none;
+  }
+  .booking-new__card-heading{ position:relative; margin-bottom:19px; }
+  .booking-new__card-heading h2{
+    margin:0;
+    color:var(--booking-ink);
+    font-size:1.12rem;
+    font-weight:850;
+  }
+  .booking-new__card-heading p{
+    margin:5px 0 0;
+    color:var(--booking-muted);
+    font-size:.91rem;
+    line-height:1.45;
+  }
+
+  .booking-new__date-fields{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:11px;
+  }
+  .booking-new__field{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    min-width:0;
+    min-height:76px;
+    padding:12px 13px 12px 15px;
+    border:1px solid var(--booking-line);
+    border-radius:18px;
+    background:#fff;
+    color:var(--booking-ink);
+    text-align:left;
+    box-shadow:0 4px 13px rgba(34,48,105,.035);
+    cursor:pointer;
+    transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+  }
+  .booking-new__field:hover,
+  .booking-new__field.is-active{
+    border-color:rgba(106,86,239,.58);
+    box-shadow:0 0 0 3px rgba(116,82,244,.09), 0 8px 18px rgba(43,80,191,.08);
+  }
+  .booking-new__field:active{ transform:translateY(1px); }
+  .booking-new__field-copy{ min-width:0; display:grid; gap:2px; }
+  .booking-new__field-label{
+    color:var(--booking-muted);
+    font-size:.76rem;
+    font-weight:750;
+  }
+  .booking-new__field-value{
+    color:var(--booking-ink);
+    font-size:.94rem;
+    font-weight:790;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .booking-new__field-value.is-empty{ color:#8a93a9; font-weight:650; }
+  .booking-new__field i{ flex:0 0 auto; color:var(--booking-purple); font-size:1.1rem; }
+
+  .booking-new__calendar{
+    position:relative;
+    margin-top:18px;
+    padding:15px;
+    border:1px solid var(--booking-line);
+    border-radius:22px;
+    background:linear-gradient(145deg, #fff 0%, #fbfcff 100%);
+  }
+  .booking-new__calendar:focus{ outline:none; }
+  .booking-new__calendar-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    min-width:0;
+    margin-bottom:11px;
+  }
+  .booking-new__calendar-prompt{
+    min-width:0;
+    color:var(--booking-ink);
+    font-size:.9rem;
+    font-weight:810;
+    overflow-wrap:anywhere;
+  }
+  .booking-new__calendar-nav{ display:flex; flex:0 0 auto; gap:7px; }
+  .booking-new__nav-button{
+    display:inline-grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    border:1px solid var(--booking-line);
+    border-radius:12px;
+    background:#fff;
+    color:var(--booking-ink);
+    cursor:pointer;
+    transition:border-color .16s ease, background .16s ease, color .16s ease;
+  }
+  .booking-new__nav-button:hover:not(:disabled){ border-color:rgba(101,82,240,.45); color:var(--booking-purple); background:#f9f8ff; }
+  .booking-new__nav-button:disabled{ opacity:.38; cursor:not-allowed; }
+  .booking-new__months{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px; }
+  .booking-new__month{ min-width:0; }
+  .booking-new__month-title{
+    margin:0 0 10px;
+    color:var(--booking-ink);
+    font-size:.88rem;
+    font-weight:820;
+    text-align:center;
+  }
+  .booking-new__weekdays,
+  .booking-new__days{ display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:3px; }
+  .booking-new__weekday{
+    min-width:0;
+    padding-bottom:3px;
+    color:#8a93aa;
+    font-size:.68rem;
+    font-weight:760;
+    text-align:center;
+  }
+  .booking-new__day{
+    position:relative;
+    display:grid;
+    place-items:center;
+    min-width:0;
+    aspect-ratio:1;
+    border:1px solid transparent;
+    border-radius:12px;
+    background:transparent;
+    color:var(--booking-ink);
+    font-size:.79rem;
+    font-variant-numeric:tabular-nums;
+    font-weight:700;
+    cursor:pointer;
+    transition:background .14s ease, border-color .14s ease, color .14s ease, transform .14s ease;
+  }
+  .booking-new__day:hover:not(:disabled){
+    border-color:rgba(106,86,239,.42);
+    background:#f2efff;
+    color:#4e37c7;
+  }
+  .booking-new__day:active:not(:disabled){ transform:scale(.94); }
+  .booking-new__day.is-today{ border-color:rgba(87,105,221,.6); }
+  .booking-new__day.is-in-range{
+    border-radius:8px;
+    background:#ecebff;
+    color:#4b39b8;
+  }
+  .booking-new__day.is-selected{
+    border-color:transparent;
+    border-radius:50%;
+    background:linear-gradient(135deg, var(--booking-purple), var(--booking-blue));
+    color:#fff;
+    box-shadow:0 6px 13px rgba(88,78,223,.28);
+  }
+  .booking-new__day.is-reserved{
+    border-color:#f1c5cd;
+    background:#fff0f2;
+    color:#ae3446;
+    cursor:not-allowed;
+    text-decoration:line-through;
+    text-decoration-thickness:1px;
+  }
+  .booking-new__day.is-reserved::after{
+    content:"";
+    position:absolute;
+    right:3px;
+    top:3px;
+    width:4px;
+    height:4px;
+    border-radius:50%;
+    background:#df4660;
+  }
+  .booking-new__day.is-past{
+    color:#b1b7c5;
+    cursor:not-allowed;
+  }
+  .booking-new__day:disabled{ opacity:1; }
+  .booking-new__day--blank{ pointer-events:none; }
+
+  .booking-new__legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 13px;
+    margin:14px 0 0;
+    padding-top:12px;
+    border-top:1px solid #edf0f8;
+    color:var(--booking-muted);
+    font-size:.74rem;
+    font-weight:650;
+  }
+  .booking-new__legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .booking-new__legend-swatch{ width:10px; height:10px; border-radius:50%; background:#e8ebf4; }
+  .booking-new__legend-swatch--selected{ background:linear-gradient(135deg, var(--booking-purple), var(--booking-blue)); }
+  .booking-new__legend-swatch--reserved{ background:#e45b6d; }
+  .booking-new__legend-swatch--past{ background:#bcc2d1; }
+  .booking-new__return-note{
+    margin:8px 0 0;
+    color:#7a849a;
+    font-size:.75rem;
+    line-height:1.45;
+  }
+
+  .booking-new__feedback{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    margin:14px 0 0;
+    padding:11px 12px;
+    border:1px solid #f0cbd1;
+    border-radius:15px;
+    background:#fff5f6;
+    color:#9a3343;
+    font-size:.86rem;
+    font-weight:670;
+    line-height:1.4;
+  }
+  .booking-new__feedback[hidden]{ display:none; }
+  .booking-new__feedback i{ flex:0 0 auto; margin-top:1px; }
+
+  .booking-new__note-wrap{ margin-top:18px; }
+  .booking-new__label{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:8px;
+    margin:0 0 8px;
+    color:var(--booking-ink);
+    font-size:.89rem;
+    font-weight:820;
+  }
+  .booking-new__label small{ color:var(--booking-muted); font-size:.75rem; font-weight:650; }
+  .booking-new__note{
+    display:block;
+    width:100%;
+    min-height:100px;
+    resize:vertical;
+    padding:13px 14px;
+    border:1px solid var(--booking-line);
+    border-radius:18px;
+    background:#fff;
+    color:var(--booking-ink);
+    line-height:1.48;
+    box-shadow:0 4px 13px rgba(34,48,105,.035);
+    outline:none;
+    transition:border-color .16s ease, box-shadow .16s ease;
+  }
+  .booking-new__note::placeholder{ color:#9ca4b6; }
+  .booking-new__note:focus{ border-color:rgba(106,86,239,.58); box-shadow:0 0 0 3px rgba(116,82,244,.09); }
+
+  .booking-new__actions{ display:flex; gap:10px; margin-top:21px; }
+  .booking-new__submit{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    width:100%;
+    min-height:54px;
+    padding:13px 19px;
+    border:0;
+    border-radius:18px;
+    background:linear-gradient(105deg, var(--booking-purple), var(--booking-blue) 62%, var(--booking-cyan));
+    color:#fff;
+    font-size:.98rem;
+    font-weight:820;
+    box-shadow:0 12px 24px rgba(76,88,216,.26);
+    cursor:pointer;
+    transition:transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+  }
+  .booking-new__submit:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 15px 27px rgba(76,88,216,.30); }
+  .booking-new__submit:active:not(:disabled){ transform:translateY(0); }
+  .booking-new__submit:disabled{ cursor:not-allowed; opacity:.46; box-shadow:none; }
+  .booking-new__submit i{ font-size:1rem; }
+  .booking-new__back:focus-visible,
+  .booking-new__field:focus-visible,
+  .booking-new__nav-button:focus-visible,
+  .booking-new__day:focus-visible,
+  .booking-new__submit:focus-visible{
+    outline:3px solid rgba(31,186,230,.42);
+    outline-offset:3px;
+  }
+
+  @media (max-width:679px){
+    .booking-new__months{ grid-template-columns:1fr; }
+  }
+  @media (max-width:430px){
+    .booking-new{ padding-inline:14px; }
+    .booking-new__header{ margin-bottom:18px; }
+    .booking-new__card{ border-radius:24px; }
+    .booking-new__date-fields{ grid-template-columns:1fr; }
+    .booking-new__field{ min-height:68px; }
+    .booking-new__calendar{ padding:13px 10px; }
+    .booking-new__day{ border-radius:10px; font-size:.76rem; }
+  }
+  @media (min-width:768px){
+    .booking-new{ width:min(100%, 870px); padding-top:max(32px, calc(env(safe-area-inset-top, 0px) + 22px)); }
+    .booking-new__header{ margin-bottom:29px; }
+    .booking-new__card{ padding:31px; }
+    .booking-new__calendar{ padding:20px; }
+    .booking-new__months{ gap:25px; }
+  }
+  @media (min-width:1100px){
+    .booking-new{ width:min(100%, 920px); }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .booking-new *, .booking-new *::before, .booking-new *::after{ transition:none !important; }
   }
 </style>
 {% endblock %}
+
 {% block content %}
+{% macro booking_image_src(path) -%}
+  {%- set source = (path or '')|string|trim -%}
+  {%- if source and not (source.startswith('http://') or source.startswith('https://') or source.startswith('/')) -%}
+    /{{- source -}}
+  {%- else -%}
+    {{- source -}}
+  {%- endif -%}
+{%- endmacro %}
 
-<h3 class="booking-new-title mb-3">Booking: {{ item.title }}</h3>
+{% set raw_booking_images = item.image_urls or [] %}
+{% if raw_booking_images is string %}
+  {% set booking_images = raw_booking_images.split(',') if ',' in raw_booking_images else [raw_booking_images] %}
+{% else %}
+  {% set booking_images = raw_booking_images %}
+{% endif %}
+{% set booking_cover = booking_images[0] if booking_images else item.image_path %}
 
-<div class="booking-new-card card">
-  <div class="card-body">
+<section
+  class="booking-new"
+  id="bookingNew"
+  data-today="{{ start_default.isoformat() }}"
+  data-initial-start="{{ initial_start_date }}"
+  data-initial-end="{{ initial_end_date }}"
+  aria-labelledby="bookingNewTitle">
+  <header class="booking-new__header">
+    <a class="booking-new__back" href="/items/{{ item.id }}" aria-label="Back to {{ item.title }}" title="Back">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    </a>
+    <div class="booking-new__product">
+      {% if booking_cover %}
+        <img
+          class="booking-new__thumbnail"
+          src="{{ booking_image_src(booking_cover) }}"
+          width="48"
+          height="48"
+          alt=""
+          decoding="async"
+          onerror="this.onerror=null;this.src='/static/placeholder.png'">
+      {% else %}
+        <span class="booking-new__thumbnail-fallback" aria-hidden="true"><i class="bi bi-box-seam"></i></span>
+      {% endif %}
+      <div>
+        <p class="booking-new__eyebrow">Booking</p>
+        <h1 id="bookingNewTitle">{{ item.title }}</h1>
+      </div>
+    </div>
+  </header>
 
-    <form method="post" action="/bookings">
+  <article class="booking-new__card">
+    <div class="booking-new__card-heading">
+      <h2>Choose your dates</h2>
+      <p>Availability is updated from this listing’s active bookings.</p>
+    </div>
+
+    <form id="bookingNewForm" method="post" action="/bookings" novalidate>
       <input type="hidden" name="item_id" value="{{ item.id }}">
+      <input type="hidden" name="start_date" id="bookingStartDate">
+      <input type="hidden" name="end_date" id="bookingEndDate">
 
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Start date</label>
-          <input type="date" name="start_date" id="start_date" class="form-control" required>
-        </div>
-
-        <div class="col-md-6">
-          <label class="form-label">End date</label>
-          <input type="date" name="end_date" id="end_date" class="form-control" required>
-        </div>
-
-        <div class="col-12">
-          <label class="form-label">Note (optional)</label>
-          <textarea name="note" class="form-control" rows="2"></textarea>
-        </div>
-
-        <div class="col-12">
-          <div id="availability_hint" class="alert alert-warning" style="display:none;"></div>
-        </div>
+      <div class="booking-new__date-fields">
+        <button class="booking-new__field is-active" id="bookingStartField" type="button" aria-controls="bookingCalendar" aria-expanded="true">
+          <span class="booking-new__field-copy">
+            <span class="booking-new__field-label">Start date</span>
+            <span class="booking-new__field-value is-empty" id="bookingStartValue">Choose a date</span>
+          </span>
+          <i class="bi bi-calendar3" aria-hidden="true"></i>
+        </button>
+        <button class="booking-new__field" id="bookingEndField" type="button" aria-controls="bookingCalendar" aria-expanded="true">
+          <span class="booking-new__field-copy">
+            <span class="booking-new__field-label">End date</span>
+            <span class="booking-new__field-value is-empty" id="bookingEndValue">Choose a date</span>
+          </span>
+          <i class="bi bi-calendar3" aria-hidden="true"></i>
+        </button>
       </div>
 
-      <div class="booking-new-actions mt-3">
-        <button type="submit" class="btn btn-success" id="submit_btn">
-          Submit booking request
+      <section class="booking-new__calendar" id="bookingCalendar" tabindex="-1" aria-label="Booking availability calendar">
+        <div class="booking-new__calendar-head">
+          <div class="booking-new__calendar-prompt" id="bookingCalendarPrompt">Select your start date</div>
+          <div class="booking-new__calendar-nav" aria-label="Calendar months">
+            <button class="booking-new__nav-button" id="bookingCalendarPrevious" type="button" aria-label="Previous month"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+            <button class="booking-new__nav-button" id="bookingCalendarNext" type="button" aria-label="Next month"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <div class="booking-new__months" id="bookingCalendarMonths"></div>
+        <div class="booking-new__legend" aria-label="Calendar legend">
+          <span><i class="booking-new__legend-swatch booking-new__legend-swatch--selected" aria-hidden="true"></i>Selected</span>
+          <span><i class="booking-new__legend-swatch booking-new__legend-swatch--reserved" aria-hidden="true"></i>Reserved</span>
+          <span><i class="booking-new__legend-swatch booking-new__legend-swatch--past" aria-hidden="true"></i>Past</span>
+        </div>
+        <p class="booking-new__return-note">The end date is the return date. Reserved and past dates cannot be selected.</p>
+      </section>
+
+      <p class="booking-new__feedback" id="bookingAvailabilityHint" role="alert" aria-live="polite"{% if not booking_error_message %} hidden{% endif %}>
+        <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+        <span>{{ booking_error_message }}</span>
+      </p>
+
+      <div class="booking-new__note-wrap">
+        <label class="booking-new__label" for="bookingNote">
+          <span>Note <small>(optional)</small></span>
+        </label>
+        <textarea class="booking-new__note" name="note" id="bookingNote" rows="4" placeholder="Add a note (optional)"></textarea>
+      </div>
+
+      <div class="booking-new__actions">
+        <button class="booking-new__submit" id="bookingSubmit" type="submit" disabled aria-disabled="true">
+          <span>Continue</span>
+          <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </button>
-        <a href="/items/{{ item.id }}" class="btn btn-outline-light">Back</a>
       </div>
     </form>
+  </article>
 
-  </div>
-</div>
+  <script id="bookingUnavailableRanges" type="application/json">{{ unavailable_ranges | tojson }}</script>
+</section>
 
+<script>
+(() => {
+  const root = document.getElementById('bookingNew');
+  if (!root) return;
 
+  const form = root.querySelector('#bookingNewForm');
+  const startInput = root.querySelector('#bookingStartDate');
+  const endInput = root.querySelector('#bookingEndDate');
+  const startField = root.querySelector('#bookingStartField');
+  const endField = root.querySelector('#bookingEndField');
+  const startValue = root.querySelector('#bookingStartValue');
+  const endValue = root.querySelector('#bookingEndValue');
+  const calendar = root.querySelector('#bookingCalendar');
+  const months = root.querySelector('#bookingCalendarMonths');
+  const prompt = root.querySelector('#bookingCalendarPrompt');
+  const previous = root.querySelector('#bookingCalendarPrevious');
+  const next = root.querySelector('#bookingCalendarNext');
+  const submit = root.querySelector('#bookingSubmit');
+  const hint = root.querySelector('#bookingAvailabilityHint');
+  const unavailableScript = root.querySelector('#bookingUnavailableRanges');
+
+  let unavailableRanges = [];
+  try {
+    const parsed = JSON.parse(unavailableScript ? unavailableScript.textContent : '[]');
+    unavailableRanges = Array.isArray(parsed)
+      ? parsed.filter((range) => range && /^\d{4}-\d{2}-\d{2}$/.test(range.start || '') && /^\d{4}-\d{2}-\d{2}$/.test(range.end || '') && range.end > range.start)
+      : [];
+  } catch (_) {
+    unavailableRanges = [];
+  }
+
+  const today = root.dataset.today || '';
+  const locale = document.documentElement.lang || 'en';
+  const dateFormatter = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' });
+  const dayFormatter = new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: 'narrow' });
+
+  const parseIso = (value) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return null;
+    const [year, month, day] = value.split('-').map(Number);
+    const parsed = new Date(year, month - 1, day);
+    return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day ? parsed : null;
+  };
+  const toIso = (value) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const startOfMonth = (value) => new Date(value.getFullYear(), value.getMonth(), 1);
+  const addMonths = (value, amount) => new Date(value.getFullYear(), value.getMonth() + amount, 1);
+  const isReserved = (iso) => unavailableRanges.some((range) => range.start <= iso && iso < range.end);
+  const rangeHasConflict = (start, end) => Boolean(start && end && unavailableRanges.some((range) => range.start < end && range.end > start));
+
+  let startDate = parseIso(root.dataset.initialStart || '') ? root.dataset.initialStart : '';
+  let endDate = parseIso(root.dataset.initialEnd || '') ? root.dataset.initialEnd : '';
+  let activeField = startDate ? 'end' : 'start';
+  let viewMonth = startOfMonth(parseIso(startDate) || parseIso(today) || new Date());
+  let initialFeedback = (hint && !hint.hidden) ? (hint.textContent || '').trim() : '';
+
+  const setFeedback = (message) => {
+    if (!hint) return;
+    const target = hint.querySelector('span');
+    if (target) target.textContent = message || '';
+    hint.hidden = !message;
+  };
+  const formatDate = (iso) => {
+    const parsed = parseIso(iso);
+    return parsed ? dateFormatter.format(parsed) : 'Choose a date';
+  };
+  const selectionMessage = () => {
+    if (startDate && startDate < today) return 'Past dates can’t be selected. Please choose a future date.';
+    if (startDate && endDate && endDate <= startDate) return 'Choose an end date after the start date.';
+    if (startDate && endDate && rangeHasConflict(startDate, endDate)) return 'These dates aren’t available. Please choose another period.';
+    return '';
+  };
+  const setFieldState = () => {
+    const startIsEmpty = !startDate;
+    const endIsEmpty = !endDate;
+    startValue.textContent = startIsEmpty ? 'Choose a date' : formatDate(startDate);
+    endValue.textContent = endIsEmpty ? 'Choose a date' : formatDate(endDate);
+    startValue.classList.toggle('is-empty', startIsEmpty);
+    endValue.classList.toggle('is-empty', endIsEmpty);
+    startField.classList.toggle('is-active', activeField === 'start');
+    endField.classList.toggle('is-active', activeField === 'end');
+    startField.setAttribute('aria-pressed', String(activeField === 'start'));
+    endField.setAttribute('aria-pressed', String(activeField === 'end'));
+    prompt.textContent = activeField === 'end' && startDate ? 'Now select your end date' : 'Select your start date';
+  };
+  const syncForm = ({ preserveFeedback = false } = {}) => {
+    startInput.value = startDate;
+    endInput.value = endDate;
+    setFieldState();
+    const message = selectionMessage();
+    if (message) setFeedback(message);
+    else if (!preserveFeedback) setFeedback('');
+    const valid = Boolean(startDate && endDate && !message);
+    submit.disabled = !valid;
+    submit.setAttribute('aria-disabled', String(!valid));
+  };
+
+  const renderMonth = (monthDate) => {
+    const month = document.createElement('section');
+    month.className = 'booking-new__month';
+    const title = document.createElement('h3');
+    title.className = 'booking-new__month-title';
+    title.textContent = monthFormatter.format(monthDate);
+    month.appendChild(title);
+
+    const weekdays = document.createElement('div');
+    weekdays.className = 'booking-new__weekdays';
+    for (let index = 0; index < 7; index += 1) {
+      const marker = document.createElement('span');
+      marker.className = 'booking-new__weekday';
+      marker.setAttribute('aria-hidden', 'true');
+      marker.textContent = weekdayFormatter.format(new Date(2024, 0, 7 + index));
+      weekdays.appendChild(marker);
+    }
+    month.appendChild(weekdays);
+
+    const days = document.createElement('div');
+    days.className = 'booking-new__days';
+    const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const offset = firstDay.getDay();
+    const count = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+    for (let blank = 0; blank < offset; blank += 1) {
+      const spacer = document.createElement('span');
+      spacer.className = 'booking-new__day booking-new__day--blank';
+      spacer.setAttribute('aria-hidden', 'true');
+      days.appendChild(spacer);
+    }
+    for (let day = 1; day <= count; day += 1) {
+      const dateValue = new Date(monthDate.getFullYear(), monthDate.getMonth(), day);
+      const iso = toIso(dateValue);
+      const past = iso < today;
+      const reserved = isReserved(iso);
+      const selected = !past && !reserved && (iso === startDate || iso === endDate);
+      const inRange = !past && !reserved && Boolean(startDate && endDate && iso > startDate && iso < endDate);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'booking-new__day';
+      button.textContent = String(day);
+      button.dataset.date = iso;
+      button.setAttribute('aria-label', `${dayFormatter.format(dateValue)}${reserved ? ', reserved, unavailable' : past ? ', past, unavailable' : selected ? ', selected' : ''}`);
+      if (past || reserved) {
+        button.disabled = true;
+        button.setAttribute('aria-disabled', 'true');
+      }
+      if (past) button.classList.add('is-past');
+      if (reserved) button.classList.add('is-reserved');
+      if (iso === today) button.classList.add('is-today');
+      if (inRange) button.classList.add('is-in-range');
+      if (selected) button.classList.add('is-selected');
+      if (!past && !reserved) button.addEventListener('click', () => chooseDate(iso));
+      days.appendChild(button);
+    }
+    month.appendChild(days);
+    return month;
+  };
+
+  const renderCalendar = () => {
+    const twoMonths = window.matchMedia('(min-width: 680px)').matches;
+    months.replaceChildren(renderMonth(viewMonth));
+    if (twoMonths) months.appendChild(renderMonth(addMonths(viewMonth, 1)));
+    const currentMonth = startOfMonth(parseIso(today) || new Date());
+    previous.disabled = viewMonth <= currentMonth;
+  };
+
+  function chooseDate(iso) {
+    if (isReserved(iso) || iso < today) return;
+    initialFeedback = '';
+    if (activeField === 'start' || !startDate) {
+      startDate = iso;
+      endDate = '';
+      activeField = 'end';
+    } else if (iso <= startDate) {
+      startDate = iso;
+      endDate = '';
+      activeField = 'end';
+    } else if (rangeHasConflict(startDate, iso)) {
+      endDate = '';
+      activeField = 'end';
+      setFeedback('These dates aren’t available. Please choose another period.');
+    } else {
+      endDate = iso;
+    }
+    syncForm();
+    renderCalendar();
+  }
+
+  startField.addEventListener('click', () => {
+    activeField = 'start';
+    initialFeedback = '';
+    syncForm();
+    renderCalendar();
+    calendar.focus({ preventScroll: true });
+  });
+  endField.addEventListener('click', () => {
+    activeField = startDate ? 'end' : 'start';
+    initialFeedback = '';
+    syncForm();
+    renderCalendar();
+    calendar.focus({ preventScroll: true });
+  });
+  previous.addEventListener('click', () => {
+    viewMonth = addMonths(viewMonth, -1);
+    renderCalendar();
+  });
+  next.addEventListener('click', () => {
+    viewMonth = addMonths(viewMonth, 1);
+    renderCalendar();
+  });
+  window.addEventListener('resize', renderCalendar, { passive: true });
+  form.addEventListener('submit', (event) => {
+    const message = selectionMessage();
+    if (!startDate || !endDate || message) {
+      event.preventDefault();
+      setFeedback(message || 'Select a start date and an end date to continue.');
+      syncForm({ preserveFeedback: true });
+    }
+  });
+
+  syncForm({ preserveFeedback: Boolean(initialFeedback) });
+  if (initialFeedback && !selectionMessage()) setFeedback(initialFeedback);
+  renderCalendar();
+})();
+</script>
 {% endblock %}
