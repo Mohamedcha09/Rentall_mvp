@@ -701,7 +701,6 @@ def message_attachment_download(
     if not attachment:
         # Do not turn attachment ids into an oracle for another conversation.
         raise HTTPException(status_code=404, detail="Attachment not found")
-    path = message_attachment_path(attachment)
     safe_name = quote(attachment.original_name or "attachment", safe="")
     inline = str(attachment.content_type or "").startswith(("image/", "audio/"))
     headers = {
@@ -719,6 +718,7 @@ def message_attachment_download(
             media_type=attachment.content_type,
             headers=headers,
         )
+    path = message_attachment_path(attachment)
     return FileResponse(path, media_type=attachment.content_type, headers=headers)
 
 
