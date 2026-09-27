@@ -1348,7 +1348,7 @@ def how_it_works(request: Request):
         name="how_it_works_steps.html",
         context={
             "request": request,
-            "title": "How Sevor Works",
+            "title": "How Sevor Works | Renting Step by Step",
             "session_user": u,   # ✅ هذا هو المفتاح
         }
     )
