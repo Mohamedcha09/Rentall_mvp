@@ -136,8 +136,11 @@ class ChatbotSupportTests(unittest.TestCase):
                 User(id=109, first_name="Outside", last_name="User", email="outside2@example.test", phone="9", password_hash="x", role="user", status="active", is_verified=True),
                 User(id=120, first_name="Resume", last_name="User", email="resume@example.test", phone="10", password_hash="x", role="user", status="active", is_verified=True),
                 User(id=121, first_name="Fresh", last_name="Session", email="fresh@example.test", phone="11", password_hash="x", role="user", status="active", is_verified=True),
+<<<<<<< HEAD
                 User(id=122, first_name="History", last_name="User", email="history@example.test", phone="12", password_hash="x", role="user", status="active", is_verified=True),
                 User(id=123, first_name="Empty", last_name="Conversation", email="empty@example.test", phone="13", password_hash="x", role="user", status="active", is_verified=True),
+=======
+>>>>>>> f91c8ac1aa6cefb291bc3e88c99f49828979eea0
             ])
             item = Item(id=101, owner_id=101, title="Camera", currency="CAD", price=10, status="approved", price_per_day=10, category="other", is_active="yes")
             second_item = Item(id=102, owner_id=101, title="Tripod", currency="CAD", price=10, status="approved", price_per_day=10, category="other", is_active="yes")
@@ -556,6 +559,7 @@ class ChatbotSupportTests(unittest.TestCase):
         finally:
             db.close()
 
+<<<<<<< HEAD
     def test_ticket_cards_open_the_requested_active_or_closed_history(self):
         """Ticket cards must not fall back to an empty/new chatbot view.
 
@@ -709,6 +713,8 @@ class ChatbotSupportTests(unittest.TestCase):
         ]
         self.assertNotIn("initialTools.style.display", start_new_segment)
 
+=======
+>>>>>>> f91c8ac1aa6cefb291bc3e88c99f49828979eea0
     def test_legacy_support_and_direct_chatbot_do_not_autostart_from_closed_id(self):
         """Only the explicit Messages POST may start a clean support ticket.
 
