@@ -249,29 +249,6 @@
   }
   .messages-filter[aria-pressed="true"] .messages-filter__dot{ background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.16); }
 
-  /* This badge is injected only by the Inbox script, using the existing direct-message unread summary. */
-  body[data-path="/messages"] .mobile-tabbar a[href="/messages"] .messages-nav-unread{
-    position:absolute;
-    z-index:2;
-    top:-3px;
-    left:calc(50% + 10px);
-    display:grid;
-    place-items:center;
-    min-width:19px;
-    height:19px;
-    padding:0 5px;
-    color:#fff;
-    background:#ee5368;
-    border:2px solid rgba(255,255,255,.94);
-    border-radius:999px;
-    box-shadow:0 4px 10px rgba(210,57,83,.3);
-    font-size:.62rem;
-    font-weight:800;
-    font-variant-numeric:tabular-nums;
-    line-height:1;
-    pointer-events:none;
-  }
-
   .messages-conversations{ display:grid; gap:10px; min-width:0; }
   .messages-support-start{ min-width:0; margin:0; }
   .messages-support-start[hidden]{ display:none; }
@@ -570,7 +547,7 @@
   {% endif %}
 {% endfor %}
 
-<section class="messages-inbox" aria-labelledby="messagesTitle" data-direct-unread-total="{{ unread_state.direct_total }}">
+<section class="messages-inbox" aria-labelledby="messagesTitle">
   <div class="messages-inbox__utility">
     <a class="messages-inbox__brand" href="/" aria-label="SEVOR home">
       <img src="/static/images/ui/sevor-logo-96.png" alt="" width="31" height="31">
@@ -692,50 +669,6 @@
         copy.prepend(icon);
       }
       inbox.insertBefore(paypalCallout, inboxHeading);
-    }
-
-    // The existing endpoint is the canonical exact total for direct Messages only.
-    // Support tickets expose an unread boolean, not a compatible per-message total,
-    // so they are intentionally not folded into this numeric navigation badge.
-    const messagesNav = () => document.querySelector('.mobile-tabbar a[href="/messages"]');
-    const renderMessagesNavBadge = (value) => {
-      const navLink = messagesNav();
-      if (!navLink) return;
-      const total = Math.max(0, Number.parseInt(value, 10) || 0);
-      let badge = navLink.querySelector('.messages-nav-unread');
-      if (!total) {
-        badge?.remove();
-        navLink.removeAttribute('aria-label');
-        return;
-      }
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'messages-nav-unread';
-        badge.setAttribute('aria-live', 'polite');
-        navLink.append(badge);
-      }
-      const label = total > 99 ? '99+' : String(total);
-      badge.textContent = label;
-      badge.setAttribute('aria-label', total > 99 ? '99 or more unread messages' : `${total} unread message${total === 1 ? '' : 's'}`);
-      navLink.setAttribute('aria-label', `Messages, ${badge.getAttribute('aria-label')}`);
-    };
-
-    const hydrateMessagesNavBadge = () => {
-      renderMessagesNavBadge(inbox.dataset.directUnreadTotal);
-      fetch('/api/unread_summary', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
-        .then((response) => response.ok ? response.json() : null)
-        .then((payload) => {
-          if (payload && Object.prototype.hasOwnProperty.call(payload, 'total')) renderMessagesNavBadge(payload.total);
-        })
-        .catch(() => { /* Keep the server-rendered total if a transient refresh fails. */ });
-    };
-
-    if (inbox) {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', hydrateMessagesNavBadge, { once: true });
-      } else {
-        hydrateMessagesNavBadge();
-      }
     }
 
     const searchToggle = document.getElementById('openSearch');

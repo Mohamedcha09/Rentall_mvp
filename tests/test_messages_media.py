@@ -892,6 +892,53 @@ class DirectMessageMediaTests(unittest.TestCase):
         self.assertFalse(offline.json()["presence"]["online"])
         self.assertTrue(offline.json()["presence"]["last_seen"])
 
+    def test_unread_summary_uses_actual_direct_message_read_state(self):
+        """The shared nav count follows the existing direct-message lifecycle."""
+        thread_id = self._thread()
+        owner = TestClient(main_module.app)
+        participant = TestClient(main_module.app)
+        guest = TestClient(main_module.app)
+        _login(owner, self.owner_id)
+        _login(participant, self.participant_id)
+
+        # Guests receive the safe empty shape and never need private data.
+        self.assertEqual(guest.get("/api/unread_summary").json(), {"total": 0, "threads": []})
+
+        for index in range(3):
+            sent = self._send(
+                participant,
+                thread_id,
+                body=f"Unread message {index}",
+                key=f"global-unread-summary-{index}",
+            )
+            self.assertEqual(sent.status_code, 201, sent.text)
+
+        before_read = owner.get("/api/unread_summary")
+        self.assertEqual(before_read.status_code, 200, before_read.text)
+        self.assertEqual(before_read.json()["total"], 3)
+        self.assertEqual(before_read.json()["threads"][0]["thread_id"], thread_id)
+        self.assertEqual(before_read.json()["threads"][0]["count"], 3)
+
+        # Opening the actual conversation, not the inbox landing page, is what
+        # preserves the existing read-receipt semantics and clears the count.
+        self.assertEqual(owner.get(f"/messages/{thread_id}").status_code, 200)
+        self.assertEqual(owner.get("/api/unread_summary").json()["total"], 0)
+
+        later = self._send(
+            participant,
+            thread_id,
+            body="Unread until the visible conversation poll runs",
+            key="global-unread-summary-poll",
+        )
+        self.assertEqual(later.status_code, 201, later.text)
+        self.assertEqual(owner.get("/api/unread_summary").json()["total"], 1)
+
+        self.assertEqual(
+            owner.get(f"/messages/{thread_id}/poll", params={"after": 999999}).status_code,
+            200,
+        )
+        self.assertEqual(owner.get("/api/unread_summary").json()["total"], 0)
+
     def test_account_deletion_removes_private_media_and_presence_after_commit(self):
         deleting_id, peer_id = 704, 705
         db = SessionLocal()

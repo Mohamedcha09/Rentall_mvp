@@ -788,7 +788,38 @@ body[data-auth="0"] .mobile-tabbar {
     box-shadow: 0 2px 6px rgba(34,197,94,.35);
     text-align: center;
   }
+
 }
+
+/* Direct-message unread count.  This deliberately remains separate from
+   .badge-dot, which belongs to the notifications bell.  Keep it outside the
+   phone-only block because the shared tabbar is also used on iPad widths. */
+.mobile-tabbar a[href="/messages"] .messages-nav-unread{
+  position:absolute;
+  z-index:2;
+  top:4px;
+  left:calc(50% + 9px);
+  display:grid;
+  place-items:center;
+  box-sizing:border-box;
+  min-width:19px;
+  height:19px;
+  max-width:34px;
+  padding:0 5px;
+  overflow:hidden;
+  color:#fff;
+  background:linear-gradient(135deg, var(--primary, #7C4DFF), #4F6FFF, #28B8F5);
+  border:1.5px solid rgba(255,255,255,.94);
+  border-radius:999px;
+  box-shadow:0 4px 10px rgba(79,111,255,.28);
+  font-size:.62rem;
+  font-weight:800;
+  font-variant-numeric:tabular-nums;
+  line-height:1;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.mobile-tabbar a[href="/messages"] .messages-nav-unread[hidden]{ display:none !important; }
 
 /* Dark mode tune */
 [data-theme="dark"] .mobile-tabbar{
@@ -2199,7 +2230,7 @@ window.onpageshow = function(e){
         <img class="tab-img" src="{{ url_for('static', path='images/ui/nav-jour-72.png') }}" alt="jour"><span>Bookings</span>
       </a>
       <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
-        <img class="tab-img" src="/static/images/ui/nav-msg-72.png" alt="Messages"><span>Messages</span>
+        <img class="tab-img" src="/static/images/ui/nav-msg-72.png" alt="Messages"><span class="messages-nav-unread" data-messages-unread-badge aria-live="polite" aria-atomic="true" hidden></span><span>Messages</span>
       </a>
       <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
         <img class="tab-img" src="{{ url_for('static', path='images/ui/nav-profil-72.png') }}" alt="profile"><span>Profile</span>
@@ -2602,6 +2633,66 @@ window.onpageshow = function(e){
   })();
   </script>
 
+  <!-- Shared direct-message unread badge.  It is intentionally independent
+       from the notifications bell and uses the direct-message summary only. -->
+  <script>
+  (function initGlobalMessagesUnreadBadge(){
+    if (window.__sevorMessagesUnreadBadgeInit) return;
+    window.__sevorMessagesUnreadBadgeInit = true;
+
+    const hasSessionUser = {{ 'true' if session_user else 'false' }};
+    const navLink = document.querySelector('.mobile-tabbar a[href="/messages"]');
+    const badge = navLink?.querySelector('[data-messages-unread-badge]');
+    if (!hasSessionUser || !navLink || !badge) return;
+
+    let pendingRequest = null;
+
+    function render(value){
+      const total = Math.max(0, Number.parseInt(value, 10) || 0);
+      const hasUnread = total > 0;
+      badge.hidden = !hasUnread;
+      if (!hasUnread){
+        badge.textContent = '';
+        badge.removeAttribute('aria-label');
+        navLink.setAttribute('aria-label', 'Messages');
+        return;
+      }
+
+      const label = total > 99 ? '99+' : String(total);
+      const messageLabel = total > 99
+        ? '99 or more unread messages'
+        : `${total} unread message${total === 1 ? '' : 's'}`;
+      badge.textContent = label;
+      badge.setAttribute('aria-label', messageLabel);
+      navLink.setAttribute('aria-label', `Messages, ${messageLabel}`);
+    }
+
+    function refresh(){
+      if (pendingRequest) return pendingRequest;
+      pendingRequest = fetch('/api/unread_summary', {
+        cache:'no-store',
+        credentials:'same-origin',
+        headers:{ Accept:'application/json' }
+      })
+        .then((response) => response.ok ? response.json() : null)
+        .then((payload) => {
+          if (payload && Object.prototype.hasOwnProperty.call(payload, 'total')) {
+            render(payload.total);
+          }
+        })
+        .catch(() => { /* Preserve the last known count during a transient failure. */ })
+        .finally(() => { pendingRequest = null; });
+      return pendingRequest;
+    }
+
+    // The existing base polling lifecycle invokes this hook every 20 seconds,
+    // on visibility restoration, and on bfcache page restoration.  Keeping the
+    // fetch here makes one shared implementation serve every tabbar page.
+    window.SevorMessagesUnread = Object.freeze({ refresh, render });
+    refresh();
+  })();
+  </script>
+
   <!-- Notifications -->
   <script>
   (function initNotifications(){
@@ -2672,7 +2763,11 @@ window.onpageshow = function(e){
           else { renderItems(items); }
         }
         await fetchUnreadCount();
-      }catch(_){}
+      }catch(_){} finally {
+        // Same global cadence, but a separate API/source of truth: direct messages
+        // must never borrow the notification bell's unread total.
+        await window.SevorMessagesUnread?.refresh?.();
+      }
     }
 
     async function loadInitial(){
@@ -2709,11 +2804,15 @@ window.onpageshow = function(e){
     }
 
     fetchUnreadCount();
+    window.SevorMessagesUnread?.refresh?.();
     setInterval(pollOnce, 20000);
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) pollOnce();
     });
-    window.addEventListener('pageshow', () => { fetchUnreadCount(); });
+    window.addEventListener('pageshow', () => {
+      fetchUnreadCount();
+      window.SevorMessagesUnread?.refresh?.();
+    });
   })();
   </script>
 
