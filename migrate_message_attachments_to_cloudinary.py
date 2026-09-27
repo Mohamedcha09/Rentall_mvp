@@ -82,11 +82,19 @@ def main() -> int:
                 continue
 
             previous_key = attachment.stored_name
-            remote_key = ""
+            previous_backend = attachment.storage_backend
+            previous_storage_key = attachment.storage_key
+            previous_resource_type = attachment.storage_resource_type
+            previous_delivery_type = attachment.storage_delivery_type
+            remote_object = None
             try:
                 source_checksum = _sha256_file(source)
-                remote_key = migrate_local_message_attachment_to_cloudinary(attachment)
-                attachment.stored_name = remote_key
+                remote_object = migrate_local_message_attachment_to_cloudinary(attachment)
+                attachment.stored_name = remote_object.stored_name
+                attachment.storage_backend = "cloudinary"
+                attachment.storage_key = remote_object.public_id
+                attachment.storage_resource_type = remote_object.resource_type
+                attachment.storage_delivery_type = remote_object.delivery_type
                 remote_checksum = _sha256_chunks(
                     stream_cloudinary_message_attachment(attachment, as_attachment=False)
                 )
@@ -103,11 +111,15 @@ def main() -> int:
             except Exception as exc:
                 db.rollback()
                 summary["failed"] += 1
-                if remote_key:
-                    remove_saved_message_attachment_files([remote_key])
+                if remote_object:
+                    remove_saved_message_attachment_files([remote_object])
                 # The row object may be expired after rollback; restoring this
                 # value keeps subsequent diagnostics truthful in this session.
                 attachment.stored_name = previous_key
+                attachment.storage_backend = previous_backend
+                attachment.storage_key = previous_storage_key
+                attachment.storage_resource_type = previous_resource_type
+                attachment.storage_delivery_type = previous_delivery_type
                 print(f"attachment {attachment.id}: failed; local source kept ({exc})")
     finally:
         db.close()

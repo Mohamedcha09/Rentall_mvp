@@ -1,4 +1,5 @@
 # app/messages.py
+import logging
 import uuid
 from datetime import datetime, timedelta
 from urllib.parse import quote
@@ -17,6 +18,7 @@ from .message_attachments import (
     max_attachments_per_message,
     max_voice_bytes,
     is_cloudinary_message_attachment,
+    message_attachment_record_backend,
     message_attachment_path,
     persist_staged_message_attachments,
     remove_saved_message_attachment_files,
@@ -34,6 +36,7 @@ from .support_ai import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def require_login(request: Request):
@@ -592,10 +595,12 @@ async def _create_direct_message(
         locked_thread.last_message_at = now
         db.commit()
     except IntegrityError:
-        saved_names = [record.stored_name for record in saved_files]
+        # Use the explicit provider metadata while attributes are still loaded;
+        # after rollback SQLAlchemy may expire rows and force an unsafe legacy
+        # reconstruction from the current environment.
+        remove_saved_message_attachment_files(saved_files)
         db.rollback()
         cleanup_staged_message_attachments(staged)
-        remove_saved_message_attachment_files(saved_names)
         if message_key:
             existing = (
                 db.query(Message)
@@ -611,10 +616,9 @@ async def _create_direct_message(
                 return existing, False
         raise
     except Exception:
-        saved_names = [record.stored_name for record in saved_files]
+        remove_saved_message_attachment_files(saved_files)
         db.rollback()
         cleanup_staged_message_attachments(staged)
-        remove_saved_message_attachment_files(saved_names)
         raise
 
     return (
@@ -709,6 +713,14 @@ def message_attachment_download(
         "Content-Security-Policy": "sandbox",
         "Content-Disposition": f"{'inline' if inline else 'attachment'}; filename*=UTF-8''{safe_name}",
     }
+    backend = message_attachment_record_backend(attachment)
+    logger.info(
+        "dm_attachment_download_requested attachment_id=%s message_id=%s backend=%s resource_type=%s",
+        attachment.id,
+        attachment.message_id,
+        backend,
+        getattr(attachment, "storage_resource_type", None) or "local",
+    )
     if is_cloudinary_message_attachment(attachment):
         # The app remains the authorization boundary: a signed provider URL is
         # generated and fetched only after membership was checked above, then
@@ -718,7 +730,15 @@ def message_attachment_download(
             media_type=attachment.content_type,
             headers=headers,
         )
-    path = message_attachment_path(attachment)
+    try:
+        path = message_attachment_path(attachment)
+    except HTTPException as exc:
+        logger.warning(
+            "dm_attachment_download_failed attachment_id=%s backend=local http_status=%s",
+            attachment.id,
+            exc.status_code,
+        )
+        raise
     return FileResponse(path, media_type=attachment.content_type, headers=headers)
 
 

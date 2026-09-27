@@ -66,6 +66,10 @@ def _bootstrap_schema(path: Path) -> None:
           kind VARCHAR(16) NOT NULL,
           original_name VARCHAR(180) NOT NULL,
           stored_name VARCHAR(96) NOT NULL UNIQUE,
+          storage_backend VARCHAR(16),
+          storage_key VARCHAR(255),
+          storage_resource_type VARCHAR(16),
+          storage_delivery_type VARCHAR(16),
           content_type VARCHAR(100) NOT NULL,
           size_bytes INTEGER NOT NULL,
           duration_ms INTEGER,
@@ -92,6 +96,9 @@ if not APP_DATABASE_WAS_PRELOADED:
     os.environ["COOKIE_DOMAIN"] = "testserver.local"
     os.environ["HTTPS_ONLY_COOKIES"] = "0"
     os.environ["SITE_URL"] = ""
+    # Unit tests intentionally exercise the local path unless a test opts in
+    # to its mocked private Cloudinary provider below.
+    os.environ["SEVOR_MESSAGE_ATTACHMENT_STORAGE"] = "local"
     os.environ.pop("OPENAI_API_KEY", None)
     os.environ.pop("SEVOR_AI_MODEL", None)
 
@@ -216,6 +223,20 @@ class DirectMessageMediaTests(unittest.TestCase):
             "conversation-attachment-image--unavailable",
         ):
             self.assertIn(required, template)
+
+    def test_storage_selector_never_needs_a_render_marker_to_choose_cloudinary(self):
+        """A cold production process must not silently fall back to local media."""
+        with mock.patch.dict(
+            os.environ,
+            {"CLOUDINARY_URL": "cloudinary://test-key:test-secret@test-cloud"},
+            clear=True,
+        ):
+            self.assertEqual(attachment_service.message_attachment_storage_backend(), "cloudinary")
+
+        with mock.patch.dict(os.environ, {"RENDER": "true"}, clear=True):
+            with self.assertRaises(HTTPException) as unavailable:
+                attachment_service.message_attachment_storage_backend()
+        self.assertEqual(unavailable.exception.status_code, 503)
 
     def test_image_only_message_renders_without_a_colored_bubble(self):
         thread_id = self._thread()
@@ -378,6 +399,7 @@ class DirectMessageMediaTests(unittest.TestCase):
 
         objects: dict[tuple[str, str], bytes] = {}
         signed_urls: dict[str, tuple[str, str]] = {}
+        staged_suffixes: list[str] = []
         signed_counter = 0
 
         class FakeProviderResponse:
@@ -394,8 +416,26 @@ class DirectMessageMediaTests(unittest.TestCase):
 
         def fake_upload(source, **options):
             payload = source.read()
+            staged_suffixes.append(Path(str(source.name)).suffix.lower())
             objects[(options["resource_type"], options["public_id"])] = payload
-            return {"public_id": options["public_id"]}
+            return {
+                "public_id": options["public_id"],
+                "resource_type": options["resource_type"],
+                "type": options["type"],
+                "bytes": len(payload),
+            }
+
+        def fake_resource(public_id, **options):
+            payload = objects.get((options["resource_type"], public_id))
+            if payload is None:
+                raise RuntimeError("not found")
+            return {
+                "public_id": public_id,
+                "resource_type": options["resource_type"],
+                "type": options["type"],
+                "bytes": len(payload),
+                "asset_id": f"asset-{public_id.rsplit('/', 1)[-1]}",
+            }
 
         def fake_private_download_url(public_id, _format, **options):
             nonlocal signed_counter
@@ -418,6 +458,7 @@ class DirectMessageMediaTests(unittest.TestCase):
         with (
             mock.patch.dict(os.environ, cloudinary_env, clear=False),
             mock.patch.object(attachment_service.cloudinary.uploader, "upload", side_effect=fake_upload),
+            mock.patch.object(attachment_service.cloudinary.api, "resource", side_effect=fake_resource),
             mock.patch.object(attachment_service.cloudinary.utils, "private_download_url", side_effect=fake_private_download_url),
             mock.patch.object(attachment_service.requests, "get", side_effect=fake_get),
         ):
@@ -429,12 +470,17 @@ class DirectMessageMediaTests(unittest.TestCase):
             ]
             for response in sent:
                 self.assertEqual(response.status_code, 201, response.text)
+            self.assertEqual(staged_suffixes, [".jpg", ".png", ".pdf", ".ogg"])
             attachments = [response.json()["message"]["attachments"][0] for response in sent]
 
             db = SessionLocal()
             try:
                 rows = [db.get(MessageAttachment, int(item["id"])) for item in attachments]
                 self.assertTrue(all(row and row.stored_name.startswith("cld1:") for row in rows))
+                self.assertTrue(all(row.storage_backend == "cloudinary" for row in rows))
+                self.assertTrue(all(row.storage_key and row.storage_key.startswith("sevor_private/") for row in rows))
+                self.assertEqual([row.storage_resource_type for row in rows], ["image", "image", "image", "video"])
+                self.assertTrue(all(row.storage_delivery_type == "private" for row in rows))
                 for row in rows:
                     with self.assertRaises(HTTPException):
                         attachment_service.message_attachment_path(row)

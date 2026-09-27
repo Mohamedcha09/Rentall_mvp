@@ -328,6 +328,14 @@ class MessageAttachment(Base):
     kind = Column(String(16), nullable=False, default="file")
     original_name = Column(String(180), nullable=False)
     stored_name = Column(String(96), nullable=False, unique=True)
+    # ``stored_name`` is retained for legacy local files and the existing
+    # uniqueness constraint.  New media records additionally persist their
+    # storage provider and immutable provider reference so a cold restart never
+    # has to infer a backend or rebuild a Cloudinary path from current env.
+    storage_backend = Column(String(16), nullable=True, index=True)
+    storage_key = Column(String(255), nullable=True)
+    storage_resource_type = Column(String(16), nullable=True)
+    storage_delivery_type = Column(String(16), nullable=True)
     content_type = Column(String(100), nullable=False)
     size_bytes = Column(Integer, nullable=False)
     # Reserved for future server-side media inspection.  The current UI derives
