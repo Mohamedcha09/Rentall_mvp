@@ -9,11 +9,13 @@ from sqlalchemy import or_
 from .database import get_db
 from .models import (
     User, Item, Booking, ItemReview, Favorite, SupportTicket, MessageThread,
-    Message, Rating, Report, ReportActionLog, Notification, FreezeDeposit,
+    Message, MessageAttachment, Rating, Report, ReportActionLog, Notification, FreezeDeposit,
     DepositAuditLog, DepositEvidence, Order, SupportMessage, SupportAttachment,
     SupportMessageReceipt, UserReview
 )
 from .support_attachments import remove_saved_attachment_files
+from .message_attachments import remove_saved_message_attachment_files
+from .models_metrics import OnlineSession
 
 # نستخدم الـ templates مباشرة (بدون استيراد من main)
 templates = Jinja2Templates(directory="app/templates")
@@ -52,12 +54,32 @@ def account_delete_confirm(request: Request, db: Session = Depends(get_db)):
     # حذف جميع البيانات المرتبطة
     # -------------------------
 
-    # رسائل & threads
-    db.query(Message).filter(Message.sender_id == uid).delete()
+    # Direct messages.  Collect every participating thread first: deleting an
+    # account deletes its private conversations, so attachment rows/files from
+    # either participant in those threads must go with the thread.
+    direct_thread_ids = [
+        row[0]
+        for row in db.query(MessageThread.id).filter(
+            (MessageThread.user_a_id == uid) |
+            (MessageThread.user_b_id == uid)
+        ).all()
+    ]
+    direct_attachment_scope = (
+        or_(MessageAttachment.thread_id.in_(direct_thread_ids), MessageAttachment.uploader_id == uid)
+        if direct_thread_ids
+        else (MessageAttachment.uploader_id == uid)
+    )
+    direct_attachments = db.query(MessageAttachment).filter(direct_attachment_scope).all()
+    direct_attachment_names = [attachment.stored_name for attachment in direct_attachments]
+    db.query(MessageAttachment).filter(direct_attachment_scope).delete(synchronize_session=False)
+    if direct_thread_ids:
+        db.query(Message).filter(Message.thread_id.in_(direct_thread_ids)).delete(synchronize_session=False)
+    else:
+        db.query(Message).filter(Message.sender_id == uid).delete(synchronize_session=False)
     db.query(MessageThread).filter(
         (MessageThread.user_a_id == uid) |
         (MessageThread.user_b_id == uid)
-    ).delete()
+    ).delete(synchronize_session=False)
 
     # التقييمات
     db.query(Rating).filter(
@@ -134,6 +156,10 @@ def account_delete_confirm(request: Request, db: Session = Depends(get_db)):
     # الإشعارات
     db.query(Notification).filter(Notification.user_id == uid).delete()
 
+    # Presence sessions are not FK-bound.  Remove them so an account that was
+    # deleted cannot remain visible as recently online if its id is reused.
+    db.query(OnlineSession).filter(OnlineSession.user_id == uid).delete(synchronize_session=False)
+
     # المراجعات
     db.query(ItemReview).filter(ItemReview.rater_id == uid).delete()
     db.query(UserReview).filter(
@@ -149,6 +175,7 @@ def account_delete_confirm(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
     remove_saved_attachment_files(private_attachment_names)
+    remove_saved_message_attachment_files(direct_attachment_names)
 
     # حذف الجلسة + الكوكي
     request.session.clear()

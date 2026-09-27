@@ -1,14 +1,14 @@
 # app/routes_metrics.py
 from datetime import datetime, timedelta, date
+import re
 from fastapi import APIRouter, Depends, Request, Body, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from .database import get_db
 from .models_metrics import Visit, OnlineSession
+from .presence import ONLINE_WINDOW_SECONDS, session_user_id
 
 router = APIRouter()
-
-ONLINE_WINDOW_SECONDS = 120  # Consider "online now" if there was activity in the last two minutes
 
 def _client_ip(request: Request) -> str:
     xff = request.headers.get("x-forwarded-for")
@@ -16,51 +16,84 @@ def _client_ip(request: Request) -> str:
         return xff.split(",")[0].strip()
     return request.client.host if request.client else "0.0.0.0"
 
+
+def _activity_session_id(payload: dict) -> str:
+    """Accept only the browser-local opaque session id used by base.html."""
+    session_id = str(payload.get("session_id") or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", session_id):
+        raise HTTPException(400, "valid session_id required")
+    return session_id
+
+
+def _upsert_online_session(
+    db: Session,
+    *,
+    session_id: str,
+    user_id: int | None,
+    ip: str,
+    user_agent: str,
+    now: datetime,
+) -> None:
+    """Persist server-authenticated activity for the current browser session."""
+    osess = db.get(OnlineSession, session_id)
+    if osess:
+        osess.last_seen = now
+        osess.ip = ip
+        osess.user_agent = user_agent
+        # Always clear an old account mapping after logout; retaining it would
+        # make a previous account appear online during a guest session.
+        osess.user_id = user_id
+    else:
+        db.add(
+            OnlineSession(
+                session_id=session_id,
+                user_id=user_id,
+                ip=ip,
+                user_agent=user_agent,
+                first_seen=now,
+                last_seen=now,
+            )
+        )
+
 @router.post("/api/metrics/track")
 async def track_visit(request: Request, payload: dict = Body(...), db: Session = Depends(get_db)):
-    session_id = (payload.get("session_id") or "").strip()
-    if not session_id:
-        raise HTTPException(400, "session_id required")
-    user_id = payload.get("user_id")
+    session_id = _activity_session_id(payload)
+    # Presence must be authenticated on the server.  The browser's user_id
+    # payload is deliberately ignored so it cannot spoof another account.
+    user_id = session_user_id(request)
     ip = _client_ip(request)
     ua = (request.headers.get("user-agent") or "")[:255]
 
     db.add(Visit(session_id=session_id, user_id=user_id, ip=ip, user_agent=ua))
 
     now = datetime.utcnow()
-    osess = db.get(OnlineSession, session_id)
-    if osess:
-        osess.last_seen = now
-        osess.ip = ip
-        osess.user_agent = ua
-        if user_id:
-            osess.user_id = user_id
-    else:
-        db.add(OnlineSession(session_id=session_id, user_id=user_id, ip=ip, user_agent=ua,
-                             first_seen=now, last_seen=now))
+    _upsert_online_session(
+        db,
+        session_id=session_id,
+        user_id=user_id,
+        ip=ip,
+        user_agent=ua,
+        now=now,
+    )
     db.commit()
     return {"ok": True}
 
 @router.post("/api/metrics/heartbeat")
 async def heartbeat(request: Request, payload: dict = Body(...), db: Session = Depends(get_db)):
-    session_id = (payload.get("session_id") or "").strip()
-    if not session_id:
-        raise HTTPException(400, "session_id required")
-    user_id = payload.get("user_id")
+    session_id = _activity_session_id(payload)
+    user_id = session_user_id(request)
     ip = _client_ip(request)
     ua = (request.headers.get("user-agent") or "")[:255]
     now = datetime.utcnow()
 
-    osess = db.get(OnlineSession, session_id)
-    if osess:
-        osess.last_seen = now
-        osess.ip = ip
-        osess.user_agent = ua
-        if user_id:
-            osess.user_id = user_id
-    else:
-        db.add(OnlineSession(session_id=session_id, user_id=user_id, ip=ip, user_agent=ua,
-                             first_seen=now, last_seen=now))
+    _upsert_online_session(
+        db,
+        session_id=session_id,
+        user_id=user_id,
+        ip=ip,
+        user_agent=ua,
+        now=now,
+    )
     db.commit()
 
     online_now = db.query(OnlineSession).filter(OnlineSession.last_seen >= now - timedelta(seconds=ONLINE_WINDOW_SECONDS)).count()

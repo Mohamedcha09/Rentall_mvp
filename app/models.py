@@ -296,9 +296,47 @@ class Message(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_read = col_or_literal("messages", "is_read", Boolean, default=False, nullable=False)
     read_at  = col_or_literal("messages", "read_at",  DateTime, nullable=True)
+    # A client-generated id makes a retry/double tap idempotent without
+    # changing the existing text-message lifecycle.  Older databases keep the
+    # compatibility literal until the accompanying migration is applied.
+    client_message_id = col_or_literal("messages", "client_message_id", String(72), nullable=True)
 
     thread = relationship("MessageThread", back_populates="messages")
     sender  = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
+    attachments = relationship(
+        "MessageAttachment",
+        back_populates="message",
+        cascade="all, delete-orphan",
+        order_by="MessageAttachment.id",
+    )
+
+
+class MessageAttachment(Base):
+    """Private media belonging to one ordinary direct-message row.
+
+    The stored filename is an opaque server-generated value.  The original
+    filename is presentation metadata only and is never used as a path.
+    """
+
+    __tablename__ = "message_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(Integer, ForeignKey("message_threads.id"), nullable=False, index=True)
+    message_id = Column(Integer, ForeignKey("messages.id"), nullable=False, index=True)
+    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    kind = Column(String(16), nullable=False, default="file")
+    original_name = Column(String(180), nullable=False)
+    stored_name = Column(String(96), nullable=False, unique=True)
+    content_type = Column(String(100), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    # Browser-derived duration is display metadata only.  Playback always
+    # uses the persisted, validated audio file after a refresh.
+    duration_ms = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    message = relationship("Message", back_populates="attachments")
+    thread = relationship("MessageThread", foreign_keys=[thread_id])
+    uploader = relationship("User", foreign_keys=[uploader_id])
 
 
 # =========================

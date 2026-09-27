@@ -1,13 +1,31 @@
 # app/messages.py
-from fastapi import APIRouter, Depends, Request, Form
-from fastapi.responses import RedirectResponse, JSONResponse
-from sqlalchemy.orm import Session
+import uuid
+from datetime import datetime, timedelta
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, lazyload, selectinload
 from sqlalchemy import func
-from datetime import datetime
 
 from .database import get_db
-from .models import MessageThread, Message, User, Item, SupportTicket
-from .support_ai import get_or_create_csrf_token
+from .message_attachments import (
+    allowed_attachment_accept_value,
+    allowed_voice_accept_value,
+    cleanup_staged_message_attachments,
+    max_attachment_bytes,
+    max_attachments_per_message,
+    max_voice_bytes,
+    message_attachment_path,
+    persist_staged_message_attachments,
+    remove_saved_message_attachment_files,
+    serialize_message_attachment,
+    stage_message_attachments,
+)
+from .models import MessageThread, Message, MessageAttachment, User, Item, SupportTicket
+from .presence import user_presence
+from .support_ai import get_or_create_csrf_token, require_csrf, validate_client_message_id
 
 router = APIRouter()
 
@@ -46,6 +64,53 @@ def get_first_admin(db: Session) -> User | None:
 
 def is_admin_user(user: User | None) -> bool:
     return bool(user and user.role == "admin")
+
+
+def _thread_for_member(
+    db: Session,
+    request: Request,
+    thread_id: int,
+    *,
+    api: bool = False,
+) -> tuple[dict, MessageThread, User]:
+    """Load a direct conversation only for a real participant.
+
+    Polling, typing, private media, and presence all use this same gate.  This
+    closes the old gap where a logged-in user could poll a guessed thread id.
+    """
+    session_user = require_login(request)
+    if not session_user:
+        raise HTTPException(status_code=401, detail="Login required")
+    thread = db.get(MessageThread, thread_id)
+    user_id = session_user.get("id") if isinstance(session_user, dict) else None
+    if not thread or user_id not in (thread.user_a_id, thread.user_b_id):
+        # Keep absent and unauthorized direct threads indistinguishable.
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    other_id = thread.user_b_id if thread.user_a_id == user_id else thread.user_a_id
+    other = db.get(User, other_id)
+    if not other:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if is_account_limited(request) and not is_admin_user(other):
+        raise HTTPException(status_code=403, detail="Messaging is currently unavailable")
+    return session_user, thread, other
+
+
+def _serialize_message(message: Message, *, viewer_id: int) -> dict[str, object]:
+    created_at = message.created_at
+    return {
+        "id": message.id,
+        "body": message.body or "",
+        "time": created_at.strftime("%I:%M %p").lstrip("0") if created_at else "",
+        "date_key": created_at.strftime("%Y-%m-%d") if created_at else "",
+        "date_label": created_at.strftime("%b %d, %Y") if created_at else "",
+        "created_at": created_at.isoformat() if created_at else None,
+        "from_me": message.sender_id == viewer_id,
+        "is_read": bool(message.is_read),
+        "attachments": [
+            serialize_message_attachment(attachment, thread_id=message.thread_id)
+            for attachment in (message.attachments or [])
+        ],
+    }
 
 
 # ===================================================================
@@ -342,8 +407,9 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
 
     msgs = (
         db.query(Message)
+        .options(selectinload(Message.attachments))
         .filter(Message.thread_id == thr.id)
-        .order_by(Message.created_at.asc())
+        .order_by(Message.created_at.asc(), Message.id.asc())
         .all()
     )
 
@@ -391,6 +457,14 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             "session_user": u,
             "account_limited": is_account_limited(request),
             "receipt_cursor": receipt_cursor.isoformat(),
+            "csrf_token": get_or_create_csrf_token(request),
+            "client_message_id": uuid.uuid4().hex,
+            "attachment_accept": allowed_attachment_accept_value(),
+            "voice_accept": allowed_voice_accept_value(),
+            "max_attachment_bytes": max_attachment_bytes(),
+            "max_voice_bytes": max_voice_bytes(),
+            "max_attachments": max_attachments_per_message(),
+            "other_presence": user_presence(db, other_id),
             # This only controls the shared-shell presentation for the
             # focused conversation; route and message behavior stay intact.
             "focused_conversation": True,
@@ -402,43 +476,232 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
 #                           SEND MESSAGE
 # ===================================================================
 
+async def _close_uploads(
+    uploads: list[UploadFile] | None,
+    voice_upload: UploadFile | None,
+) -> None:
+    for upload in [*(uploads or []), *([voice_upload] if voice_upload else [])]:
+        try:
+            await upload.close()
+        except Exception:
+            pass
+
+
+async def _create_direct_message(
+    db: Session,
+    *,
+    request: Request,
+    thread: MessageThread,
+    sender: User,
+    body: str,
+    uploads: list[UploadFile] | None,
+    voice_upload: UploadFile | None,
+    voice_duration_ms: str | None,
+    client_message_id: str | None,
+) -> tuple[Message, bool]:
+    """Persist one idempotent direct message and its private media atomically."""
+    message_key = validate_client_message_id(client_message_id)
+    if message_key:
+        existing = (
+            db.query(Message)
+            .options(selectinload(Message.attachments))
+            .filter(
+                Message.thread_id == thread.id,
+                Message.sender_id == sender.id,
+                Message.client_message_id == message_key,
+            )
+            .first()
+        )
+        if existing:
+            await _close_uploads(uploads, voice_upload)
+            return existing, False
+
+    clean_body = (body or "").strip()
+    has_upload = any(upload and (upload.filename or "").strip() for upload in (uploads or []))
+    has_voice = bool(voice_upload and (voice_upload.filename or "").strip())
+    if not clean_body and not has_upload and not has_voice:
+        await _close_uploads(uploads, voice_upload)
+        raise HTTPException(status_code=422, detail="Write a message, attach a file, or record a voice message first.")
+
+    # Upload validation is deliberately outside the row lock so one slow file
+    # never blocks other messages.  The lock below serializes the final
+    # idempotency re-check and last_message_at update.
+    staged = await stage_message_attachments(
+        uploads,
+        voice_upload=voice_upload,
+        voice_duration_ms=voice_duration_ms,
+    )
+    if not clean_body and not staged:
+        raise HTTPException(status_code=422, detail="Write a message, attach a file, or record a voice message first.")
+
+    locked_thread = (
+        db.query(MessageThread)
+        .options(lazyload("*"))
+        .filter(MessageThread.id == thread.id)
+        .with_for_update(of=MessageThread)
+        .first()
+    )
+    if not locked_thread or sender.id not in (locked_thread.user_a_id, locked_thread.user_b_id):
+        cleanup_staged_message_attachments(staged)
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    if message_key:
+        existing = (
+            db.query(Message)
+            .options(selectinload(Message.attachments))
+            .filter(
+                Message.thread_id == locked_thread.id,
+                Message.sender_id == sender.id,
+                Message.client_message_id == message_key,
+            )
+            .first()
+        )
+        if existing:
+            cleanup_staged_message_attachments(staged)
+            return existing, False
+
+    saved_files: list[MessageAttachment] = []
+    now = datetime.utcnow()
+    try:
+        message = Message(
+            thread_id=locked_thread.id,
+            sender_id=sender.id,
+            body=clean_body,
+            is_read=False,
+            read_at=None,
+            client_message_id=message_key,
+            created_at=now,
+        )
+        db.add(message)
+        db.flush()
+        saved_files = persist_staged_message_attachments(
+            db,
+            thread_id=locked_thread.id,
+            message_id=message.id,
+            uploader_id=sender.id,
+            staged=staged,
+        )
+        locked_thread.last_message_at = now
+        db.commit()
+    except IntegrityError:
+        saved_names = [record.stored_name for record in saved_files]
+        db.rollback()
+        cleanup_staged_message_attachments(staged)
+        remove_saved_message_attachment_files(saved_names)
+        if message_key:
+            existing = (
+                db.query(Message)
+                .options(selectinload(Message.attachments))
+                .filter(
+                    Message.thread_id == thread.id,
+                    Message.sender_id == sender.id,
+                    Message.client_message_id == message_key,
+                )
+                .first()
+            )
+            if existing:
+                return existing, False
+        raise
+    except Exception:
+        saved_names = [record.stored_name for record in saved_files]
+        db.rollback()
+        cleanup_staged_message_attachments(staged)
+        remove_saved_message_attachment_files(saved_names)
+        raise
+
+    return (
+        db.query(Message)
+        .options(selectinload(Message.attachments))
+        .filter(Message.id == message.id)
+        .one(),
+        True,
+    )
+
+
 @router.post("/messages/{thread_id}")
-def thread_send(
+async def thread_send(
     thread_id: int,
     request: Request,
+    body: str = Form(""),
+    csrf_token: str = Form(""),
+    client_message_id: str = Form(""),
+    attachments: list[UploadFile] | None = File(None),
+    voice: UploadFile | None = File(None),
+    voice_duration_ms: str = Form(""),
     db: Session = Depends(get_db),
-    body: str = Form(...)
 ):
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
 
-    thr = db.query(MessageThread).get(thread_id)
-    if not thr or (u["id"] not in [thr.user_a_id, thr.user_b_id]):
+    thr = db.get(MessageThread, thread_id)
+    if not thr or (u["id"] not in (thr.user_a_id, thr.user_b_id)):
+        await _close_uploads(attachments, voice)
         return RedirectResponse(url="/messages", status_code=303)
 
     other_id = thr.user_b_id if thr.user_a_id == u["id"] else thr.user_a_id
-    other = db.query(User).get(other_id)
-
+    other = db.get(User, other_id)
     if is_account_limited(request) and not is_admin_user(other):
+        await _close_uploads(attachments, voice)
         return RedirectResponse(url="/messages/support", status_code=303)
 
-    if not body.strip():
-        return {"ok": True}
+    require_csrf(request, csrf_token)
+    sender = db.get(User, u["id"])
+    if not sender:
+        await _close_uploads(attachments, voice)
+        raise HTTPException(status_code=401, detail="Login required")
 
-    msg = Message(
-        thread_id=thr.id,
-        sender_id=u["id"],
-        body=body.strip(),
-        is_read=False,
-        read_at=None
+    message, created = await _create_direct_message(
+        db,
+        request=request,
+        thread=thr,
+        sender=sender,
+        body=body,
+        uploads=attachments,
+        voice_upload=voice,
+        voice_duration_ms=voice_duration_ms,
+        client_message_id=client_message_id,
     )
-    db.add(msg)
-
-    thr.last_message_at = datetime.utcnow()
-    db.commit()
-
+    if "application/json" in (request.headers.get("accept") or "").lower():
+        return JSONResponse(
+            {"ok": True, "created": created, "message": _serialize_message(message, viewer_id=sender.id)},
+            status_code=201 if created else 200,
+        )
     return RedirectResponse(url=f"/messages/{thr.id}", status_code=303)
+
+
+@router.get("/messages/{thread_id}/attachments/{attachment_id}")
+def message_attachment_download(
+    thread_id: int,
+    attachment_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Serve a private direct-message file only to its conversation members."""
+    _thread_for_member(db, request, thread_id, api=True)
+    attachment = (
+        db.query(MessageAttachment)
+        .join(Message, Message.id == MessageAttachment.message_id)
+        .filter(
+            MessageAttachment.id == attachment_id,
+            MessageAttachment.thread_id == thread_id,
+            Message.thread_id == thread_id,
+        )
+        .first()
+    )
+    if not attachment:
+        # Do not turn attachment ids into an oracle for another conversation.
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    path = message_attachment_path(attachment)
+    safe_name = quote(attachment.original_name or "attachment", safe="")
+    inline = str(attachment.content_type or "").startswith(("image/", "audio/"))
+    headers = {
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "sandbox",
+        "Content-Disposition": f"{'inline' if inline else 'attachment'}; filename*=UTF-8''{safe_name}",
+    }
+    return FileResponse(path, media_type=attachment.content_type, headers=headers)
 
 
 # ===================================================================
@@ -514,15 +777,18 @@ def api_unread_summary(request: Request, db: Session = Depends(get_db)):
 #                       TYPING INDICATOR
 # ===================================================================
 
-from datetime import datetime, timedelta
 typing_state = {}   # { thread_id: { user_id: datetime_expire } }
 
-@router.post("/messages/{thread_id}/typing")
-def set_typing(thread_id: int, request: Request, db: Session = Depends(get_db)):
-    session_user = request.session.get("user")
-    if not session_user:
-        return {"ok": False}
 
+@router.post("/messages/{thread_id}/typing")
+def set_typing(
+    thread_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    session_user, _thread, _other = _thread_for_member(db, request, thread_id, api=True)
+    require_csrf(request, csrf_token)
     uid = session_user["id"]
 
     if thread_id not in typing_state:
@@ -533,32 +799,27 @@ def set_typing(thread_id: int, request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/messages/{thread_id}/typing_status")
-def typing_status(thread_id: int, request: Request):
-    session_user = request.session.get("user")
-    if not session_user:
-        return {"typing": False}
-
+def typing_status(thread_id: int, request: Request, db: Session = Depends(get_db)):
+    session_user, _thread, _other = _thread_for_member(db, request, thread_id, api=True)
     uid = session_user["id"]
 
     if thread_id not in typing_state:
         return {"typing": False}
 
     now = datetime.utcnow()
-
     for user_id, expires_at in typing_state[thread_id].items():
         if user_id != uid and expires_at > now:
             return {"typing": True}
-
     return {"typing": False}
 
 
 @router.get("/messages/{thread_id}/poll")
 def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db)):
-    u = require_login(request)
-    if not u:
-        return {"messages": []}
-
-    last_id = int(request.query_params.get("after", 0))
+    u, thread, other = _thread_for_member(db, request, thread_id, api=True)
+    try:
+        last_id = max(0, int(request.query_params.get("after", 0)))
+    except (TypeError, ValueError):
+        last_id = 0
     receipt_after_raw = (request.query_params.get("receipts_after") or "").strip()
     receipt_after = None
     if receipt_after_raw:
@@ -575,10 +836,30 @@ def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db
 
     rows = (
         db.query(Message)
-        .filter(Message.thread_id == thread_id, Message.id > last_id)
+        .options(selectinload(Message.attachments))
+        .filter(Message.thread_id == thread.id, Message.id > last_id)
         .order_by(Message.id.asc())
         .all()
     )
+
+    # This endpoint only runs while the conversation page is visible.  Mark
+    # inbound messages read server-side so the existing ✓ -> ✓✓ lifecycle is
+    # equally real for text, images, files, and voice messages.
+    unread_inbound = (
+        db.query(Message)
+        .filter(
+            Message.thread_id == thread.id,
+            Message.sender_id != u["id"],
+            Message.is_read == False,
+        )
+        .all()
+    )
+    if unread_inbound:
+        read_at = datetime.utcnow()
+        for message in unread_inbound:
+            message.is_read = True
+            message.read_at = message.read_at or read_at
+        db.commit()
 
     read_receipts = []
     if receipt_after is not None:
@@ -587,7 +868,7 @@ def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db
             for message_id, read_at in (
                 db.query(Message.id, Message.read_at)
                 .filter(
-                    Message.thread_id == thread_id,
+                    Message.thread_id == thread.id,
                     Message.sender_id == u["id"],
                     Message.is_read == True,
                     Message.read_at.is_not(None),
@@ -599,19 +880,8 @@ def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db
         ]
 
     return {
-        "messages": [
-            {
-                "id": m.id,
-                "body": m.body,
-                "time": m.created_at.strftime("%I:%M %p").lstrip("0"),
-                "date_key": m.created_at.strftime("%Y-%m-%d"),
-                "date_label": m.created_at.strftime("%b %d, %Y"),
-                "created_at": m.created_at.isoformat(),
-                "from_me": (m.sender_id == u["id"]),
-                "is_read": bool(m.is_read),
-            }
-            for m in rows
-        ],
+        "messages": [_serialize_message(message, viewer_id=u["id"]) for message in rows],
         "read_receipts": read_receipts,
         "receipt_cursor": next_receipt_cursor.isoformat(),
+        "presence": user_presence(db, other.id),
     }
