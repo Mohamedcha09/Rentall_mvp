@@ -143,6 +143,8 @@ class ChatbotSupportTests(unittest.TestCase):
     def test_idor_impersonation_csrf_and_xss_sinks_are_closed(self):
         anonymous = TestClient(main_module.app, base_url="http://testserver.local")
         self.assertEqual(anonymous.get(f"/api/chatbot/messages/{self.existing_ticket_id}").status_code, 401)
+        self.assertEqual(anonymous.get("/api/chatbot/messages/999999").status_code, 401)
+        self.assertEqual(anonymous.get("/api/chatbot/agent_status/999999").status_code, 401)
 
         owner = TestClient(main_module.app, base_url="http://testserver.local")
         owner_csrf = _login(owner, 101)
@@ -169,6 +171,14 @@ class ChatbotSupportTests(unittest.TestCase):
         self.assertNotIn("| safe", cs_template)
         for token in ("100dvh", "safe-area-inset-bottom", "max-width: min(82%", "@media (max-width: 360px)", "@media (min-width: 768px)", "prefers-reduced-motion"):
             self.assertIn(token, template)
+        # Jinja autoescape applies inside <script> too.  A quoted expression
+        # that is not JSON-encoded becomes `&#34;` and aborts every client
+        # handler before the FAQ fetch or message POST can start.
+        guest_page = anonymous.get("/chatbot")
+        self.assertEqual(guest_page.status_code, 200)
+        self.assertIn("no-store", guest_page.headers.get("cache-control", ""))
+        self.assertIn('const defaultHeaderStatus = "Help Center \\u00b7 Here to help";', guest_page.text)
+        self.assertNotIn("document.createTextNode(&#34;", guest_page.text)
         self.assertTrue(owner_csrf)
 
         agent = TestClient(main_module.app, base_url="http://testserver.local")
@@ -249,6 +259,55 @@ class ChatbotSupportTests(unittest.TestCase):
             self.assertEqual(ticket_state(db.get(SupportTicket, ticket_id)), AGENT_ACTIVE)
             assistant_count = db.query(SupportMessage).filter(SupportMessage.ticket_id == ticket_id, SupportMessage.sender_role == "assistant").count()
             self.assertEqual(assistant_count, 1, "AI must stay silent after an agent claim")
+        finally:
+            db.close()
+
+    def test_guest_free_text_is_public_knowledge_only(self):
+        guest = TestClient(main_module.app, base_url="http://testserver.local")
+        csrf = _csrf(guest)
+        db = SessionLocal()
+        try:
+            tickets_before = db.query(SupportTicket).count()
+            messages_before = db.query(SupportMessage).count()
+        finally:
+            db.close()
+
+        general = guest.post(
+            "/api/chatbot/guest/message",
+            json={
+                "body": "How do I verify my email?",
+                "client_message_id": "guest-message-0001",
+                "csrf_token": csrf,
+            },
+        )
+        self.assertEqual(general.status_code, 200, general.text)
+        payload = general.json()
+        self.assertTrue(payload["conversation"]["guest"])
+        self.assertIsNone(payload["conversation"]["id"])
+        self.assertEqual([message["sender_role"] for message in payload["messages"]], ["user", "assistant"])
+
+        private = guest.post(
+            "/api/chatbot/guest/message",
+            json={
+                "body": "My booking #110 is pending",
+                "client_message_id": "guest-message-0002",
+                "csrf_token": csrf,
+            },
+        )
+        self.assertEqual(private.status_code, 200, private.text)
+        private_answer = private.json()["messages"][1]["body"].lower()
+        self.assertIn("sign in", private_answer)
+        self.assertNotIn("camera", private_answer)
+
+        saved_path = guest.post(
+            "/api/chatbot/conversation/message",
+            json={"body": "How do I verify my email?", "client_message_id": "guest-message-0003", "csrf_token": csrf},
+        )
+        self.assertEqual(saved_path.status_code, 401)
+        db = SessionLocal()
+        try:
+            self.assertEqual(db.query(SupportTicket).count(), tickets_before)
+            self.assertEqual(db.query(SupportMessage).count(), messages_before)
         finally:
             db.close()
 

@@ -309,6 +309,11 @@
       const csrfToken = {{ csrf_token|tojson }};
       const loggedIn = {{ (user is not none)|tojson }};
       const initialConversationId = {{ (active_ticket.id if active_ticket else none)|tojson }};
+      // Keep this value JSON-encoded.  Rendering a quoted Jinja expression
+      // directly inside JavaScript is HTML-escaped by the template engine
+      // (for example, an escaped quotation entity), which prevents the whole chatbot script from
+      // parsing on the first page load.
+      const defaultHeaderStatus = {{ ("Available · Here to help" if ai_available else "Help Center · Here to help")|tojson }};
       const messagesEl = document.getElementById("sv-messages");
       const scrollEl = document.getElementById("sv-chat-scroll");
       const typingEl = document.getElementById("sv-typing");
@@ -335,6 +340,7 @@
         welcome: "مرحبًا، أنا Sevor AI. كيف يمكنني مساعدتك اليوم؟",
         welcomeDetail: "اكتب سؤالك بحرية، أو اختر موضوعًا من مركز مساعدة SEVOR.",
         login: "سجّل الدخول لبدء محادثة دعم محفوظة.",
+        guest: "يمكنك سؤال مركز المساعدة. سجّل الدخول للمساعدة الخاصة بالحساب أو للتحدث مع موظف.",
         waiting: "أنت الآن في قائمة انتظار دعم Sevor. يمكنك إضافة تفاصيل أخرى هنا.",
         agent: "موظف من Sevor Support يساعدك الآن.",
         resolved: "تم حل هذه المحادثة. ابدأ محادثة جديدة لموضوع آخر.",
@@ -344,6 +350,7 @@
         welcome: "Bonjour, je suis Sevor AI. Comment puis-je vous aider aujourd’hui ?",
         welcomeDetail: "Posez votre question librement ou choisissez un sujet dans l’aide SEVOR.",
         login: "Connectez-vous pour démarrer une conversation d’assistance enregistrée.",
+        guest: "Vous pouvez consulter l’aide. Connectez-vous pour une aide liée au compte ou un agent.",
         waiting: "Vous êtes dans la file d’attente Sevor Support. Vous pouvez ajouter d’autres détails ici.",
         agent: "Un agent Sevor Support vous aide maintenant.",
         resolved: "Cette conversation est résolue. Démarrez-en une nouvelle pour un autre sujet.",
@@ -353,6 +360,7 @@
         welcome: "Hi, I’m Sevor AI. How can I help today?",
         welcomeDetail: "Ask anything or choose a topic from the current SEVOR Help Center.",
         login: "Please sign in to start a saved support conversation.",
+        guest: "Ask general Help Center questions. Sign in for account-specific help or a support agent.",
         waiting: "You’re in the Sevor Support queue. You can add more details here.",
         agent: "A Sevor Support agent is helping you now.",
         resolved: "This conversation is resolved. Start a new one for another issue.",
@@ -442,16 +450,16 @@
         const isResolved = state === "resolved";
         const isAgent = state === "agent_active";
         const isWaiting = state === "waiting_for_agent";
-        inputEl.disabled = isResolved || !loggedIn || sending;
-        sendEl.disabled = isResolved || !loggedIn || sending;
+        inputEl.disabled = isResolved || sending;
+        sendEl.disabled = isResolved || sending;
         document.getElementById("sv-talk-agent").disabled = isResolved || sending;
         initialTools.style.display = conversation ? "none" : "block";
         startNew.classList.toggle("is-visible", Boolean(loggedIn && isResolved));
         if (isAgent) { headerName.textContent = conversation.agent_name || "Sevor Support"; headerStatus.textContent = texts.agent; note.textContent = texts.agent; }
         else if (isWaiting) { headerName.textContent = "Sevor Support"; headerStatus.textContent = texts.waiting; note.textContent = texts.waiting; }
         else if (isResolved) { headerName.textContent = "Sevor AI"; headerStatus.textContent = texts.resolved; note.textContent = texts.resolved; }
-        else { headerName.textContent = "Sevor AI"; headerStatus.replaceChildren(); const dot = create("span", "sv-status-dot"); headerStatus.append(dot, document.createTextNode({{ '"Available · Here to help"' if ai_available else '"Help Center · Here to help"' }})); note.textContent = loggedIn ? "Your messages are saved to this support conversation." : texts.login; }
-        inputEl.placeholder = isResolved ? texts.resolved : (loggedIn ? "Ask Sevor anything..." : texts.login);
+        else { headerName.textContent = "Sevor AI"; headerStatus.replaceChildren(); const dot = create("span", "sv-status-dot"); headerStatus.append(dot, document.createTextNode(defaultHeaderStatus)); note.textContent = loggedIn ? "Your messages are saved to this support conversation." : texts.guest; }
+        inputEl.placeholder = isResolved ? texts.resolved : "Ask Sevor anything...";
       }
       function hydrate(payload, reset = false) {
         if (reset) { rendered.clear(); feedbackRendered.clear(); pending.clear(); messagesEl.replaceChildren(); lastMessageId = 0; }
@@ -510,7 +518,10 @@
       }
       async function sendMessage(text, retryMessageId = null) {
         const body = (text || "").trim(); if (!body || sending) return;
-        if (!loggedIn) { if (!showGuestFaq(body)) setError(texts.login); return; }
+        // Keep the existing guest FAQ flow (including its option branches),
+        // while allowing all other public questions through the knowledge-only
+        // server path. Private account tools still require authentication.
+        if (!loggedIn && showGuestFaq(body)) return;
         if (body.length > 4000) { setError("Message is too long."); return; }
         setError(""); sending = true; updateHeaderAndControls();
         const id = retryMessageId || clientId();
@@ -518,7 +529,8 @@
         inputEl.value = ""; autoResize(); scrollLatest(true);
         if (!conversation || conversation.state === "ai_active") typingEl.classList.add("is-visible");
         try {
-          const payload = await api("/api/chatbot/conversation/message", {method: "POST", body: JSON.stringify({body, conversation_id: conversation && conversation.id, client_message_id: id, csrf_token: csrfToken})});
+          const messageUrl = loggedIn ? "/api/chatbot/conversation/message" : "/api/chatbot/guest/message";
+          const payload = await api(messageUrl, {method: "POST", body: JSON.stringify({body, conversation_id: conversation && conversation.id, client_message_id: id, csrf_token: csrfToken})});
           hydrate(payload);
         } catch (error) {
           const row = pending.get(id); if (row) { row.classList.add("failed"); const retry = create("button", "sv-text-button", "Retry"); retry.type = "button"; retry.addEventListener("click", () => { row.remove(); pending.delete(id); sendMessage(body, id); }); row.append(retry); pending.delete(id); }

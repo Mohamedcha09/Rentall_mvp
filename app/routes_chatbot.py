@@ -25,10 +25,12 @@ from .support_ai import (
     WAITING_FOR_AGENT,
     append_message,
     authorize_ticket_access,
+    check_guest_message_rate,
     check_message_rate,
     copy_for,
     create_ai_answer,
     create_ai_conversation,
+    create_guest_ai_answer,
     detect_language,
     find_user_conversation,
     get_or_create_csrf_token,
@@ -48,6 +50,7 @@ from .support_ai import (
     ticket_state,
     update_ticket_summary,
     validate_client_message_id,
+    validate_guest_message,
     validate_message,
     write_metadata,
 )
@@ -107,6 +110,40 @@ def _conversation_payload(db: Session, ticket: Optional[SupportTicket], after_id
         "ok": True,
         "conversation": serialize_ticket(ticket),
         "messages": [serialize_message(message) for message in _ticket_messages(db, ticket, after_id)],
+        "ai_available": provider_available(),
+    }
+
+
+def _guest_message_payload(body: str, client_message_id: Optional[str]) -> dict:
+    """Return one public, knowledge-only turn without creating a support ticket."""
+    answer, metadata = create_guest_ai_answer(body)
+    now = datetime.utcnow().isoformat() + "Z"
+    token = client_message_id or "guest"
+    return {
+        "ok": True,
+        # Keeping a small client-side guest state lets the current page render
+        # the reply normally, but it has no database id to poll, share, or use
+        # for account-specific tools.
+        "conversation": {"id": None, "state": "guest", "guest": True, "assigned": False, "agent_name": None},
+        "messages": [
+            {
+                "id": f"guest-user-{token}",
+                "sender_role": "user",
+                "body": body,
+                "client_message_id": client_message_id,
+                "created_at": now,
+            },
+            {
+                "id": f"guest-assistant-{token}",
+                "sender_role": "assistant",
+                "body": answer,
+                "created_at": now,
+                "feedback_prompt": False,
+                # Only non-sensitive source identifiers are retained in the
+                # response metadata; the browser does not receive account data.
+                "knowledge_ids": metadata.get("knowledge_ids", []),
+            },
+        ],
         "ai_available": provider_available(),
     }
 
@@ -267,6 +304,8 @@ def chatbot_page(
     user: Optional[User] = Depends(get_current_user),
 ):
     active_ticket = find_user_conversation(db, user, conversation) if user else None
+    # The page embeds its scoped controller inline. Avoid serving a cached copy
+    # after a support-flow fix, which could leave an old client script active.
     return templates.TemplateResponse(
         request=request,
         name="chatbot.html",
@@ -279,6 +318,7 @@ def chatbot_page(
             "ai_available": provider_available(),
             "display_currency": display_currency,
         },
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0", "Pragma": "no-cache", "Expires": "0"},
     )
 
 
@@ -323,7 +363,7 @@ def chatbot_send_ai_message(
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
-        raise HTTPException(status_code=401, detail="Login required")
+        raise HTTPException(status_code=401, detail="Login required for a saved support conversation")
     require_csrf(request, payload.csrf_token)
     check_message_rate(request, user)
     body = validate_message(payload.body)
@@ -375,6 +415,24 @@ def chatbot_send_ai_message(
     db.commit()
     db.refresh(ticket)
     return _conversation_payload(db, ticket)
+
+
+@router.post("/api/chatbot/guest/message")
+def chatbot_send_guest_message(
+    payload: ChatMessagePayload,
+    request: Request,
+    user: Optional[User] = Depends(get_current_user),
+):
+    """Public, one-turn Help Center endpoint with no private support state."""
+    if user:
+        # The authenticated endpoint is the only path that can persist history
+        # or safely use account-aware support tools.
+        raise HTTPException(status_code=409, detail="Use the saved support conversation")
+    require_csrf(request, payload.csrf_token)
+    check_guest_message_rate(request)
+    body = validate_guest_message(payload.body)
+    client_message_id = validate_client_message_id(payload.client_message_id)
+    return _guest_message_payload(body, client_message_id)
 
 
 @router.post("/api/chatbot/conversation/{ticket_id}/feedback")
@@ -483,6 +541,10 @@ def chatbot_agent_status(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
+    # Authenticate before resolving the id so a guest cannot distinguish a
+    # real chatbot ticket from an arbitrary/non-chatbot id by status code.
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
     ticket = _get_ticket(db, ticket_id)
     authorize_ticket_access(ticket, user)
     payload = serialize_ticket(ticket)
@@ -496,6 +558,8 @@ def chatbot_get_messages(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
     ticket = _get_ticket(db, ticket_id)
     authorize_ticket_access(ticket, user)
     return _conversation_payload(db, ticket, after_id)
