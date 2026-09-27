@@ -2221,6 +2221,26 @@ def create_guest_ai_answer(message_text: str) -> tuple[str, dict[str, Any]]:
             "knowledge_gap": "security_blocked",
             "blocked_prompt_injection": True,
         }
+    # A guest's account-specific request has no need to reach a third-party
+    # semantic classifier.  Ask for sign-in before provider use or retrieval;
+    # this path intentionally has neither tools nor a saved conversation.
+    if guest_requires_sign_in(safe_message_text):
+        metadata = {
+            "knowledge_ids": [],
+            "knowledge_categories": [],
+            "knowledge_sources": [],
+            "intent": intent.primary,
+            "intents": list(intent.intents),
+            "intent_domains": list(intent.domains),
+            "intent_entities": list(intent.entities),
+            "semantic_router": "deterministic",
+            "tool_names": [],
+            "provider": "guest_login",
+            "feedback_prompt": False,
+        }
+        if redacted_sensitive_content:
+            metadata["redacted_sensitive_content"] = True
+        return copy_for(language, "guest_login"), metadata
     intent = enrich_intent_with_provider(
         intent,
         user_text=safe_message_text,
@@ -2242,8 +2262,6 @@ def create_guest_ai_answer(message_text: str) -> tuple[str, dict[str, Any]]:
     }
     if redacted_sensitive_content:
         metadata["redacted_sensitive_content"] = True
-    if guest_requires_sign_in(safe_message_text):
-        return copy_for(language, "guest_login"), metadata
     if not knowledge:
         return copy_for(language, "guest_unknown"), metadata
     if _requires_deterministic_grounded_reply(intent):

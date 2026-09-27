@@ -10,7 +10,7 @@
     {
       "domain": "REFUNDS",
       "topic": "Eligibility and bank-processing timeline",
-      "reason": "The model records completion, but no single approved customer policy defines eligibility or timing.",
+      "reason": "Booking data exposes limited refund flags, but no single approved customer policy defines eligibility or timing.",
       "status": "missing"
     },
     {
