@@ -645,7 +645,7 @@
       const root = document.querySelector('[data-item-detail]');
       if (!root) return;
 
-      const placeholder = {{ url_for('static', path='placeholder.png')|tojson }};
+      const placeholder = {{ url_for('static', path='placeholder.png')|string|tojson }};
       const itemTitle = {{ item.title|tojson }};
       const mainImage = root.querySelector('#itemMainImage');
       const stage = root.querySelector('#itemGalleryStage');
