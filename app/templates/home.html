@@ -1682,6 +1682,94 @@ body[data-path="/"] header.topbar #notifOpen .icon-img{
   html.is-ipad body[data-path="/"] .m-top-tabs{display:none !important;}
 }
 
+/* Guest-only Home authentication actions: keep the real links, update only their presentation. */
+body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"],
+body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]{
+  box-sizing:border-box;
+  display:inline-flex !important;
+  align-items:center;
+  min-height:42px;
+  height:42px;
+  border-radius:15px !important;
+  font-size:clamp(.78rem,2.25vw,.94rem);
+  font-weight:760;
+  letter-spacing:-.014em;
+  line-height:1;
+  text-decoration:none !important;
+  white-space:nowrap;
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"]{
+  min-width:64px;
+  justify-content:center;
+  padding:0 clamp(11px,1.7vw,16px) !important;
+  color:#5d4ee8 !important;
+  background:#fff !important;
+  border:1px solid rgba(112,86,225,.28) !important;
+  box-shadow:0 3px 10px rgba(70,55,143,.065) !important;
+}
+body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]{
+  min-width:112px;
+  justify-content:space-between;
+  gap:9px;
+  padding:0 clamp(12px,2.1vw,18px) !important;
+  color:#fff !important;
+  background:linear-gradient(110deg,#8354f3 0%,#526ef1 54%,#1bc7e9 100%) !important;
+  border:1px solid transparent !important;
+  box-shadow:0 5px 14px rgba(80,74,220,.18) !important;
+}
+body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]::after{
+  flex:0 0 auto;
+  margin-inline-start:auto;
+  color:currentColor;
+  content:"→";
+  font-size:1.25em;
+  font-weight:500;
+  line-height:1;
+}
+body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"]:focus-visible,
+body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]:focus-visible{
+  outline:3px solid rgba(73,126,247,.38);
+  outline-offset:3px;
+}
+@media (hover:hover){
+  body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"]:hover{
+    border-color:rgba(94,76,232,.45) !important;
+    box-shadow:0 5px 13px rgba(70,55,143,.09) !important;
+  }
+  body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]:hover{
+    box-shadow:0 7px 17px rgba(80,74,220,.23) !important;
+    transform:translateY(-1px);
+  }
+}
+@media (max-width:360px){
+  body[data-auth="0"][data-path="/"] header.topbar .actions{gap:5px !important;}
+  body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"],
+  body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]{
+    min-height:39px;
+    height:39px;
+    border-radius:14px !important;
+    font-size:.78rem;
+  }
+  body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"]{min-width:55px; padding-inline:9px !important;}
+  body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]{min-width:90px; gap:7px; padding-inline:10px !important;}
+}
+@media (min-width:769px) and (max-width:1376px) and (min-height:600px){
+  html.is-ipad body[data-auth="0"][data-path="/"] header.topbar .actions{gap:8px !important;}
+  html.is-ipad body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"],
+  html.is-ipad body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]{
+    min-height:44px;
+    height:44px;
+    font-size:.92rem;
+  }
+  html.is-ipad body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"]{min-width:78px;}
+  html.is-ipad body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]{min-width:124px;}
+}
+@media (prefers-reduced-motion:reduce){
+  body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/login"],
+  body[data-auth="0"][data-path="/"] header.topbar .actions > a[href="/register"]{transition:none;}
+}
+
 /* Hero stays tied to its existing Bootstrap carousel and real banner sources. */
 body[data-path="/"] .home-hero-wrap{margin:2px 0 18px;}
 body[data-path="/"] .home-hero{

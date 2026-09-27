@@ -206,34 +206,24 @@
     .item-detail__metadata { display: flex; flex-wrap: wrap; gap: 7px 14px; margin: 16px 0 0; color: var(--detail-muted); font-size: .91rem; line-height: 1.4; }
     .item-detail__metadata-item { display: inline-flex; align-items: center; min-width: 0; gap: 6px; overflow-wrap: anywhere; }
     .item-detail__metadata-item + .item-detail__metadata-item::before { width: 1px; height: 15px; margin-right: 8px; background: var(--detail-line); content: ""; }
-    .item-detail__metadata .bi-tag,
-    .item-detail__metadata .bi-geo-alt {
+    .item-detail__metadata .item-detail__metadata-icon {
       position: relative;
-      z-index: 0;
       display: inline-grid;
       flex: 0 0 22px;
       width: 22px;
       height: 22px;
       place-items: center;
-      color: var(--detail-purple);
+      color: #5bdcf3;
       font-size: 1.18rem;
+      line-height: 1;
       isolation: isolate;
     }
-    .item-detail__metadata .bi-tag::before,
-    .item-detail__metadata .bi-geo-alt::before { position: relative; z-index: 1; text-shadow: 0 0 .3px var(--detail-purple); }
-    .item-detail__metadata .bi-tag::after,
-    .item-detail__metadata .bi-geo-alt::after {
-      position: absolute;
-      z-index: 0;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 42% 34%, #c0f9ff 0%, #60ddf5 55%, #2ebbdc 100%);
-      box-shadow: 0 0 0 1px rgba(67, 208, 244, .22);
-      content: "";
+    .item-detail__metadata .item-detail__metadata-icon::before {
+      -webkit-text-fill-color: #5bdcf3;
+      -webkit-text-stroke: 1.15px var(--detail-purple);
+      paint-order: stroke fill;
+      text-shadow: none;
     }
-    .item-detail__metadata .bi-tag::after { width: 7px; height: 7px; transform: translate(-3px, -3px); }
-    .item-detail__metadata .bi-geo-alt::after { transform: translateY(1px); }
     .item-detail__price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; margin-top: 22px; }
     .item-detail__price-value { color: var(--detail-purple); font-size: clamp(1.48rem, 3vw, 2.12rem); font-weight: 840; letter-spacing: -.035em; line-height: 1; }
     .item-detail__price-unit { color: var(--detail-muted); font-size: .92rem; font-weight: 650; }
@@ -553,10 +543,10 @@
           {% if item_category or item_city %}
             <div class="item-detail__metadata" aria-label="Listing details">
               {% if item_category %}
-                <span class="item-detail__metadata-item"><i class="bi bi-tag" aria-hidden="true"></i>{{ item_category }}</span>
+                <span class="item-detail__metadata-item"><i class="bi bi-tag-fill item-detail__metadata-icon" aria-hidden="true"></i>{{ item_category }}</span>
               {% endif %}
               {% if item_city %}
-                <span class="item-detail__metadata-item"><i class="bi bi-geo-alt" aria-hidden="true"></i>{{ item_city }}</span>
+                <span class="item-detail__metadata-item"><i class="bi bi-geo-alt-fill item-detail__metadata-icon" aria-hidden="true"></i>{{ item_city }}</span>
               {% endif %}
             </div>
           {% endif %}
