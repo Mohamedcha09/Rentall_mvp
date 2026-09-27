@@ -26,7 +26,7 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import HTTPException, Request
 from sqlalchemy import and_, or_, update
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, lazyload
 
 from .models import Booking, Document, Item, SupportMessage, SupportTicket, User
 
@@ -246,6 +246,7 @@ _COPY = {
         "provider_fallback": "I’m unable to generate a full answer right now. Here is the closest approved Help Center guidance:",
         "handoff": "I’m connecting you with Sevor Support. Your conversation has been shared, so you won’t need to explain everything again.",
         "resolved": "Glad I could help. This conversation is marked as resolved.",
+        "closed": "Your support conversation has been closed.",
         "agent_joined": "joined the conversation.",
         "guest_login": "Please sign in to start a saved support conversation or check account-specific information.",
         "feedback": "Did this solve your issue?",
@@ -260,6 +261,7 @@ _COPY = {
         "provider_fallback": "Je ne peux pas générer une réponse complète pour le moment. Voici l’aide SEVOR approuvée la plus proche :",
         "handoff": "Je vous mets en relation avec l’assistance Sevor. Votre conversation a été partagée, vous n’aurez pas à tout réexpliquer.",
         "resolved": "Ravi d’avoir pu vous aider. Cette conversation est marquée comme résolue.",
+        "closed": "Votre conversation avec l’assistance a été fermée.",
         "agent_joined": "a rejoint la conversation.",
         "guest_login": "Connectez-vous pour démarrer une conversation enregistrée ou consulter des informations liées à votre compte.",
         "feedback": "Cela a-t-il résolu votre problème ?",
@@ -274,6 +276,7 @@ _COPY = {
         "provider_fallback": "يتعذر عليّ إنشاء إجابة كاملة الآن. إليك أقرب إرشاد معتمد من مركز مساعدة SEVOR:",
         "handoff": "سأوصلك الآن بدعم Sevor. تمت مشاركة المحادثة، لذلك لن تحتاج إلى شرح المشكلة من البداية.",
         "resolved": "سعيد لأنني استطعت المساعدة. تم وضع علامة تم الحل على هذه المحادثة.",
+        "closed": "تم إغلاق محادثة الدعم الخاصة بك.",
         "agent_joined": "انضم إلى المحادثة.",
         "guest_login": "سجّل الدخول لبدء محادثة دعم محفوظة أو للتحقق من معلومات حسابك.",
         "feedback": "هل حلّ ذلك مشكلتك؟",
@@ -286,6 +289,34 @@ _COPY = {
 
 def copy_for(language: str, key: str) -> str:
     return _COPY.get(language, _COPY["en"]).get(key, _COPY["en"][key])
+
+
+def conversation_language(db: Session, ticket: SupportTicket) -> str:
+    """Infer the conversation language from its latest user-authored text.
+
+    State-transition system messages must be understandable to the customer,
+    but a ticket has no separate language column.  The customer's own most
+    recent message is the least surprising source.  Falling back to any
+    message also keeps imported/older chatbot tickets readable.
+    """
+    row = (
+        db.query(SupportMessage.body)
+        .filter(
+            SupportMessage.ticket_id == ticket.id,
+            SupportMessage.sender_role == "user",
+            SupportMessage.body.isnot(None),
+        )
+        .order_by(SupportMessage.id.desc())
+        .first()
+    )
+    if not row:
+        row = (
+            db.query(SupportMessage.body)
+            .filter(SupportMessage.ticket_id == ticket.id, SupportMessage.body.isnot(None))
+            .order_by(SupportMessage.id.desc())
+            .first()
+        )
+    return detect_language((row[0] if row else "") or "")
 
 
 def validate_message(body: str) -> str:
@@ -512,6 +543,66 @@ def claim_ticket_atomically(db: Session, ticket: SupportTicket, agent: User) -> 
     return ticket
 
 
+def _chatbot_ticket_lock_query(
+    db: Session,
+    ticket_id: int,
+    *,
+    expected_queue: Optional[str] = None,
+):
+    """Build the PostgreSQL-safe row lock used for chatbot ticket mutations.
+
+    ``SupportTicket.user`` and ``SupportTicket.assigned_to`` are mapped with
+    ``lazy=\"joined\"``.  A plain ``query(SupportTicket).with_for_update()``
+    therefore emits ``LEFT OUTER JOIN users ... FOR UPDATE``.  PostgreSQL
+    refuses that statement because the nullable side of an outer join cannot
+    be locked.  Override relationship loading for this very small critical
+    query and explicitly lock only the ``support_tickets`` row.  Callers can
+    load display relationships after the mutation/commit; authorization here
+    uses only the current scalar ticket fields.
+    """
+    query = (
+        db.query(SupportTicket)
+        # Keep joined relationships out of the locking statement.  The
+        # wildcard protects this mutation path if another relationship later
+        # gains a joined default as well.
+        .options(lazyload("*"))
+        .filter(
+            SupportTicket.id == ticket_id,
+            SupportTicket.channel == "chatbot",
+        )
+        # A Session may still hold an object read before a concurrent action.
+        # Force the scalar row to be fresh before evaluating assignment/state.
+        .populate_existing()
+    )
+    if expected_queue is not None:
+        query = query.filter(SupportTicket.queue == expected_queue)
+    # ``of=SupportTicket`` is intentional even though eager relationships are
+    # disabled above: PostgreSQL now locks the ticket row only, never either
+    # nullable User join, while retaining the row-level lock that serializes
+    # transfer, claim, close, resolve, and reply mutations.
+    return query.with_for_update(of=SupportTicket)
+
+
+def lock_chatbot_ticket_for_update(
+    db: Session,
+    ticket_id: int,
+    *,
+    expected_queue: Optional[str] = None,
+) -> Optional[SupportTicket]:
+    """Fetch one chatbot ticket under the shared row-lock policy.
+
+    This is deliberately authorization-free so AI response persistence can
+    use the same safe SQL statement.  Agent endpoints must continue through
+    :func:`lock_agent_ticket_for_mutation`, which performs the assignment and
+    queue checks after this row has been locked.
+    """
+    return _chatbot_ticket_lock_query(
+        db,
+        ticket_id,
+        expected_queue=expected_queue,
+    ).first()
+
+
 def lock_agent_ticket_for_mutation(
     db: Session,
     ticket_id: int,
@@ -528,23 +619,16 @@ def lock_agent_ticket_for_mutation(
     row under the database lock, checks its *current* queue, assignee and
     state, and only then lets the caller append a message or change status.
 
-    ``claim_if_waiting`` is deliberately limited to the queue-specific reply
-    and resolve actions.  Legacy JSON agent routes must already own a ticket;
+    ``claim_if_waiting`` is deliberately limited to queue controls that may
+    legitimately act on an unassigned waiting ticket (reply, resolve,
+    transfer, or close).  Legacy JSON agent routes must already own a ticket;
     they cannot turn a stale request into a new claim after a transfer.
     """
-    query = (
-        db.query(SupportTicket)
-        .filter(
-            SupportTicket.id == ticket_id,
-            SupportTicket.channel == "chatbot",
-        )
-        # A Session may still hold an object read before a concurrent action.
-        # Force a fresh row before evaluating assignment or state.
-        .populate_existing()
+    ticket = lock_chatbot_ticket_for_update(
+        db,
+        ticket_id,
+        expected_queue=expected_queue,
     )
-    if expected_queue is not None:
-        query = query.filter(SupportTicket.queue == expected_queue)
-    ticket = query.with_for_update().first()
     require_chatbot_ticket(ticket)
 
     if ticket_state(ticket) == RESOLVED:

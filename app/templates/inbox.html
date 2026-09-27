@@ -273,6 +273,19 @@
   }
 
   .messages-conversations{ display:grid; gap:10px; min-width:0; }
+  .messages-support-start{ min-width:0; margin:0; }
+  .messages-support-start[hidden]{ display:none; }
+  .messages-support-start .messages-conversation{
+    width:100%;
+    appearance:none;
+    cursor:pointer;
+    font:inherit;
+    text-align:left;
+  }
+  .messages-support-start .messages-conversation:disabled{
+    cursor:wait;
+    opacity:.72;
+  }
   .messages-conversation{
     display:grid;
     grid-template-columns:72px minmax(0,1fr) auto;
@@ -593,15 +606,18 @@
   </div>
 
   <div class="messages-conversations" id="threadsContainer">
-    <a href="{% if active_chatbot_ticket %}/chatbot?conversation={{ active_chatbot_ticket.id }}{% else %}/chatbot{% endif %}" class="messages-conversation messages-conversation--support" data-message-row data-kind="support" data-unread="0" data-search="sevor support chatbot" aria-label="Open SEVOR Support conversation" hidden>
-      <span class="messages-conversation__media" aria-hidden="true"><img class="messages-conversation__support-image" src="/static/images/ui/sevor-logo-96.png" alt="" loading="lazy" decoding="async"></span>
-      <span class="messages-conversation__content">
-        <span class="messages-conversation__name"><span class="messages-conversation__name-text">SEVOR Support</span></span>
-        <span class="messages-conversation__listing">Support centre</span>
-        <span class="messages-conversation__preview">Contact the SEVOR support team</span>
-      </span>
-      <span class="messages-conversation__side" aria-hidden="true"><span class="messages-conversation__chevron"><i class="bi bi-chevron-right"></i></span></span>
-    </a>
+    <form action="/chatbot/support/new" method="post" class="messages-support-start" data-message-row data-kind="support" data-unread="0" data-search="sevor support chatbot" hidden>
+      <input type="hidden" name="csrf_token" value="{{ chatbot_csrf_token }}">
+      <button type="submit" class="messages-conversation messages-conversation--support" aria-label="Start a new SEVOR Support conversation">
+        <span class="messages-conversation__media" aria-hidden="true"><img class="messages-conversation__support-image" src="/static/images/ui/sevor-logo-96.png" alt="" loading="lazy" decoding="async"></span>
+        <span class="messages-conversation__content">
+          <span class="messages-conversation__name"><span class="messages-conversation__name-text">SEVOR Support</span></span>
+          <span class="messages-conversation__listing">Support centre</span>
+          <span class="messages-conversation__preview">Start a new support conversation</span>
+        </span>
+        <span class="messages-conversation__side" aria-hidden="true"><span class="messages-conversation__chevron"><i class="bi bi-chevron-right"></i></span></span>
+      </button>
+    </form>
 
     {% for ticket in chatbot_tickets %}
       {% set ticket_is_unread = ticket.unread_for_user|default(false) %}
@@ -732,6 +748,24 @@
     const emptyTitle = document.getElementById('messagesEmptyTitle');
     const emptyCopy = document.getElementById('messagesEmptyCopy');
     let activeFilter = 'all';
+
+    // The server-side user-row lock is the source of truth for concurrent
+    // requests.  This small scoped guard prevents the common mobile
+    // double-tap from submitting the same visible Start Support form twice.
+    const supportStartForm = document.querySelector('.messages-support-start');
+    if (supportStartForm) {
+      supportStartForm.addEventListener('submit', (event) => {
+        const submit = supportStartForm.querySelector('button[type="submit"]');
+        if (!submit) return;
+        if (submit.dataset.submitting === 'true') {
+          event.preventDefault();
+          return;
+        }
+        submit.dataset.submitting = 'true';
+        submit.disabled = true;
+        submit.setAttribute('aria-busy', 'true');
+      });
+    }
 
     if (!searchToggle || !searchPanel || !searchInput || !closeSearch || !emptyState) return;
 

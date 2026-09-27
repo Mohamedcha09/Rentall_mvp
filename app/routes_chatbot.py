@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, lazyload
 
 from .auth import get_current_user
 from .database import get_db
@@ -28,6 +28,7 @@ from .support_ai import (
     authorize_ticket_access,
     check_guest_message_rate,
     check_message_rate,
+    conversation_language,
     copy_for,
     create_ai_answer,
     create_ai_conversation,
@@ -38,6 +39,7 @@ from .support_ai import (
     get_or_create_user_conversation,
     handoff_to_human_atomically,
     is_handoff_request,
+    lock_chatbot_ticket_for_update,
     lock_agent_ticket_for_mutation,
     notify_waiting_agents,
     provider_available,
@@ -211,12 +213,10 @@ def _provider_answer_for_message(db: Session, ticket: SupportTicket, user: User,
     # Take a short database lock *after* the external call.  An agent claim or
     # later user message that committed first wins; the assistant response is
     # then discarded instead of appearing after a human has joined.
-    locked_ticket = (
-        db.query(SupportTicket)
-        .filter(SupportTicket.id == ticket.id, SupportTicket.channel == "chatbot")
-        .with_for_update()
-        .first()
-    )
+    # SupportTicket has joined User relationships by default.  Use the shared
+    # lock builder so PostgreSQL locks only support_tickets, rather than
+    # emitting FOR UPDATE against the nullable side of a LEFT OUTER JOIN.
+    locked_ticket = lock_chatbot_ticket_for_update(db, ticket.id)
     if not locked_ticket or ticket_state(locked_ticket) != AI_ACTIVE:
         return None
     newest_id = (
@@ -299,6 +299,79 @@ def _queue_inbox_path(queue: str) -> str:
     return f"/{prefix}/chatbot/inbox"
 
 
+def _lock_user_support_session(db: Session, user: User) -> User:
+    """Serialize support-session creation for one customer.
+
+    There is intentionally no schema-level "one active ticket" constraint,
+    because SEVOR retains historical support conversations.  Locking the
+    customer's row means two simultaneous Start Support requests cannot both
+    observe the same prior state and create competing live conversations.
+    The query deliberately has no eager joins, so PostgreSQL locks only the
+    ``users`` row.
+    """
+    locked_user = (
+        db.query(User)
+        .filter(User.id == user.id)
+        .populate_existing()
+        .with_for_update(of=User)
+        .one_or_none()
+    )
+    if not locked_user:
+        raise HTTPException(status_code=401, detail="Login required")
+    return locked_user
+
+
+def _active_chatbot_tickets_for_new_session_query(db: Session, user_id: int):
+    """Build the PostgreSQL-safe lock query for a fresh support session."""
+    return (
+        db.query(SupportTicket)
+        # ``SupportTicket.user`` and ``assigned_to`` are mapping-level joined
+        # relationships.  This transition needs neither, and avoiding those
+        # joins keeps the lock SQL small and portable.
+        .options(lazyload("*"))
+        .filter(
+            SupportTicket.user_id == user_id,
+            SupportTicket.channel == "chatbot",
+            # Older rows may predate the non-null model constraint.  Treat a
+            # missing status as active rather than leaving a live legacy
+            # session behind when the user intentionally starts fresh.
+            SupportTicket.status.is_(None) | ~SupportTicket.status.in_(("resolved", "closed")),
+        )
+        .order_by(SupportTicket.created_at.asc(), SupportTicket.id.asc())
+        .with_for_update(of=SupportTicket)
+    )
+
+
+def _active_chatbot_tickets_for_new_session(db: Session, user_id: int) -> list[SupportTicket]:
+    """Return all active chatbot tickets under row locks in a stable order."""
+    return _active_chatbot_tickets_for_new_session_query(db, user_id).all()
+
+
+def _close_for_new_support_session(db: Session, ticket: SupportTicket, user: User, now: datetime) -> None:
+    """Finish an older support session without deleting its auditable history."""
+    language = conversation_language(db, ticket)
+    closure_text = copy_for(language, "closed")
+    append_message(
+        db,
+        ticket,
+        user,
+        "system",
+        closure_text,
+        metadata={"event": "closed", "reason": "new_support_session"},
+    )
+    ticket.status = "closed"
+    ticket.closed_by = "System"
+    ticket.closed_at = now
+    ticket.resolved_at = now
+    set_ticket_state(ticket, RESOLVED)
+    ticket.last_from = "system"
+    ticket.last_msg_at = now
+    ticket.updated_at = now
+    ticket.unread_for_user = True
+    ticket.unread_for_agent = False
+    update_ticket_summary(db, ticket)
+
+
 def _notify_ticket_user(db: Session, ticket: SupportTicket, title: str, body: str) -> None:
     """Persist a user-visible update after the ticket transition is committed.
 
@@ -375,13 +448,51 @@ def chatbot_new_conversation(
         raise HTTPException(status_code=401, detail="Login required")
     require_csrf(request, payload.csrf_token)
     check_message_rate(request, user)
-    existing = find_user_conversation(db, user)
+    locked_user = _lock_user_support_session(db, user)
+    existing = find_user_conversation(db, locked_user)
     if existing:
         return _conversation_payload(db, existing)
-    ticket = create_ai_conversation(db, user)
+    ticket = create_ai_conversation(db, locked_user)
     db.commit()
     db.refresh(ticket)
     return _conversation_payload(db, ticket)
+
+
+@router.post("/chatbot/support/new")
+def chatbot_start_new_support_session(
+    request: Request,
+    csrf_token: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """Start a clean support session from the Messages support entry.
+
+    This is intentionally a POST-only, explicit user action.  Viewing or
+    refreshing ``/chatbot`` remains read-only and continues to open the
+    requested historical conversation.  The entire close-old/create-new
+    transition is one database transaction, so the customer never ends up
+    with a partly closed session or several active sessions from a double tap.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    require_csrf(request, csrf_token)
+
+    try:
+        locked_user = _lock_user_support_session(db, user)
+        now = datetime.utcnow()
+        for previous_ticket in _active_chatbot_tickets_for_new_session(db, locked_user.id):
+            _close_for_new_support_session(db, previous_ticket, locked_user, now)
+
+        # No history, FAQ selection, AI summary, queue assignment, or waiting
+        # state is copied from the ticket(s) closed above.
+        ticket = create_ai_conversation(db, locked_user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    db.refresh(ticket)
+    return RedirectResponse(f"/chatbot?conversation={ticket.id}", status_code=303)
 
 
 @router.post("/api/chatbot/conversation/message")
@@ -723,27 +834,33 @@ def chatbot_transfer_ticket(
     # These controls are also valid for an unassigned waiting ticket.  Claim
     # it atomically first; the old False value made both buttons fail with 409
     # until an agent sent a separate reply.
-    ticket, _ = lock_agent_ticket_for_mutation(
-        db,
-        ticket.id,
-        user,
-        claim_if_waiting=True,
-    )
-    now = datetime.utcnow()
-    user_message = transfer_map[new_queue]
-    append_message(db, ticket, user, "system", user_message, metadata={"event": "transferred", "queue": new_queue})
-    ticket.queue = new_queue
-    ticket.assigned_to_id = None
-    ticket.status = "new"
-    set_ticket_state(ticket, WAITING_FOR_AGENT)
-    ticket.last_from = "user"
-    ticket.last_msg_at = now
-    ticket.updated_at = now
-    ticket.unread_for_user = True
-    ticket.unread_for_agent = True
-    update_ticket_summary(db, ticket)
-    db.commit()
-    db.refresh(ticket)
+    try:
+        ticket, _ = lock_agent_ticket_for_mutation(
+            db,
+            ticket.id,
+            user,
+            claim_if_waiting=True,
+        )
+        now = datetime.utcnow()
+        user_message = transfer_map[new_queue]
+        append_message(db, ticket, user, "system", user_message, metadata={"event": "transferred", "queue": new_queue})
+        ticket.queue = new_queue
+        ticket.assigned_to_id = None
+        ticket.status = "new"
+        set_ticket_state(ticket, WAITING_FOR_AGENT)
+        ticket.last_from = "user"
+        ticket.last_msg_at = now
+        ticket.updated_at = now
+        ticket.unread_for_user = True
+        ticket.unread_for_agent = True
+        update_ticket_summary(db, ticket)
+        # The queue move, unassignment and customer-visible event are one
+        # unit.  No notification is attempted until this commit succeeds.
+        db.commit()
+        db.refresh(ticket)
+    except Exception:
+        db.rollback()
+        raise
     _notify_queue(db, ticket, new_queue, "Sevor support transfer")
     _notify_ticket_user(db, ticket, "Your SEVOR Support conversation was transferred", user_message)
     payload = {"ok": True, "queue": new_queue}
@@ -781,23 +898,32 @@ def chatbot_close_ticket(
             payload = {"ok": True, "status": "already_closed"}
             return RedirectResponse(_queue_inbox_path(ticket.queue), status_code=303) if form_redirect else payload
         raise
-    now = datetime.utcnow()
-    closer_name = (user.full_name or user.first_name or "Sevor Support").strip()
-    user_message = f"This conversation has been closed by {closer_name}."
-    append_message(db, ticket, user, "system", user_message, metadata={"event": "closed"})
-    ticket.status = "closed"
-    ticket.closed_by = closer_name
-    ticket.closed_at = now
-    ticket.resolved_at = now
-    set_ticket_state(ticket, RESOLVED)
-    ticket.last_from = "system"
-    ticket.last_msg_at = now
-    ticket.updated_at = now
-    ticket.unread_for_user = True
-    ticket.unread_for_agent = False
-    update_ticket_summary(db, ticket)
-    db.commit()
-    db.refresh(ticket)
+    try:
+        now = datetime.utcnow()
+        closer_name = (user.full_name or user.first_name or "Sevor Support").strip()
+        # A persisted system message is the source of truth for the customer
+        # view (including the next polling response), so use the conversation's
+        # own language rather than an English-only agent-toast string.
+        user_message = copy_for(conversation_language(db, ticket), "closed")
+        append_message(db, ticket, user, "system", user_message, metadata={"event": "closed"})
+        ticket.status = "closed"
+        ticket.closed_by = closer_name
+        ticket.closed_at = now
+        ticket.resolved_at = now
+        set_ticket_state(ticket, RESOLVED)
+        ticket.last_from = "system"
+        ticket.last_msg_at = now
+        ticket.updated_at = now
+        ticket.unread_for_user = True
+        ticket.unread_for_agent = False
+        update_ticket_summary(db, ticket)
+        # Closing the row and storing the terminal system event must either
+        # both persist or both roll back.
+        db.commit()
+        db.refresh(ticket)
+    except Exception:
+        db.rollback()
+        raise
     # Persist the terminal state first.  A notification outage cannot reopen
     # the ticket or erase the system message the customer will see on return.
     _notify_ticket_user(db, ticket, "Your SEVOR Support conversation was closed", user_message)
