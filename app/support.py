@@ -246,6 +246,10 @@ def support_ticket_reply(tid: int, request: Request, db: Session = Depends(get_d
     t = db.get(SupportTicket, tid)
     if not t or t.user_id != u["id"]:
         return RedirectResponse("/support/my", status_code=303)
+    # Chatbot conversations use their own authenticated message/state
+    # boundary.  This legacy form must never reopen or mutate one.
+    if t.channel == "chatbot":
+        return RedirectResponse(f"/chatbot/ticket/{t.id}", status_code=303)
 
     # create a customer message
     m = SupportMessage(

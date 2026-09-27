@@ -37,6 +37,11 @@ def _ensure_cs_session(db: Session, request: Request):
     return None
 
 
+def _is_legacy_ticket(ticket: SupportTicket | None) -> bool:
+    """Keep the old CS UI from bypassing chatbot queue/state authorization."""
+    return bool(ticket and getattr(ticket, "channel", None) != "chatbot")
+
+
 # ---------------------------
 # CS Inbox
 # ---------------------------
@@ -50,7 +55,10 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
     if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
 
-    base_q = db.query(SupportTicket).filter(text("COALESCE(queue,'cs') = 'cs'"))
+    base_q = db.query(SupportTicket).filter(
+        text("COALESCE(queue,'cs') = 'cs'"),
+        (SupportTicket.channel == None) | (SupportTicket.channel != "chatbot"),
+    )
 
     new_q = (
         base_q.filter(
@@ -108,7 +116,7 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/support/my", status_code=303)
 
     t = db.query(SupportTicket).filter(SupportTicket.id == tid).first()
-    if not t:
+    if not _is_legacy_ticket(t):
         return RedirectResponse("/cs/inbox", status_code=303)
 
     t.unread_for_agent = False
@@ -142,26 +150,27 @@ def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
         return RedirectResponse("/support/my", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if t:
-        t.assigned_to_id = u_cs["id"]
-        t.status = "open"
-        t.updated_at = datetime.utcnow()
-        t.unread_for_agent = False
+    if not _is_legacy_ticket(t):
+        return RedirectResponse("/cs/inbox", status_code=303)
+    t.assigned_to_id = u_cs["id"]
+    t.status = "open"
+    t.updated_at = datetime.utcnow()
+    t.unread_for_agent = False
 
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
-        try:
-            push_notification(
-                db,
-                t.user_id,
-                "📬 Your ticket has been opened",
-                f"The message has been opened by {agent_name}",
-                url=f"/support/ticket/{t.id}",
-                kind="support",
-            )
-        except:
-            pass
+    agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
+    try:
+        push_notification(
+            db,
+            t.user_id,
+            "📬 Your ticket has been opened",
+            f"The message has been opened by {agent_name}",
+            url=f"/support/ticket/{t.id}",
+            kind="support",
+        )
+    except:
+        pass
 
-        db.commit()
+    db.commit()
 
     return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
 
@@ -180,7 +189,7 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
         return RedirectResponse("/support/my", status_code=303)
 
     t = db.get(SupportTicket, tid)
-    if not t:
+    if not _is_legacy_ticket(t):
         return RedirectResponse("/cs/inbox", status_code=303)
 
     now = datetime.utcnow()
@@ -234,40 +243,41 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/support/my", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if t:
-        now = datetime.utcnow()
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
+    if not _is_legacy_ticket(t):
+        return RedirectResponse("/cs/inbox", status_code=303)
+    now = datetime.utcnow()
+    agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
 
-        t.status = "resolved"
-        t.resolved_at = now
-        t.updated_at = now
-        if not t.assigned_to_id:
-            t.assigned_to_id = u_cs["id"]
+    t.status = "resolved"
+    t.resolved_at = now
+    t.updated_at = now
+    if not t.assigned_to_id:
+        t.assigned_to_id = u_cs["id"]
 
-        close_msg = SupportMessage(
-            ticket_id=t.id,
-            sender_id=u_cs["id"],
-            sender_role="agent",
-            body=f"Ticket closed by {agent_name} at {now.strftime('%Y-%m-%d %H:%M')}",
-            created_at=now,
+    close_msg = SupportMessage(
+        ticket_id=t.id,
+        sender_id=u_cs["id"],
+        sender_role="agent",
+        body=f"Ticket closed by {agent_name} at {now.strftime('%Y-%m-%d %H:%M')}",
+        created_at=now,
+    )
+    db.add(close_msg)
+
+    t.unread_for_user = True
+
+    try:
+        push_notification(
+            db,
+            t.user_id,
+            "✅ Your ticket has been resolved",
+            f"#{t.id} — {t.subject or ''}".strip(),
+            url=f"/support/ticket/{t.id}",
+            kind="support",
         )
-        db.add(close_msg)
+    except:
+        pass
 
-        t.unread_for_user = True
-
-        try:
-            push_notification(
-                db,
-                t.user_id,
-                "✅ Your ticket has been resolved",
-                f"#{t.id} — {t.subject or ''}".strip(),
-                url=f"/support/ticket/{t.id}",
-                kind="support",
-            )
-        except:
-            pass
-
-        db.commit()
+    db.commit()
 
     return RedirectResponse("/cs/inbox", status_code=303)
 
@@ -292,7 +302,7 @@ def cs_transfer_queue(ticket_id: int, request: Request, db: Session = Depends(ge
         return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if not t:
+    if not _is_legacy_ticket(t):
         return RedirectResponse("/cs/inbox", status_code=303)
 
     try:

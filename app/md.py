@@ -43,6 +43,11 @@ def _ensure_md_session(db: Session, request: Request):
     return None
 
 
+def _is_legacy_ticket(ticket: SupportTicket | None) -> bool:
+    """Chatbot traffic is handled only by the hardened /md/chatbot routes."""
+    return bool(ticket and getattr(ticket, "channel", None) != "chatbot")
+
+
 # ---------------------------
 # Auto close after 24h of no customer reply (for MD queue)
 # ---------------------------
@@ -53,6 +58,7 @@ def auto_close_24h_md(request: Request, db: Session = Depends(get_db)):
         text("""
             SELECT id FROM support_tickets
             WHERE LOWER(COALESCE(queue, 'cs'))='md'
+              AND (channel IS NULL OR channel <> 'chatbot')
               AND status IN ('open','new')
               AND last_from='agent'
               AND last_msg_at < (NOW() - INTERVAL '24 hours')
@@ -108,7 +114,10 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
 
     is_admin = _is_admin(u_md)
 
-    base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue, 'cs')) = 'md'"))
+    base_q = db.query(SupportTicket).filter(
+        text("LOWER(COALESCE(queue, 'cs')) = 'md'"),
+        (SupportTicket.channel == None) | (SupportTicket.channel != "chatbot"),
+    )
 
     # ✅ New from CS (excludes those transferred from other systems)
     new_q = (
@@ -174,7 +183,7 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/", status_code=303)
 
     t = db.query(SupportTicket).filter(SupportTicket.id == tid).first()
-    if not t:
+    if not _is_legacy_ticket(t):
         return RedirectResponse("/md/inbox", status_code=303)
 
     row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
@@ -212,7 +221,7 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if not t:
+    if not _is_legacy_ticket(t):
         return RedirectResponse("/md/inbox", status_code=303)
 
     if t.status == "resolved":
@@ -257,7 +266,7 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, tid)
-    if not t:
+    if not _is_legacy_ticket(t):
         return RedirectResponse("/md/inbox", status_code=303)
 
     if t.status == "resolved":
@@ -316,7 +325,7 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if not t:
+    if not _is_legacy_ticket(t):
         return RedirectResponse("/md/inbox", status_code=303)
 
     row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
@@ -372,7 +381,7 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if not t:
+    if not _is_legacy_ticket(t):
         return RedirectResponse("/md/inbox", status_code=303)
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)

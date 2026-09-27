@@ -810,6 +810,10 @@ def ensure_support_ticket_columns():
                     conn.exec_driver_sql("ALTER TABLE support_messages ADD COLUMN client_message_id VARCHAR(72);")
                 if "metadata_json" not in message_cols:
                     conn.exec_driver_sql("ALTER TABLE support_messages ADD COLUMN metadata_json TEXT;")
+                conn.exec_driver_sql(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_support_messages_ticket_client_message "
+                    "ON support_messages(ticket_id, client_message_id) WHERE client_message_id IS NOT NULL;"
+                )
             elif str(backend).startswith("postgres"):
                 # Postgres: use IF NOT EXISTS for each column
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS queue VARCHAR(10);")
@@ -824,6 +828,10 @@ def ensure_support_ticket_columns():
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS ai_summary TEXT NULL;")
                 conn.exec_driver_sql("ALTER TABLE support_messages ADD COLUMN IF NOT EXISTS client_message_id VARCHAR(72) NULL;")
                 conn.exec_driver_sql("ALTER TABLE support_messages ADD COLUMN IF NOT EXISTS metadata_json TEXT NULL;")
+                conn.exec_driver_sql(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_support_messages_ticket_client_message "
+                    "ON support_messages(ticket_id, client_message_id) WHERE client_message_id IS NOT NULL;"
+                )
         print("[OK] ensure_support_ticket_columns(): support_tickets ready")
     except Exception as e:
         print(f"[WARN] ensure_support_ticket_columns failed: {e}")

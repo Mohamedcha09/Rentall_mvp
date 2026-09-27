@@ -1,268 +1,166 @@
-# app/routes_md_chatbot.py
-
+"""Management Desk view of the existing chatbot support queue."""
 from datetime import datetime
-from fastapi import APIRouter, Request, Depends, Form
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import SupportTicket, SupportMessage, User
+from .models import SupportTicket, User
+from .support_ai import (
+    AGENT_ACTIVE,
+    RESOLVED,
+    add_agent_join_message,
+    append_message,
+    get_or_create_csrf_token,
+    lock_agent_ticket_for_mutation,
+    require_agent_assignment,
+    require_csrf,
+    set_ticket_state,
+    update_ticket_summary,
+    validate_message,
+)
 from .utils import display_currency
+
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/md/chatbot", tags=["md_chatbot"])
 
-
-# ------------------------------------------------
-# HELPERS
-# ------------------------------------------------
 
 def _require_login(request: Request):
     return request.session.get("user")
 
 
 def _ensure_md_session(db: Session, request: Request):
-    sess = request.session.get("user")
-    if not sess:
+    session = request.session.get("user") or {}
+    user = db.get(User, session.get("id")) if session.get("id") else None
+    if not user or not bool(getattr(user, "is_deposit_manager", False) or getattr(user, "badge_admin", False)):
         return None
-
-    # if already validated earlier in session
-    if sess.get("is_md", False):
-        return sess
-
-    u = db.get(User, sess["id"])
-    if not u:
-        return None
-
-    # define MD role (deposit manager OR admin badge)
-    is_md_role = bool(
-        getattr(u, "is_deposit_manager", False) or
-        getattr(u, "badge_admin", False)
-    )
-
-    if not is_md_role:
-        return None
-
-    # store in session
-    sess["is_md"] = True
-    request.session["user"] = sess
-    return sess
+    session["is_md"] = True
+    request.session["user"] = session
+    return session
 
 
-# ------------------------------------------------
-# 📥 MD INBOX — FINAL VERSION
-# ------------------------------------------------
+def _agent(db: Session, session: dict) -> User:
+    user = db.get(User, session.get("id"))
+    if not user or not bool(getattr(user, "is_deposit_manager", False) or getattr(user, "badge_admin", False)):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    return user
+
 
 @router.get("/inbox")
 def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
-    u = _require_login(request)
-    if not u:
+    session = _require_login(request)
+    if not session:
         return RedirectResponse("/login", 303)
-
-    u_md = _ensure_md_session(db, request)
-    if not u_md:
+    session = _ensure_md_session(db, request)
+    if not session:
         return RedirectResponse("/support/my", 303)
-
-    base = db.query(SupportTicket).filter(
-        SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "md_chatbot"
-    )
-
-    # -----------------------------
-    # 🆕 NEW
-    # -----------------------------
-    new_q = base.filter(
-        SupportTicket.assigned_to_id.is_(None),
-        SupportTicket.status.in_(("new", "open")),
-        SupportTicket.last_from == "user",
-    ).order_by(
-        desc(SupportTicket.last_msg_at),
-        desc(SupportTicket.created_at)
-    )
-
-    # -----------------------------
-    # 📂 IN REVIEW
-    # -----------------------------
-    in_review_q = base.filter(
-        SupportTicket.assigned_to_id.isnot(None),
-        SupportTicket.status == "open",
-    ).order_by(
-        desc(SupportTicket.updated_at),
-        desc(SupportTicket.last_msg_at)
-    )
-
-    # -----------------------------
-    # ✅ RESOLVED
-    # -----------------------------
-    resolved_q = base.filter(
-            SupportTicket.status.in_(("resolved", "closed"))
-    ).order_by(
-        desc(SupportTicket.resolved_at),
-        desc(SupportTicket.updated_at)
-    )
-
+    base = db.query(SupportTicket).filter(SupportTicket.channel == "chatbot", SupportTicket.queue == "md_chatbot")
     data = {
-        "new": new_q.all(),
-        "in_review": in_review_q.all(),
-        "resolved": resolved_q.all(),
+        "new": base.filter(SupportTicket.assigned_to_id.is_(None), SupportTicket.status.in_(("new", "open")), SupportTicket.last_from == "user").order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at)).all(),
+        "in_review": base.filter(SupportTicket.assigned_to_id.isnot(None), SupportTicket.status == "open").order_by(desc(SupportTicket.updated_at), desc(SupportTicket.last_msg_at)).all(),
+        "resolved": base.filter(SupportTicket.status.in_(("resolved", "closed"))).order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at)).all(),
     }
+    return templates.TemplateResponse(request=request, name="md_chatbot_inbox.html", context={"request": request, "session_user": session, "title": "MD Chatbot Inbox", "data": data, "display_currency": display_currency})
 
-    return templates.TemplateResponse(
-        request=request,
-        name="md_chatbot_inbox.html",
-        context={
-            "request": request,
-            "session_user": u_md,
-            "title": "MD Chatbot Inbox",
-            "data": data,
-            "display_currency": display_currency,
-        },
-    )
-
-
-# ------------------------------------------------
-# VIEW TICKET
-# ------------------------------------------------
 
 @router.get("/ticket/{tid}")
 def md_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
-    u = _require_login(request)
-    if not u:
+    session = _require_login(request)
+    if not session:
         return RedirectResponse("/login", 303)
-
-    u_md = _ensure_md_session(db, request)
-    if not u_md:
+    session = _ensure_md_session(db, request)
+    if not session:
         return RedirectResponse("/support/my", 303)
-
-    t = db.query(SupportTicket).filter(
-        SupportTicket.id == tid,
-        SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "md_chatbot"
-    ).first()
-
-    if not t:
+    ticket = db.query(SupportTicket).filter(SupportTicket.id == tid, SupportTicket.channel == "chatbot", SupportTicket.queue == "md_chatbot").first()
+    if not ticket:
         return RedirectResponse("/md/chatbot/inbox", 303)
+    agent = _agent(db, session)
+    if ticket.assigned_to_id is not None:
+        try:
+            require_agent_assignment(ticket, agent)
+        except HTTPException:
+            return RedirectResponse("/md/chatbot/inbox", 303)
+    # Keep ticket views read-only: merely following a link must not hide a
+    # waiting conversation from the queue.
+    return templates.TemplateResponse(request=request, name="md_chatbot_ticket.html", context={"request": request, "session_user": session, "ticket": ticket, "msgs": ticket.messages, "support_summary": ticket.ai_summary or "No summary yet.", "csrf_token": get_or_create_csrf_token(request), "title": f"Chatbot Ticket #{ticket.id} (MD)", "display_currency": display_currency})
 
-    t.unread_for_agent = False
-    db.commit()
-
-    return templates.TemplateResponse(
-        request=request,
-        name="md_chatbot_ticket.html",
-        context={
-            "request": request,
-            "session_user": u_md,
-            "ticket": t,
-            "msgs": t.messages,
-            "title": f"Chatbot Ticket #{t.id} (MD)",
-            "display_currency": display_currency,
-        },
-    )
-
-
-# ------------------------------------------------
-# REPLY (FIRST CONTACT + NORMAL REPLY)
-# ------------------------------------------------
 
 @router.post("/ticket/{tid}/reply")
-def md_chatbot_reply(
-    tid: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    body: str = Form("")
-):
-    u = _require_login(request)
-    if not u:
+def md_chatbot_reply(tid: int, request: Request, body: str = Form(""), csrf_token: str = Form(""), db: Session = Depends(get_db)):
+    session = _require_login(request)
+    if not session:
         return RedirectResponse("/login", 303)
-
-    u_md = _ensure_md_session(db, request)
-    if not u_md:
+    session = _ensure_md_session(db, request)
+    if not session:
         return RedirectResponse("/support/my", 303)
-
-    t = db.get(SupportTicket, tid)
-    if not t or t.queue != "md_chatbot":
-        return RedirectResponse("/md/chatbot/inbox", 303)
-
-    now = datetime.utcnow()
-
-    # FIRST CONTACT = assign ticket
-    if not t.assigned_to_id:
-        intro = SupportMessage(
-            ticket_id=t.id,
-            sender_id=u_md["id"],
-            sender_role="system",
-            body=f"You are now chatting with one of our senior agents: {u_md['first_name']} {u_md['last_name']}.",
-            created_at=now,
-            channel="chatbot"
+    require_csrf(request, csrf_token)
+    agent = _agent(db, session)
+    cleaned = validate_message(body)
+    try:
+        ticket, newly_claimed = lock_agent_ticket_for_mutation(
+            db,
+            tid,
+            agent,
+            expected_queue="md_chatbot",
+            claim_if_waiting=True,
         )
-        db.add(intro)
-        t.assigned_to_id = u_md["id"]
-
-    # Real reply
-    msg = SupportMessage(
-        ticket_id=t.id,
-        sender_id=u_md["id"],
-        sender_role="agent",
-        body=(body or "").strip() or "(no text)",
-        created_at=now,
-        channel="chatbot"
-    )
-    db.add(msg)
-
-    # Update ticket
-    t.last_msg_at = now
-    t.updated_at = now
-    t.last_from = "agent"
-    t.status = "open"
-    t.unread_for_user = True
-    t.unread_for_agent = False
-
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            return RedirectResponse("/md/chatbot/inbox", 303)
+        if exc.status_code == 409 and exc.detail == "Conversation is closed":
+            return RedirectResponse(f"/md/chatbot/ticket/{tid}", 303)
+        raise
+    if newly_claimed:
+        add_agent_join_message(db, ticket, agent)
+    append_message(db, ticket, agent, "agent", cleaned)
+    now = datetime.utcnow()
+    ticket.last_msg_at = now
+    ticket.updated_at = now
+    ticket.last_from = "agent"
+    ticket.status = "open"
+    ticket.ai_state = AGENT_ACTIVE
+    ticket.unread_for_user = True
+    ticket.unread_for_agent = False
+    update_ticket_summary(db, ticket)
     db.commit()
+    return RedirectResponse(f"/md/chatbot/ticket/{ticket.id}", 303)
 
-    return RedirectResponse(f"/md/chatbot/ticket/{t.id}", 303)
-
-
-# ------------------------------------------------
-# RESOLVE
-# ------------------------------------------------
 
 @router.post("/tickets/{ticket_id}/resolve")
-def md_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
-    u = _require_login(request)
-    if not u:
+def md_chatbot_resolve(ticket_id: int, request: Request, csrf_token: str = Form(""), db: Session = Depends(get_db)):
+    session = _require_login(request)
+    if not session:
         return RedirectResponse("/login", 303)
-
-    u_md = _ensure_md_session(db, request)
-    if not u_md:
+    session = _ensure_md_session(db, request)
+    if not session:
         return RedirectResponse("/support/my", 303)
-
-    t = db.get(SupportTicket, ticket_id)
-    if not t or t.queue != "md_chatbot":
-        return RedirectResponse("/md/chatbot/inbox", 303)
-
+    require_csrf(request, csrf_token)
+    agent = _agent(db, session)
+    try:
+        ticket, _ = lock_agent_ticket_for_mutation(
+            db,
+            ticket_id,
+            agent,
+            expected_queue="md_chatbot",
+            claim_if_waiting=True,
+        )
+    except HTTPException as exc:
+        if exc.status_code in {404, 409}:
+            return RedirectResponse("/md/chatbot/inbox", 303)
+        raise
     now = datetime.utcnow()
-
-    t.status = "resolved"
-    t.resolved_at = now
-    t.updated_at = now
-
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_md["id"]
-
-    close_msg = SupportMessage(
-        ticket_id=t.id,
-        sender_id=u_md["id"],
-        sender_role="agent",
-        body=f"MD resolved chatbot ticket at {now.strftime('%Y-%m-%d %H:%M')}",
-        created_at=now,
-        channel="chatbot"
-    )
-
-    db.add(close_msg)
-    t.unread_for_user = True
-
+    ticket.status = "resolved"
+    ticket.resolved_at = now
+    ticket.updated_at = now
+    set_ticket_state(ticket, RESOLVED)
+    ticket.last_from = "agent"
+    ticket.unread_for_user = True
+    ticket.unread_for_agent = False
+    append_message(db, ticket, agent, "system", "This conversation has been resolved by Sevor Management Desk.", metadata={"event": "resolved_by_agent"})
+    update_ticket_summary(db, ticket)
     db.commit()
-
     return RedirectResponse("/md/chatbot/inbox", 303)

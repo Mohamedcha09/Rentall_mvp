@@ -1,1078 +1,588 @@
 <!doctype html>
 <html lang="en" dir="ltr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Sevor Chatbot</title>
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8f9ff">
+  <title>Sevor AI Support</title>
   <style>
-    /* ----------------------------------------------------
-       FORCE HIDE ALL TOP + BOTTOM NAV ONLY IN /chatbot
-    ---------------------------------------------------- */
-    body[data-path="/chatbot"] header.topbar,
-    body[data-path="/chatbot"] .m-top-tabs,
-    body[data-path="/chatbot"] .searchbar,
-    body[data-path="/chatbot"] .stripe-callout,
-    body[data-path="/chatbot"] .mobile-tabbar,
-    body[data-path="/chatbot"] #fabAdd {
-      display: none !important;
+    :root {
+      color-scheme: light;
+      --sv-navy: #0d183d;
+      --sv-muted: #68738f;
+      --sv-line: rgba(85, 91, 160, .15);
+      --sv-surface: #ffffff;
+      --sv-background: #f7f8ff;
+      --sv-lavender: #f0edff;
+      --sv-purple: #7548f7;
+      --sv-blue: #3589f5;
+      --sv-cyan: #16c7e8;
+      --sv-shadow: 0 12px 36px rgba(45, 63, 126, .09);
+      --sv-radius: 24px;
     }
-
-    body[data-path="/chatbot"] .page {
-      padding-top: 0 !important;
-      padding-bottom: 0 !important;
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body {
+      min-height: 100dvh;
+      background:
+        radial-gradient(46rem 20rem at 86% -8%, rgba(116, 72, 247, .13), transparent 61%),
+        radial-gradient(29rem 20rem at -8% 22%, rgba(22, 199, 232, .09), transparent 65%),
+        var(--sv-background);
+      color: var(--sv-navy);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
+    button, textarea { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
 
-    /* ==========================================================================
-      SEVOR CHATBOT — AIRBNB EXACT STYLE
-      ========================================================================== */
-
-    .sv-chatbot-page {
-      box-sizing: border-box;
-      width: 100%;
-      max-width: 720px;
+    .sv-support-shell {
+      width: min(100%, 940px);
+      min-height: 100dvh;
+      height: 100dvh;
       margin: 0 auto;
-      padding: 0 18px 40px;
-      background: #ffffff;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    /* Header */
-    .sv-header {
-      padding-top: 28px;
-      padding-bottom: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: relative;
-    }
-
-    .sv-back {
-      font-size: 26px;
-      text-decoration: none;
-      color: #111;
-    }
-
-    .sv-header-center {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-    }
-
-    .sv-header-logo-wrap {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
+      background: rgba(248, 249, 255, .83);
       overflow: hidden;
-      margin-bottom: 4px;
-      background: #111;
-      display: flex;
-      justify-content: center;
+    }
+    .sv-support-header {
+      position: relative;
+      z-index: 2;
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 44px;
       align-items: center;
+      gap: 12px;
+      padding: max(16px, env(safe-area-inset-top)) 20px 15px;
+      border-bottom: 1px solid rgba(85, 91, 160, .1);
+      background: rgba(250, 251, 255, .88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
-
-    .sv-header-logo-wrap img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
+    .sv-icon-button {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--sv-line);
+      border-radius: 50%;
+      display: inline-grid;
+      place-items: center;
+      color: var(--sv-navy);
+      background: rgba(255,255,255,.87);
+      box-shadow: 0 5px 16px rgba(45,63,126,.08);
+      cursor: pointer;
     }
-
-    .sv-title {
-      font-size: 17px;
-      font-weight: 600;
-      color: #111;
+    .sv-icon-button:focus-visible, .sv-chip:focus-visible, .sv-topic:focus-visible,
+    .sv-send:focus-visible, .sv-feedback button:focus-visible, .sv-text-button:focus-visible {
+      outline: 3px solid rgba(53,137,245,.34);
+      outline-offset: 2px;
     }
-
-    .sv-header-right {
-      width: 30px;
-      height: 20px;
+    .sv-header-identity { display: flex; align-items: center; min-width: 0; gap: 11px; }
+    .sv-ai-avatar {
+      position: relative;
+      width: 43px;
+      height: 43px;
+      flex: 0 0 43px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      padding: 3px;
+      background: linear-gradient(135deg, var(--sv-purple), var(--sv-blue) 58%, var(--sv-cyan));
+      box-shadow: 0 0 0 5px rgba(117,72,247,.07), 0 6px 18px rgba(69,107,238,.22);
     }
+    .sv-ai-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: white; }
+    .sv-header-copy { min-width: 0; line-height: 1.2; }
+    .sv-header-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 800; letter-spacing: -.02em; }
+    .sv-header-status { margin-top: 3px; color: var(--sv-muted); font-size: 12px; font-weight: 650; }
+    .sv-status-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #2cc983; box-shadow: 0 0 0 3px rgba(44,201,131,.13); }
+    .sv-header-spacer { width: 44px; height: 44px; }
 
-    /* Agent banner */
-    #sv-live-agent-banner {
-      display: none;
-      background: #f3f4f6;
-      padding: 10px 14px;
-      border-radius: 10px;
-      margin-top: 12px;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    /* Closed ticket banner */
-    #sv-ticket-closed-banner {
-      display: none;
-      background: #fee2e2;
-      border: 1px solid #fca5a5;
-      padding: 12px 14px;
-      border-radius: 10px;
-      margin-top: 12px;
-      font-size: 15px;
-      color: #991b1b;
-      font-weight: 600;
-    }
-
-    /* Chat window */
-    #sv-chat-window {
-      margin-top: 18px;
-      padding: 20px 14px;
-      border-radius: 16px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      min-height: 200px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      max-height: 68vh;
+    .sv-chat-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
+      overscroll-behavior: contain;
+      scroll-behavior: smooth;
+      padding: 23px clamp(15px, 3.4vw, 34px) 28px;
     }
+    .sv-chat-column { width: min(100%, 760px); margin: 0 auto; }
+    .sv-welcome { margin: 4px 0 20px; }
+    .sv-welcome h1 { margin: 0; font-size: clamp(24px, 5.6vw, 31px); letter-spacing: -.045em; line-height: 1.1; }
+    .sv-welcome p { max-width: 560px; margin: 8px 0 0; color: var(--sv-muted); font-size: 14px; line-height: 1.5; }
 
-    #sv-chat-window::-webkit-scrollbar {
-      width: 6px;
-    }
-    #sv-chat-window::-webkit-scrollbar-thumb {
-      background: #d1d5db;
-      border-radius: 50px;
-    }
-
-    /* Messages */
-    .sv-msg {
-      max-width: 80%;
-      min-width: 0;
-      padding: 14px 18px;
-      border-radius: 18px;
-      font-size: 15px;
-      line-height: 1.55;
+    .sv-messages { display: flex; flex-direction: column; gap: 10px; }
+    .sv-message-row { display: flex; align-items: flex-end; gap: 8px; max-width: 100%; }
+    .sv-message-row.user { justify-content: flex-end; }
+    .sv-message-row.system { justify-content: center; margin: 6px 0; }
+    .sv-message-avatar { width: 28px; height: 28px; flex: 0 0 28px; border: 1px solid rgba(117,72,247,.15); border-radius: 50%; background: white; overflow: hidden; }
+    .sv-message-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .sv-bubble-wrap { min-width: 0; max-width: min(82%, 560px); }
+    .sv-message-label { margin: 0 0 4px 3px; color: #64708e; font-size: 11px; font-weight: 750; }
+    .sv-bubble {
+      white-space: pre-wrap;
       overflow-wrap: anywhere;
       word-break: break-word;
-    }
-
-    .sv-msg-bot {
-      align-self: flex-start;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      color: #111;
-      border-bottom-left-radius: 6px;
-    }
-
-    .sv-msg-user {
-      align-self: flex-end;
-      background: #111827;
-      color: #fff;
-      border-bottom-right-radius: 6px;
-    }
-
-    /* Suggestions */
-    .sv-suggestions-wrap {
-      margin-top: 30px;
-    }
-
-    .sv-suggestions-title {
-      font-size: 17px;
-      font-weight: 600;
-      color: #111;
-      margin-bottom: 12px;
-    }
-
-    .sv-suggestions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .sv-question-chip {
-      padding: 10px 16px;
-      border-radius: 999px;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      font-size: 15px;
-      cursor: pointer;
-      transition: 0.15s ease;
-    }
-
-    .sv-question-chip:hover {
-      background: #f3f4f6;
-    }
-
-    /* Options chips */
-    .sv-options-wrapper {
-      margin-top: 10px;
-    }
-
-    .sv-options-title {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    .sv-option-chip {
-      padding: 8px 14px;
-      border-radius: 999px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      cursor: pointer;
-      margin: 6px 6px 0 0;
-      transition: 0.15s ease;
+      padding: 12px 14px;
+      border: 1px solid var(--sv-line);
+      border-radius: 18px 18px 18px 6px;
+      background: rgba(255,255,255,.94);
+      color: var(--sv-navy);
+      box-shadow: 0 5px 15px rgba(45,63,126,.05);
       font-size: 14px;
+      line-height: 1.48;
     }
-
-    .sv-option-chip:hover {
-      background: #eef2ff;
-      border-color: #c7d2fe;
+    .sv-message-row.user .sv-bubble {
+      border: 0;
+      border-radius: 18px 18px 6px 18px;
+      background: linear-gradient(135deg, var(--sv-purple), var(--sv-blue) 60%, var(--sv-cyan));
+      color: white;
+      box-shadow: 0 8px 20px rgba(73,102,238,.22);
     }
-
-    /* Feedback buttons */
-    .sv-feedback-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    .sv-feedback-buttons button {
-      padding: 8px 16px;
+    .sv-message-row.agent .sv-bubble { background: linear-gradient(135deg, #eef8ff, #f7f4ff); border-color: rgba(52,137,245,.18); }
+    .sv-message-time { margin: 4px 3px 0; color: #8991a8; font-size: 10px; font-weight: 600; }
+    .sv-message-row.user .sv-message-time { text-align: right; }
+    .sv-system-message {
+      width: fit-content;
+      max-width: min(100%, 540px);
+      padding: 8px 12px;
+      border: 1px solid rgba(85,91,160,.12);
       border-radius: 999px;
-      background: #ffffff;
-      border: 1px solid #d1d5db;
+      background: rgba(239,237,255,.58);
+      color: #626c88;
+      text-align: center;
+      overflow-wrap: anywhere;
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    .sv-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 3px 0 10px 37px; }
+    .sv-feedback-label { flex-basis: 100%; color: #58637f; font-size: 12px; font-weight: 750; }
+    .sv-feedback button, .sv-text-button, .sv-chip, .sv-topic {
+      border: 1px solid var(--sv-line);
+      color: var(--sv-navy);
+      background: rgba(255,255,255,.84);
       cursor: pointer;
-      transition: 0.15s;
-      font-size: 14px;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
     }
+    .sv-feedback button { min-height: 34px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 780; }
+    .sv-feedback button[data-choice="yes"] { color: #167c56; border-color: rgba(29,184,126,.28); background: #f3fffa; }
+    .sv-feedback button[data-choice="no"] { color: #6d43da; border-color: rgba(117,72,247,.25); background: #faf8ff; }
+    .sv-feedback button:hover, .sv-text-button:hover, .sv-chip:hover, .sv-topic:hover { transform: translateY(-1px); box-shadow: 0 6px 15px rgba(47,63,130,.09); border-color: rgba(95,103,218,.3); }
+    .sv-selection { display: flex; flex-wrap: wrap; gap: 7px; margin: 5px 0 10px 37px; }
+    .sv-selection button { max-width: min(100%, 320px); border: 1px solid rgba(85,91,160,.17); border-radius: 14px; padding: 8px 10px; color: var(--sv-navy); background: rgba(255,255,255,.9); box-shadow: 0 4px 12px rgba(45,63,126,.05); cursor: pointer; font-size: 12px; font-weight: 750; line-height: 1.3; text-align: left; overflow-wrap: anywhere; }
+    .sv-selection button:hover { border-color: rgba(93,87,234,.38); background: #fbfaff; }
 
-    .sv-feedback-buttons button:hover {
-      background: #f3f4f6;
+    .sv-initial-tools { margin: 21px 0 0; }
+    .sv-section-title { margin: 0 0 10px; color: #1a2751; font-size: 13px; font-weight: 850; letter-spacing: .01em; }
+    .sv-quick-actions { display: flex; gap: 8px; overflow-x: auto; padding: 0 1px 4px; scrollbar-width: none; }
+    .sv-quick-actions::-webkit-scrollbar { display: none; }
+    .sv-chip { flex: 0 0 auto; min-height: 36px; padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 730; white-space: nowrap; }
+    .sv-chip svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; color: #7452ef; }
+    .sv-topic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .sv-topic {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 12px;
+      border-radius: 17px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 780;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
     }
+    .sv-topic-icon { width: 29px; height: 29px; flex: 0 0 29px; display: grid; place-items: center; border-radius: 10px; background: linear-gradient(135deg, #eeeaff, #e9f9ff); color: #6f4cec; font-size: 15px; }
+    .sv-question-picker { display: none; margin-top: 14px; padding: 13px; border: 1px solid var(--sv-line); border-radius: 18px; background: rgba(255,255,255,.78); }
+    .sv-question-picker.is-visible { display: block; }
+    .sv-question-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 8px; }
+    .sv-question-header strong { font-size: 13px; }
+    .sv-text-button { border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 800; }
+    .sv-question-list { display: flex; flex-wrap: wrap; gap: 7px; }
+    .sv-question-list button { max-width: 100%; padding: 7px 10px; border: 1px solid rgba(85,91,160,.16); border-radius: 12px; color: #36415f; background: white; text-align: left; cursor: pointer; font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }
+    .sv-question-list button:hover { border-color: rgba(117,72,247,.38); background: #fbfaff; }
 
-    /* Input box */
-    #sv-chat-input {
-      display: none;
-      margin-top: 18px;
+    .sv-typing { display: none; align-items: flex-end; gap: 8px; margin: 10px 0 0; }
+    .sv-typing.is-visible { display: flex; }
+    .sv-typing-bubble { display: inline-flex; gap: 4px; align-items: center; min-height: 37px; padding: 0 14px; border: 1px solid var(--sv-line); border-radius: 17px 17px 17px 6px; background: white; }
+    .sv-typing-dot { width: 5px; height: 5px; border-radius: 50%; background: #7883a4; animation: sv-dot 1s ease-in-out infinite; }
+    .sv-typing-dot:nth-child(2) { animation-delay: .14s; }.sv-typing-dot:nth-child(3) { animation-delay: .28s; }
+    @keyframes sv-dot { 0%,60%,100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-3px); opacity: 1; } }
+    .sv-new-message { position: sticky; bottom: 4px; display: none; width: fit-content; margin: 13px auto 0; border: 0; border-radius: 999px; padding: 8px 13px; background: var(--sv-navy); color: white; box-shadow: var(--sv-shadow); cursor: pointer; font-size: 12px; font-weight: 760; }
+    .sv-new-message.is-visible { display: block; }
+
+    .sv-composer-wrap {
+      z-index: 2;
+      flex: 0 0 auto;
+      border-top: 1px solid rgba(85,91,160,.12);
+      background: rgba(250,251,255,.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 10px clamp(13px, 3vw, 28px) max(12px, env(safe-area-inset-bottom));
     }
+    .sv-composer { width: min(100%, 760px); margin: 0 auto; }
+    .sv-compose-row { display: flex; align-items: flex-end; gap: 9px; padding: 6px 7px 6px 14px; border: 1px solid rgba(85,91,160,.18); border-radius: 23px; background: white; box-shadow: 0 7px 20px rgba(45,63,126,.08); }
+    .sv-compose-row:focus-within { border-color: rgba(99,91,232,.46); box-shadow: 0 0 0 3px rgba(100,103,235,.1), 0 7px 20px rgba(45,63,126,.08); }
+    .sv-input { width: 100%; max-height: 112px; min-height: 25px; resize: none; border: 0; outline: 0; padding: 7px 0; color: var(--sv-navy); background: transparent; font-size: 16px; line-height: 1.38; }
+    .sv-input::placeholder { color: #929bb2; }
+    .sv-send { width: 39px; height: 39px; flex: 0 0 39px; display: grid; place-items: center; border: 0; border-radius: 50%; color: white; background: linear-gradient(135deg, var(--sv-purple), var(--sv-blue) 60%, var(--sv-cyan)); box-shadow: 0 7px 15px rgba(73,102,238,.25); cursor: pointer; }
+    .sv-send:disabled, .sv-input:disabled { cursor: not-allowed; opacity: .48; }
+    .sv-composer-meta { display: flex; justify-content: space-between; gap: 10px; padding: 7px 4px 0; color: #7f88a3; font-size: 11px; font-weight: 650; }
+    .sv-agent-link { border: 0; padding: 0; color: #6544dd; background: transparent; cursor: pointer; font-size: inherit; font-weight: 800; }
+    .sv-status-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sv-error { display: none; margin: 9px 2px 0; color: #ad3750; font-size: 12px; font-weight: 670; }
+    .sv-error.is-visible { display: block; }
+    .sv-start-new { display: none; margin: 14px 0 2px; }
+    .sv-start-new.is-visible { display: inline-flex; }
 
-    #sv-send-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    #sv-message-input:disabled {
-      background: #f3f4f6;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 640px) {
-      #sv-chat-window {
-        max-height: 70vh;
-      }
-    }
-
-/* ================================
-   FIXED INPUT BAR (BOTTOM)
-================================ */
-
-/* ================================
-   STABLE INPUT BAR — iOS SAFE
-================================ */
-
-.sv-input-fixed {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 720px;
-  box-sizing: border-box;
-  background: #ffffff;
-  border-top: 1px solid #e5e7eb;
-  padding: 10px 12px env(safe-area-inset-bottom);
-  z-index: 999;
-}
-
-
-/* لا تغيير أحجام */
-.sv-input-fixed * {
-  box-sizing: border-box;
-}
-
-#sv-message-input {
-  height: 44px;
-  line-height: 44px;
-}
-
-#sv-send-btn {
-  height: 44px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* form layout */
-.sv-input-fixed form {
-  display: flex;
-  gap: 10px;
-  min-width: 0;
-}
-
-/* input */
-#sv-message-input {
-  flex: 1;
-  min-width: 0;
-  padding: 12px 14px;
-  border-radius: 999px;
-  border: 1px solid #d1d5db;
-  font-size: 15px;
-}
-
-/* send button */
-#sv-send-btn {
-  padding: 12px 18px;
-  border-radius: 999px;
-  background: #6b46c1;
-  color: #fff;
-  border: none;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-/* give space so messages don't hide behind input */
-#sv-chat-window {
-  padding-bottom: 120px;
-}
-
-input,
-button {
-  font-size: 16px !important;
-}
-#sv-chat-window {
-  overflow-y: auto;
-  padding-bottom: 140px;
-}
-
-/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (CHATBOT) ===== */
-@supports (-webkit-touch-callout: none) {
-  @media (max-width: 768px) {
-
-    /* شريط أبيض ثابت أعلى الشاشة */
-    body[data-path="/chatbot"]::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: env(safe-area-inset-top);
-      background: #ffffff;
-      z-index: 3000; /* أعلى من الهيدر والـ chat */
-      pointer-events: none;
-    }
-
-    /* دفع محتوى الشات للأسفل */
-    body[data-path="/chatbot"] {
-      padding-top: env(safe-area-inset-top);
-    }
-
-  }
-}
-
-/* Give the same mobile chat structure room to breathe on iPad Safari. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    .sv-chatbot-page {
-      max-width: min(960px, calc(100% - 48px));
-      padding-inline: 24px;
-      padding-bottom: 48px;
-    }
-
-    .sv-input-fixed {
-      width: min(960px, calc(100% - 48px));
-      max-width: none;
-      padding-inline: 18px;
-    }
-  }
-}
- 
+    @media (min-width: 768px) { .sv-support-shell { border-inline: 1px solid rgba(85,91,160,.08); box-shadow: 0 0 60px rgba(68,85,157,.05); } .sv-topic-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 360px) { .sv-support-header { padding-inline: 13px; gap: 8px; }.sv-chat-scroll { padding-inline: 12px; }.sv-topic-grid { grid-template-columns: 1fr; }.sv-bubble-wrap { max-width: 86%; }.sv-header-name { font-size: 15px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
   </style>
 </head>
-
-<body data-path="/chatbot">
-
-  <div class="sv-chatbot-page">
-
-    <!-- HEADER -->
-    <div class="sv-header">
-      <a href="/messages" class="sv-back">←</a>
-
-      <div class="sv-header-center">
-        <div class="sv-header-logo-wrap">
-          <img src="/static/sevor-logo.png" alt="Sevor">
+<body>
+  <main class="sv-support-shell" aria-label="Sevor AI Support">
+    <header class="sv-support-header">
+      <button class="sv-icon-button" id="sv-back" type="button" aria-label="Go back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sv-header-identity">
+        <span class="sv-ai-avatar"><img src="/static/images/ui/sevor-logo-180.png" alt="Sevor"></span>
+        <div class="sv-header-copy">
+          <div class="sv-header-name" id="sv-header-name">Sevor AI</div>
+          <div class="sv-header-status" id="sv-header-status"><span class="sv-status-dot"></span>{% if ai_available %}Available · Here to help{% else %}Help Center · Here to help{% endif %}</div>
         </div>
-        <div class="sv-title">Soutien Sevor</div>
       </div>
+      <span class="sv-header-spacer" aria-hidden="true"></span>
+    </header>
 
-      <div class="sv-header-right"></div>
-    </div>
+    <section class="sv-chat-scroll" id="sv-chat-scroll" aria-label="Support conversation">
+      <div class="sv-chat-column">
+        <div class="sv-welcome" id="sv-welcome">
+          <h1>Sevor AI Support</h1>
+          <p id="sv-welcome-copy">Ask a question, choose a topic, or connect with Sevor Support when you need a person.</p>
+        </div>
+        <div class="sv-messages" id="sv-messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
+        <div class="sv-typing" id="sv-typing" aria-live="polite" aria-label="Sevor AI is responding">
+          <span class="sv-message-avatar"><img src="/static/images/ui/sevor-logo-96.png" alt=""></span>
+          <span class="sv-typing-bubble" aria-hidden="true"><i class="sv-typing-dot"></i><i class="sv-typing-dot"></i><i class="sv-typing-dot"></i></span>
+        </div>
+        <button class="sv-new-message" id="sv-new-message" type="button">New message ↓</button>
 
-    <!-- CLOSED TICKET BANNER -->
-    <div id="sv-ticket-closed-banner"></div>
+        <section class="sv-initial-tools" id="sv-initial-tools" aria-label="Help topics">
+          <h2 class="sv-section-title">Quick help</h2>
+          <div class="sv-quick-actions">
+            <button class="sv-chip" type="button" data-prompt="I need help tracking one of my bookings.">Track a booking</button>
+            <button class="sv-chip" type="button" data-prompt="I have a payment issue.">Payment issue</button>
+            <button class="sv-chip" type="button" data-prompt="I need help verifying my account.">Verify my account</button>
+            <button class="sv-chip" type="button" data-prompt="I need help creating a listing.">Create a listing</button>
+          </div>
+          <h2 class="sv-section-title" style="margin-top:20px">Popular topics</h2>
+          <div class="sv-topic-grid" id="sv-topic-grid"></div>
+          <div class="sv-question-picker" id="sv-question-picker">
+            <div class="sv-question-header"><strong id="sv-question-title">Help topics</strong><button class="sv-text-button" id="sv-close-questions" type="button">Close</button></div>
+            <div class="sv-question-list" id="sv-question-list"></div>
+          </div>
+        </section>
+        <button class="sv-text-button sv-start-new" id="sv-start-new" type="button">Start a new conversation</button>
+      </div>
+    </section>
 
-    <!-- Agent joined banner -->
-    <div id="sv-live-agent-banner"></div>
-
-    <!-- CHAT WINDOW -->
-    <div id="sv-chat-window"></div>
-
-    <!-- SUGGESTED QUESTIONS -->
-    <div class="sv-suggestions-wrap" id="sv-suggestions-section">
-      <div class="sv-suggestions-title">Questions fréquentes</div>
-      <div id="sv-suggestions" class="sv-suggestions"></div>
-    </div>
-
-    <!-- INPUT BOX -->
-    <div id="sv-chat-input" data-chat-input>
-  <div class="sv-input-fixed">
-    <form id="sv-send-form">
-      <input
-        id="sv-message-input"
-        type="text"
-        placeholder="Write your message to support..."
-      />
-      <button id="sv-send-btn" type="submit">Send</button>
-    </form>
-  </div>
-</div>
-
-
-  </div>
+    <footer class="sv-composer-wrap">
+      <form class="sv-composer" id="sv-composer" novalidate>
+        <div class="sv-compose-row">
+          <textarea class="sv-input" id="sv-input" rows="1" maxlength="4000" aria-label="Ask Sevor anything" placeholder="Ask Sevor anything..."></textarea>
+          <button class="sv-send" id="sv-send" type="submit" aria-label="Send message">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 14-7-4 14-3.5-5.5L5 12Z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="m11.5 13.5 3-3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="sv-composer-meta"><span class="sv-status-note" id="sv-status-note">Your messages are saved to this support conversation.</span><button class="sv-agent-link" id="sv-talk-agent" type="button">Talk to support</button></div>
+        <div class="sv-error" id="sv-error" role="alert"></div>
+      </form>
+    </footer>
+  </main>
 
   <script>
-    window.ACTIVE_TICKET_FROM_SERVER = null;
-
-    // =====================================================
-    // LOAD TREE.JSON (FAQ SYSTEM)
-    // =====================================================
-    async function loadTree() {
-      const res = await fetch("/chatbot/tree");
-      return await res.json();
-    }
-
-    // =====================================================
-    // UI HELPERS
-    // =====================================================
-    function addBotMessage(html) {
-      const chat = document.getElementById("sv-chat-window");
-      if (!chat) return;
-      const box = document.createElement("div");
-      box.className = "sv-msg sv-msg-bot";
-      box.innerHTML = html;
-      chat.appendChild(box);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-function addUserMessage(text) {
-  const clean = text.trim();
-  USER_TEXT_CACHE.add(clean); // ⬅️ احفظ النص
-
-  const chat = document.getElementById("sv-chat-window");
-  if (!chat) return;
-
-  const box = document.createElement("div");
-  box.className = "sv-msg sv-msg-user";
-  box.textContent = clean;
-  chat.appendChild(box);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-
-    function clearSuggestions() {
-      const s = document.getElementById("sv-suggestions");
-      if (s) s.innerHTML = "";
-    }
-
-    // =====================================================
-    // GLOBAL DATA
-    // =====================================================
-    let SECTIONS = [];
-    let CURRENT_SECTION = null;
-    let LAST_QUESTION = null;
-    let LAST_ANSWER = null;
-
-    let ACTIVE_TICKET_ID = null;
-    let AGENT_WATCH_INTERVAL = null;
-    let CHAT_POLL_INTERVAL = null;
-    let LAST_MESSAGE_ID = 0;
-    let AGENT_JOINED_ONCE = false;
-    let IS_TICKET_CLOSED = false;
-    let MODE = "FAQ"; // FAQ | WAITING | LIVE | CLOSED
-    let LAST_SENT_TEXT = null;
-    let LAST_SENT_AT = 0;
-    let RENDERED_MESSAGE_IDS = new Set();
-    const USER_TEXT_CACHE = new Set();
-
-
-function setMode(m) {
-  if (IS_TICKET_CLOSED) return; // 🔒 هذا هو السطر الحاسم
-  MODE = m;
-
-  const faqSection = document.getElementById("sv-suggestions-section");
-  const chatInput  = document.getElementById("sv-chat-input");
-
-  if (m === "FAQ") {
-    if (faqSection) faqSection.style.display = "block";
-    if (chatInput)  chatInput.style.display = "none";
-  }
-
-  if (m === "WAITING") {
-    if (faqSection) faqSection.style.display = "none";
-    if (chatInput)  chatInput.style.display = "none";
-  }
-
-  if (m === "LIVE") {
-    if (faqSection) faqSection.style.display = "none";
-    if (chatInput)  chatInput.style.display = "block";
-  }
-
-  if (m === "CLOSED") {
-    if (faqSection) faqSection.style.display = "none";
-    if (chatInput)  chatInput.style.display = "none";
-  }
-}
-
-
-    // =====================================================
-    // LOCK CHAT UI WHEN TICKET CLOSED
-    // =====================================================
-function lockChatUI(closeText) {
-  if (IS_TICKET_CLOSED) return;
-
-  IS_TICKET_CLOSED = true;
-  MODE = "CLOSED";
-
-  // 🟥 احذف input من DOM نهائيًا (حل iOS)
-  const inputWrapper = document.querySelector("[data-chat-input]");
-  if (inputWrapper) {
-    inputWrapper.remove();
-  }
-
-  // 🔴 Banner الإغلاق
-  const closedBanner = document.getElementById("sv-ticket-closed-banner");
-  if (closedBanner) {
-    closedBanner.style.display = "block";
-    closedBanner.textContent =
-      closeText || "This ticket has been closed.";
-  }
-
-  // 🛑 أوقف كل شيء
-  stopFastPolling();
-  if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
-  if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
-
-  localStorage.removeItem("chatbot_active_ticket");
-}
-
-
-
-document.addEventListener("DOMContentLoaded", async () => {
-  document.body.classList.remove("ticket-closed");
-  // ✅ إذا جاي من /messages نبدأ FAQ جديد دائمًا
-  if ((document.referrer || "").includes("/messages")) {
-    localStorage.removeItem("chatbot_active_ticket");
-  }
-
-  const savedTicket = localStorage.getItem("chatbot_active_ticket");
-
-  // Reset visuals always
-  const chatWindow = document.getElementById("sv-chat-window");
-  if (chatWindow) chatWindow.innerHTML = "";
-
-  const liveBanner = document.getElementById("sv-live-agent-banner");
-  if (liveBanner) liveBanner.style.display = "none";
-
-  const closedBanner = document.getElementById("sv-ticket-closed-banner");
-  if (closedBanner) closedBanner.style.display = "none";
-
-  IS_TICKET_CLOSED = false;
-  LAST_MESSAGE_ID = 0;
-
-  if (!savedTicket) {
-    // ✅ FAQ MODE
-    ACTIVE_TICKET_ID = null;
-    setMode("FAQ");
-
-    const data = await loadTree();
-    SECTIONS = data.sections || [];
-
-    addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
-    showSections();
-  } else {
-    // ✅ عندك Ticket محفوظ (مثلاً Reload داخل نفس التذكرة)
-    ACTIVE_TICKET_ID = parseInt(savedTicket);
-    setMode("WAITING");
-
-    // 1) تأكد إذا ticket مغلق
-    await checkClosedOnLoad(ACTIVE_TICKET_ID);
-    if (IS_TICKET_CLOSED) return;
-
-    // 2) شغل watcher (هو الذي سيقرر LIVE ويفتح polling)
-    startAgentWatcher(ACTIVE_TICKET_ID);
-
-    // 3) نفّذ check مرة مباشرة (بدون انتظار 2 ثواني)
-    await checkAgentStatus(ACTIVE_TICKET_ID);
-  }
-
-  // ✅ Bind SEND form submit
-  const form = document.getElementById("sv-send-form");
-  if (form) {
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      // لا إرسال إلا إذا Agent موجود + التذكرة ليست مغلقة
-      if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED || MODE !== "LIVE") return;
-
-      const input = document.getElementById("sv-message-input");
-      const text = (input?.value || "").trim();
-      if (!text) return;
-
-      // يظهر عند المستخدم فورًا (مرة واحدة فقط)
-      addUserMessage(text);
-      input.value = "";
-
-      // إرسال للسيرفر
-      await sendUserMessageToServer(text);
-    });
-  }
-});
-
-
-
-    // =====================================================
-    // FEEDBACK BUTTONS
-    // =====================================================
-    function showFeedbackButtons() {
-      if (IS_TICKET_CLOSED) return;
-
-      const chat = document.getElementById("sv-chat-window");
-      if (!chat) return;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "sv-msg sv-msg-bot";
-
-      wrapper.innerHTML = `
-        <div class="sv-feedback-title">✔️ Did this answer your question?</div>
-        <div class="sv-feedback-buttons">
-          <button type="button" class="sv-yes-btn">Yes</button>
-          <button type="button" class="sv-no-btn">No</button>
-        </div>
-      `;
-
-      chat.appendChild(wrapper);
-      chat.scrollTop = chat.scrollHeight;
-
-      wrapper.querySelector(".sv-yes-btn").onclick = handleYes;
-      wrapper.querySelector(".sv-no-btn").onclick = handleNo;
-    }
-
-    function handleYes() {
-      if (IS_TICKET_CLOSED) return;
-
-      addBotMessage("Great! 😊<br>Would you like to ask another question?");
-
-      const chat = document.getElementById("sv-chat-window");
-      if (!chat) return;
-
-      const btn = document.createElement("button");
-      btn.className = "sv-option-chip";
-      btn.type = "button";
-      btn.textContent = "Back to Categories";
-
-      btn.onclick = () => showSections();
-
-      const box = document.createElement("div");
-      box.className = "sv-msg sv-msg-bot";
-      box.appendChild(btn);
-      chat.appendChild(box);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    // =============================================================
-    // USER CLICKED NO → CREATE SUPPORT TICKET
-    // =============================================================
-
-async function handleNo() {
-  if (IS_TICKET_CLOSED) return;
-
-  addBotMessage("One moment… contacting support 🕓");
-  setMode("WAITING");
-
-  const formData = new FormData();
-  formData.append("question", LAST_QUESTION || "(unknown)");
-  formData.append("answer", LAST_ANSWER || "(unknown)");
-
-  const res = await fetch("/chatbot/support", { method: "POST", body: formData });
-
-  let data;
-  try {
-    data = await res.json();
-  } catch (e) {
-    addBotMessage("⚠️ Error contacting support.");
-    setMode("FAQ");
-    return;
-  }
-
-  if (!data.ok) {
-    addBotMessage("⚠️ Failed to create support ticket.");
-    setMode("FAQ");
-    return;
-  }
-
-  ACTIVE_TICKET_ID = data.ticket_id;
-  LAST_MESSAGE_ID = 0;
-  IS_TICKET_CLOSED = false;
-
-  localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
-
-  addBotMessage("A support agent will assist you shortly 🟣");
-
-  // ✅ لا polling الآن — فقط نراقب دخول agent
-  startAgentWatcher(ACTIVE_TICKET_ID);
-
-  // ✅ نفّذ check مباشرة
-  await checkAgentStatus(ACTIVE_TICKET_ID);
-}
-
-    // =============================================================
-    // CHECK AGENT STATUS
-    // =============================================================
-async function checkAgentStatus(ticketId) {
-  if (IS_TICKET_CLOSED) return;
-  if (AGENT_JOINED_ONCE) return; // ✅ مهم
-
-  try {
-    const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
-    const data = await res.json();
-
-    if (data.assigned && data.agent_name) {
-      AGENT_JOINED_ONCE = true; // ✅ مهم جدًا
-
-      // stop watcher
-      if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
-      AGENT_WATCH_INTERVAL = null;
-
-      // LIVE MODE
-      setMode("LIVE");
-
-      const banner = document.getElementById("sv-live-agent-banner");
-      if (banner) {
-        banner.style.display = "block";
-        banner.innerHTML = `
-          You are now chatting with one of our agents:
-          <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
-        `;
+    (() => {
+      "use strict";
+      const csrfToken = {{ csrf_token|tojson }};
+      const loggedIn = {{ (user is not none)|tojson }};
+      const initialConversationId = {{ (active_ticket.id if active_ticket else none)|tojson }};
+      const messagesEl = document.getElementById("sv-messages");
+      const scrollEl = document.getElementById("sv-chat-scroll");
+      const typingEl = document.getElementById("sv-typing");
+      const inputEl = document.getElementById("sv-input");
+      const sendEl = document.getElementById("sv-send");
+      const composerEl = document.getElementById("sv-composer");
+      const topicGrid = document.getElementById("sv-topic-grid");
+      const topicPanel = document.getElementById("sv-question-picker");
+      const topicTitle = document.getElementById("sv-question-title");
+      const topicList = document.getElementById("sv-question-list");
+      const initialTools = document.getElementById("sv-initial-tools");
+      const welcomeEl = document.getElementById("sv-welcome");
+      const feedbackRendered = new Set();
+      const rendered = new Set();
+      const pending = new Map();
+      let conversation = null;
+      let lastMessageId = 0;
+      let sending = false;
+      let pollTimer = null;
+      let tree = null;
+
+      const locale = (navigator.language || "en").toLowerCase();
+      const texts = locale.startsWith("ar") ? {
+        welcome: "مرحبًا، أنا Sevor AI. كيف يمكنني مساعدتك اليوم؟",
+        welcomeDetail: "اكتب سؤالك بحرية، أو اختر موضوعًا من مركز مساعدة SEVOR.",
+        login: "سجّل الدخول لبدء محادثة دعم محفوظة.",
+        waiting: "أنت الآن في قائمة انتظار دعم Sevor. يمكنك إضافة تفاصيل أخرى هنا.",
+        agent: "موظف من Sevor Support يساعدك الآن.",
+        resolved: "تم حل هذه المحادثة. ابدأ محادثة جديدة لموضوع آخر.",
+        error: "تعذر إرسال الرسالة. يمكنك المحاولة مرة أخرى.",
+        feedback: "هل حلّ ذلك مشكلتك؟"
+      } : locale.startsWith("fr") ? {
+        welcome: "Bonjour, je suis Sevor AI. Comment puis-je vous aider aujourd’hui ?",
+        welcomeDetail: "Posez votre question librement ou choisissez un sujet dans l’aide SEVOR.",
+        login: "Connectez-vous pour démarrer une conversation d’assistance enregistrée.",
+        waiting: "Vous êtes dans la file d’attente Sevor Support. Vous pouvez ajouter d’autres détails ici.",
+        agent: "Un agent Sevor Support vous aide maintenant.",
+        resolved: "Cette conversation est résolue. Démarrez-en une nouvelle pour un autre sujet.",
+        error: "Le message n’a pas pu être envoyé. Réessayez.",
+        feedback: "Cela a-t-il résolu votre problème ?"
+      } : {
+        welcome: "Hi, I’m Sevor AI. How can I help today?",
+        welcomeDetail: "Ask anything or choose a topic from the current SEVOR Help Center.",
+        login: "Please sign in to start a saved support conversation.",
+        waiting: "You’re in the Sevor Support queue. You can add more details here.",
+        agent: "A Sevor Support agent is helping you now.",
+        resolved: "This conversation is resolved. Start a new one for another issue.",
+        error: "The message could not be sent. Please try again.",
+        feedback: "Did this solve your issue?"
+      };
+
+      function create(tag, className, text) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (text !== undefined && text !== null) el.textContent = text;
+        return el;
       }
-
-      // start polling only once
-      startChatPolling(ticketId);
-    }
-  } catch (err) {
-    console.log("poll error:", err);
-  }
-}
-
-
-function startAgentWatcher(ticketId) {
-  if (!ticketId || IS_TICKET_CLOSED) return;
-  if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
-
-  // نحن في انتظار agent
-  if (MODE !== "LIVE") setMode("WAITING");
-
-  AGENT_WATCH_INTERVAL = setInterval(() => checkAgentStatus(ticketId), 2000);
-}
-
-
-    // =============================================================
-    // POLL REAL MESSAGES (WITH INSTANT CLOSE)
-    // =============================================================
-async function pollMessages(ticketId) {
-  if (IS_TICKET_CLOSED) return;
-  if (!ticketId || IS_TICKET_CLOSED) return;
-
-  try {
-    const res = await fetch(`/api/chatbot/messages/${ticketId}`);
-    const data = await res.json();
-
-  if (data.ticket_status === "closed") {
-  lockChatUI(
-    data.closed_by
-      ? `This ticket has been closed by ${data.closed_by}.`
-      : "This ticket has been closed."
-  );
-
-  // ⛔ أوقف polling فورًا
-  stopFastPolling();
-  if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
-  if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
-
-  return;
-}
-
-
-    (data.messages || []).forEach((msg) => {
-
-      // ✅ أهم سطر — يمنع التكرار نهائيًا
-      if (RENDERED_MESSAGE_IDS.has(msg.id)) return;
-
-      const body = (msg.body || "").trim();
-      if (!body) {
-        RENDERED_MESSAGE_IDS.add(msg.id);
-        return;
+      function formatTime(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat(undefined, {hour: "numeric", minute: "2-digit"}).format(date);
       }
-
-      // ❌ منع echo لرسائل المستخدم
-      if (USER_TEXT_CACHE.has(body)) {
-        RENDERED_MESSAGE_IDS.add(msg.id);
-        return;
+      function isNearBottom() { return scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 110; }
+      function scrollLatest(force = false) {
+        if (force || isNearBottom()) { scrollEl.scrollTop = scrollEl.scrollHeight; document.getElementById("sv-new-message").classList.remove("is-visible"); }
+        else document.getElementById("sv-new-message").classList.add("is-visible");
       }
+      function setError(message) { const el = document.getElementById("sv-error"); el.textContent = message || ""; el.classList.toggle("is-visible", Boolean(message)); }
+      function autoResize() { inputEl.style.height = "auto"; inputEl.style.height = `${Math.min(inputEl.scrollHeight, 112)}px`; }
+      function logoAvatar() { const avatar = create("span", "sv-message-avatar"); const image = create("img"); image.src = "/static/images/ui/sevor-logo-96.png"; image.alt = ""; avatar.append(image); return avatar; }
 
-      // ❌ لا ترسم رسائل user من السيرفر
-      if (msg.sender_role === "user") {
-        RENDERED_MESSAGE_IDS.add(msg.id);
-        return;
-      }
-
-      // ✅ فقط رسائل السيبور
-      if (
-  msg.sender_role === "agent" ||
-  msg.sender_role === "support" ||
-  msg.sender_role === "system"
-) {
-        addBotMessage(body);
-        RENDERED_MESSAGE_IDS.add(msg.id);
-      }
-    });
-
-  } catch (e) {
-    console.log("chat poll error:", e);
-  }
-}
-
-
-
-function startChatPolling(ticketId) {
-  if (!ticketId || IS_TICKET_CLOSED) return;
-
-  // ✅ لا polling إلا إذا نحن في LIVE
-  if (MODE !== "LIVE") return;
-
-  // أوقف أي setInterval قديم
-  if (CHAT_POLL_INTERVAL) {
-    clearInterval(CHAT_POLL_INTERVAL);
-    CHAT_POLL_INTERVAL = null;
-  }
-
-  // ✅ شغل الـ fast polling
-  startFastPolling(ticketId);
-}
-
-    // =============================================================
-    // SEND MESSAGE
-    // =============================================================
-async function sendUserMessageToServer(text) {
-  if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
-
-  const formData = new FormData();
-  formData.append("body", text);
-
-  const res = await fetch(`/api/chatbot/messages/${ACTIVE_TICKET_ID}`, {
-    method: "POST",
-    body: formData,
-  });
-
-  // ⬅️ لا نرسم أي شيء هنا
-}
-
-
-
-    // =============================================================
-    // SHOW MAIN SECTIONS
-    // =============================================================
-    function showSections() {
-      if (IS_TICKET_CLOSED) return;
-
-      clearSuggestions();
-      const suggestions = document.getElementById("sv-suggestions");
-      if (!suggestions) return;
-      suggestions.innerHTML = "";
-
-      SECTIONS.forEach((sec) => {
-        const btn = document.createElement("button");
-        btn.className = "sv-question-chip";
-        btn.type = "button";
-        btn.textContent = sec.section_title;
-
-        btn.onclick = () => {
-          CURRENT_SECTION = sec;
-          showQuestionsInSection(sec);
-          addUserMessage(sec.section_title);
-        };
-
-        suggestions.appendChild(btn);
-      });
-    }
-
-    // =============================================================
-    // SHOW QUESTIONS IN A SECTION
-    // =============================================================
-    function showQuestionsInSection(section) {
-      if (IS_TICKET_CLOSED) return;
-
-      clearSuggestions();
-      const suggestions = document.getElementById("sv-suggestions");
-      if (!suggestions) return;
-      suggestions.innerHTML = "";
-
-      let faqs = section.faqs;
-
-      if (!Array.isArray(faqs)) {
-        Object.entries(faqs).forEach(([qText, obj]) => {
-          const btn = document.createElement("button");
-          btn.className = "sv-question-chip";
-          btn.type = "button";
-          btn.textContent = qText;
-
-          btn.onclick = () =>
-            handleQuestionClick({
-              label: qText,
-              answer: obj.answer,
-              options: obj.options || null,
-            });
-
-          suggestions.appendChild(btn);
-        });
-      } else {
-        faqs.forEach((item) => {
-          const btn = document.createElement("button");
-          btn.className = "sv-question-chip";
-          btn.type = "button";
-          btn.textContent = item.question;
-
-          btn.onclick = () =>
-            handleQuestionClick({
-              label: item.question,
-              answer: item.answer,
-              options: null,
-            });
-
-          suggestions.appendChild(btn);
-        });
-      }
-    }
-
-    // =============================================================
-    // QUESTION CLICK HANDLER
-    // =============================================================
-    function handleQuestionClick(q) {
-      if (IS_TICKET_CLOSED) return;
-
-      addUserMessage(q.label);
-      LAST_QUESTION = q.label;
-
-      clearSuggestions();
-
-      if (q.answer) {
-        addBotMessage(q.answer);
-        LAST_ANSWER = q.answer;
-        showFeedbackButtons();
-      }
-
-      if (q.options) {
-        const chat = document.getElementById("sv-chat-window");
-        if (!chat) return;
-
-        const box = document.createElement("div");
-        box.className = "sv-msg sv-msg-bot";
-
-        const wrapper = document.createElement("div");
-        wrapper.className = "sv-options-wrapper";
-
-        const title = document.createElement("div");
-        title.className = "sv-options-title";
-        title.textContent = "Choose a case:";
-        wrapper.appendChild(title);
-
-        Object.entries(q.options).forEach(([label, data]) => {
-          const btn = document.createElement("button");
-          btn.className = "sv-option-chip";
-          btn.type = "button";
-          btn.textContent = label;
-
-          btn.onclick = () => {
-            addUserMessage(label);
-            addBotMessage(data.answer || "…");
-            LAST_ANSWER = data.answer || "…";
-            showFeedbackButtons();
-          };
-
-          wrapper.appendChild(btn);
-        });
-
-        box.appendChild(wrapper);
-        chat.appendChild(box);
-        chat.scrollTop = chat.scrollHeight;
-      }
-    }
-
-    // =====================================================
-    // CHECK CLOSED STATUS ON LOAD (IMPORTANT)
-    // =====================================================
-    async function checkClosedOnLoad(ticketId) {
-      try {
-        const res = await fetch(`/api/chatbot/messages/${ticketId}`);
-        const data = await res.json();
-
-        if (data.ticket_status === "closed") {
-          lockChatUI(
-            data.closed_by
-              ? `This ticket has been closed by ${data.closed_by}.`
-              : "This ticket has been closed."
-          );
+      function renderFeedback(message) {
+        if (feedbackRendered.has(message.id) || !conversation || conversation.state !== "ai_active") return;
+        feedbackRendered.add(message.id);
+        const wrap = create("div", "sv-feedback");
+        wrap.append(create("span", "sv-feedback-label", texts.feedback));
+        for (const choice of ["yes", "no"]) {
+          const button = create("button", "", choice === "yes" ? "Yes" : "No");
+          button.type = "button"; button.dataset.choice = choice;
+          button.addEventListener("click", () => submitFeedback(message.id, choice, wrap));
+          wrap.append(button);
         }
-      } catch (e) {
-        console.log("initial close check error", e);
+        messagesEl.append(wrap);
       }
-    }
-
-
-    // =============================================================
-// FAST RECURSIVE POLLING (SUPER FAST)
-// =============================================================
-let FAST_POLL_STOP = false;
-
-async function startFastPolling(ticketId) {
-    if (!ticketId || IS_TICKET_CLOSED || MODE !== "LIVE") return;
-
-  FAST_POLL_STOP = false;
-
-  const loop = async () => {
-    if (FAST_POLL_STOP || IS_TICKET_CLOSED) return;
-
-    await pollMessages(ticketId);
-
-    setTimeout(loop, 150);
-  };
-
-  loop();
-}
-
-
-function stopFastPolling() {
-  FAST_POLL_STOP = true;
-}
-
-
-
-
+      function renderSelection(message) {
+        const options = Array.isArray(message.selection_options) ? message.selection_options : [];
+        if (!options.length) return;
+        const wrap = create("div", "sv-selection");
+        for (const option of options) {
+          if (!option || !Number.isInteger(option.id) || !["booking", "listing"].includes(option.kind)) continue;
+          const dates = option.kind === "booking" ? [option.start_date, option.end_date].filter(Boolean).join(" – ") : "";
+          const button = create("button", "", `${option.title || "Listing"}${dates ? ` · ${dates}` : ""}`);
+          button.type = "button";
+          button.addEventListener("click", () => sendMessage(`${option.kind} #${option.id}`));
+          wrap.append(button);
+        }
+        if (wrap.childElementCount) messagesEl.append(wrap);
+      }
+      function renderMessage(message, optimistic = false) {
+        if (message.id && rendered.has(message.id)) return;
+        if (message.client_message_id && pending.has(message.client_message_id)) {
+          pending.get(message.client_message_id).remove(); pending.delete(message.client_message_id);
+        }
+        const role = message.sender_role || "system";
+        if (role === "system") {
+          const row = create("div", "sv-message-row system");
+          row.append(create("div", "sv-system-message", message.body));
+          messagesEl.append(row);
+        } else {
+          const row = create("div", `sv-message-row ${role}`);
+          if (role !== "user") row.append(logoAvatar());
+          const wrap = create("div", "sv-bubble-wrap");
+          if (role === "agent") wrap.append(create("div", "sv-message-label", message.agent_name || "Sevor Support"));
+          else if (role === "assistant") wrap.append(create("div", "sv-message-label", "Sevor AI"));
+          wrap.append(create("div", "sv-bubble", message.body));
+          const time = formatTime(message.created_at);
+          if (time) wrap.append(create("div", "sv-message-time", time));
+          row.append(wrap); messagesEl.append(row);
+          if (role === "assistant") renderSelection(message);
+          if (role === "assistant" && message.feedback_prompt) renderFeedback(message);
+          if (optimistic && message.client_message_id) pending.set(message.client_message_id, row);
+        }
+        if (message.id) { rendered.add(message.id); lastMessageId = Math.max(lastMessageId, Number(message.id) || 0); }
+      }
+      function updateHeaderAndControls() {
+        const state = conversation && conversation.state;
+        const headerName = document.getElementById("sv-header-name");
+        const headerStatus = document.getElementById("sv-header-status");
+        const note = document.getElementById("sv-status-note");
+        const startNew = document.getElementById("sv-start-new");
+        const isResolved = state === "resolved";
+        const isAgent = state === "agent_active";
+        const isWaiting = state === "waiting_for_agent";
+        inputEl.disabled = isResolved || !loggedIn || sending;
+        sendEl.disabled = isResolved || !loggedIn || sending;
+        document.getElementById("sv-talk-agent").disabled = isResolved || sending;
+        initialTools.style.display = conversation ? "none" : "block";
+        startNew.classList.toggle("is-visible", Boolean(loggedIn && isResolved));
+        if (isAgent) { headerName.textContent = conversation.agent_name || "Sevor Support"; headerStatus.textContent = texts.agent; note.textContent = texts.agent; }
+        else if (isWaiting) { headerName.textContent = "Sevor Support"; headerStatus.textContent = texts.waiting; note.textContent = texts.waiting; }
+        else if (isResolved) { headerName.textContent = "Sevor AI"; headerStatus.textContent = texts.resolved; note.textContent = texts.resolved; }
+        else { headerName.textContent = "Sevor AI"; headerStatus.replaceChildren(); const dot = create("span", "sv-status-dot"); headerStatus.append(dot, document.createTextNode({{ '"Available · Here to help"' if ai_available else '"Help Center · Here to help"' }})); note.textContent = loggedIn ? "Your messages are saved to this support conversation." : texts.login; }
+        inputEl.placeholder = isResolved ? texts.resolved : (loggedIn ? "Ask Sevor anything..." : texts.login);
+      }
+      function hydrate(payload, reset = false) {
+        if (reset) { rendered.clear(); feedbackRendered.clear(); pending.clear(); messagesEl.replaceChildren(); lastMessageId = 0; }
+        conversation = payload.conversation || null;
+        for (const message of payload.messages || []) renderMessage(message);
+        welcomeEl.style.display = conversation ? "none" : "block";
+        updateHeaderAndControls();
+        scrollLatest(reset);
+      }
+      async function api(url, options = {}) {
+        const response = await fetch(url, {headers: {"Content-Type": "application/json", ...(options.headers || {})}, ...options});
+        let data = null; try { data = await response.json(); } catch (_) {}
+        if (!response.ok) throw new Error((data && data.detail) || "Request failed");
+        return data;
+      }
+      function clientId() { return crypto.randomUUID ? crypto.randomUUID() : `msg_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`; }
+      function findFaq(question) {
+        for (const section of (tree && tree.sections) || []) {
+          const faqs = section.faqs || {};
+          if (Array.isArray(faqs)) {
+            const match = faqs.find(item => item && item.question === question);
+            if (match) return match;
+          } else if (faqs[question]) return faqs[question];
+        }
+        return null;
+      }
+      function guestFeedback() {
+        const wrap = create("div", "sv-feedback");
+        wrap.append(create("span", "sv-feedback-label", texts.feedback));
+        const yes = create("button", "", "Yes"); yes.type = "button"; yes.dataset.choice = "yes";
+        yes.addEventListener("click", () => { wrap.replaceChildren(create("span", "sv-feedback-label", locale.startsWith("ar") ? "يسعدني أن ذلك ساعدك." : locale.startsWith("fr") ? "Ravi d’avoir pu vous aider." : "Glad I could help.")); });
+        const no = create("button", "", "No"); no.type = "button"; no.dataset.choice = "no";
+        no.addEventListener("click", () => setError(texts.login));
+        wrap.append(yes, no); messagesEl.append(wrap);
+      }
+      function showGuestFaq(question) {
+        const faq = findFaq(question);
+        if (!faq) return false;
+        renderMessage({sender_role: "user", body: question, created_at: new Date().toISOString()});
+        if (faq.answer) {
+          renderMessage({sender_role: "assistant", body: faq.answer, created_at: new Date().toISOString()});
+          guestFeedback();
+          scrollLatest(true);
+          return true;
+        }
+        const options = faq.options || {};
+        const row = create("div", "sv-feedback");
+        row.append(create("span", "sv-feedback-label", locale.startsWith("ar") ? "اختر الحالة الأقرب:" : locale.startsWith("fr") ? "Choisissez le cas le plus proche :" : "Choose the closest case:"));
+        Object.entries(options).forEach(([label, value]) => {
+          const option = create("button", "", label); option.type = "button";
+          option.addEventListener("click", () => { renderMessage({sender_role: "user", body: label, created_at: new Date().toISOString()}); renderMessage({sender_role: "assistant", body: (value && value.answer) || "", created_at: new Date().toISOString()}); row.remove(); guestFeedback(); scrollLatest(true); });
+          row.append(option);
+        });
+        messagesEl.append(row); scrollLatest(true);
+        return true;
+      }
+      async function sendMessage(text, retryMessageId = null) {
+        const body = (text || "").trim(); if (!body || sending) return;
+        if (!loggedIn) { if (!showGuestFaq(body)) setError(texts.login); return; }
+        if (body.length > 4000) { setError("Message is too long."); return; }
+        setError(""); sending = true; updateHeaderAndControls();
+        const id = retryMessageId || clientId();
+        renderMessage({sender_role: "user", body, client_message_id: id, created_at: new Date().toISOString()}, true);
+        inputEl.value = ""; autoResize(); scrollLatest(true);
+        if (!conversation || conversation.state === "ai_active") typingEl.classList.add("is-visible");
+        try {
+          const payload = await api("/api/chatbot/conversation/message", {method: "POST", body: JSON.stringify({body, conversation_id: conversation && conversation.id, client_message_id: id, csrf_token: csrfToken})});
+          hydrate(payload);
+        } catch (error) {
+          const row = pending.get(id); if (row) { row.classList.add("failed"); const retry = create("button", "sv-text-button", "Retry"); retry.type = "button"; retry.addEventListener("click", () => { row.remove(); pending.delete(id); sendMessage(body, id); }); row.append(retry); pending.delete(id); }
+          setError(error.message || texts.error);
+        } finally { typingEl.classList.remove("is-visible"); sending = false; updateHeaderAndControls(); inputEl.focus(); }
+      }
+      async function submitFeedback(messageId, choice, wrap) {
+        if (!conversation || sending) return; sending = true; wrap.querySelectorAll("button").forEach(button => button.disabled = true);
+        try { hydrate(await api(`/api/chatbot/conversation/${conversation.id}/feedback`, {method: "POST", body: JSON.stringify({choice, message_id: messageId, csrf_token: csrfToken})})); }
+        catch (error) { setError(error.message || texts.error); wrap.querySelectorAll("button").forEach(button => button.disabled = false); }
+        finally { sending = false; updateHeaderAndControls(); }
+      }
+      async function requestHandoff() {
+        if (!loggedIn) { setError(texts.login); return; }
+        if (!conversation) { sendMessage("I want to speak with a support agent."); return; }
+        if (conversation.state === "agent_active" || conversation.state === "waiting_for_agent") return;
+        try { hydrate(await api(`/api/chatbot/conversation/${conversation.id}/handoff`, {method: "POST", body: JSON.stringify({csrf_token: csrfToken, reason: "user_clicked_human_support"})})); }
+        catch (error) { setError(error.message || texts.error); }
+      }
+      async function startNew() {
+        if (!loggedIn || sending) return;
+        try { hydrate(await api("/api/chatbot/conversation/new", {method: "POST", body: JSON.stringify({csrf_token: csrfToken})}), true); initialTools.style.display = "none"; inputEl.focus(); }
+        catch (error) { setError(error.message || texts.error); }
+      }
+      async function poll() {
+        if (!conversation || !conversation.id || document.hidden) return;
+        try { const payload = await api(`/api/chatbot/conversation?conversation_id=${encodeURIComponent(conversation.id)}&after_id=${lastMessageId}`); hydrate(payload); }
+        catch (_) { /* A temporary network failure should not clear local history. */ }
+      }
+      function questionsFor(section) {
+        const faqs = section.faqs || {}; const questions = [];
+        if (Array.isArray(faqs)) faqs.forEach(item => item && item.question && questions.push(item.question));
+        else Object.keys(faqs).forEach(question => questions.push(question));
+        return questions;
+      }
+      function renderTopics() {
+        if (!tree) return;
+        topicGrid.replaceChildren();
+        (tree.sections || []).forEach((section, index) => {
+          const topic = create("button", "sv-topic"); topic.type = "button";
+          topic.append(create("span", "sv-topic-icon", ["◌", "⌁", "◈", "◒", "↺", "◫", "? "][index] || "?") , create("span", "", section.section_title || "SEVOR Help"));
+          topic.addEventListener("click", () => { topicTitle.textContent = section.section_title || "Help topics"; topicList.replaceChildren(); questionsFor(section).forEach(question => { const q = create("button", "", question); q.type = "button"; q.addEventListener("click", () => sendMessage(question)); topicList.append(q); }); topicPanel.classList.add("is-visible"); });
+          topicGrid.append(topic);
+        });
+      }
+      async function initialise() {
+        document.getElementById("sv-back").addEventListener("click", () => { if (history.length > 1) history.back(); else location.href = "/messages"; });
+        document.getElementById("sv-new-message").addEventListener("click", () => scrollLatest(true));
+        document.getElementById("sv-talk-agent").addEventListener("click", requestHandoff);
+        document.getElementById("sv-start-new").addEventListener("click", startNew);
+        document.getElementById("sv-close-questions").addEventListener("click", () => topicPanel.classList.remove("is-visible"));
+        document.querySelectorAll("[data-prompt]").forEach(button => button.addEventListener("click", () => sendMessage(button.dataset.prompt)));
+        inputEl.addEventListener("input", autoResize);
+        inputEl.addEventListener("keydown", event => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); composerEl.requestSubmit(); } });
+        composerEl.addEventListener("submit", event => { event.preventDefault(); sendMessage(inputEl.value); });
+        document.getElementById("sv-welcome-copy").textContent = texts.welcomeDetail;
+        const firstAssistant = {id: "welcome", sender_role: "assistant", body: texts.welcome, created_at: new Date().toISOString()}; renderMessage(firstAssistant);
+        try { tree = await (await fetch("/chatbot/tree", {headers: {"Accept": "application/json"}})).json(); renderTopics(); } catch (_) { /* The input and human support path stay usable. */ }
+        try { hydrate(await api(`/api/chatbot/conversation${initialConversationId ? `?conversation_id=${encodeURIComponent(initialConversationId)}` : ""}`), true); if (!conversation) { renderMessage(firstAssistant); initialTools.style.display = "block"; } } catch (error) { setError(error.message || texts.error); }
+        pollTimer = window.setInterval(poll, 4000);
+      }
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+      initialise();
+    })();
   </script>
 </body>
 </html>
