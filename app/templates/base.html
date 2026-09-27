@@ -5,6 +5,143 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
+  {# Critical first-paint launch surface.  This stays inline so it paints before
+     Bootstrap, fonts, or the main stylesheet have finished downloading. #}
+  <link rel="preload" as="image" type="image/png" fetchpriority="high" href="{{ url_for('static', path='images/ui/sevor-logo-180.png') }}">
+  <script id="sv-launch-splash-gate">
+  (function () {
+    var root = document.documentElement;
+    try {
+      if (window.sessionStorage && sessionStorage.getItem('sevor_launch_splash_seen') === '1') {
+        root.classList.add('sv-launch-seen');
+      } else {
+        root.classList.add('sv-launch-pending');
+      }
+    } catch (_) {
+      // Private-browser storage failures should still get one graceful launch.
+      root.classList.add('sv-launch-pending');
+    }
+  })();
+  </script>
+  <style id="sv-launch-splash-critical">
+    html.sv-launch-pending,
+    html.sv-launch-pending body{ background:#fbfbff; }
+    html.sv-launch-pending body{
+      overflow:hidden;
+      overscroll-behavior:none;
+    }
+    #sv-launch-splash{
+      position:fixed;
+      inset:0;
+      z-index:2147483647;
+      min-height:100vh;
+      min-height:100svh;
+      min-height:100dvh;
+      overflow:hidden;
+      background:#fbfbff;
+      color:#111938;
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+      transition:opacity 620ms cubic-bezier(.22,.75,.25,1), visibility 0s linear 620ms;
+    }
+    html.sv-launch-seen #sv-launch-splash,
+    #sv-launch-splash[hidden]{ display:none !important; }
+    #sv-launch-splash.is-exiting{
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+    }
+    .sv-launch-splash__center{
+      position:absolute;
+      inset:0;
+      display:grid;
+      place-items:center;
+    }
+    .sv-launch-splash__mark{
+      position:relative;
+      width:clamp(76px, 20vw, 90px);
+      height:clamp(76px, 20vw, 90px);
+      border-radius:50%;
+      isolation:isolate;
+      opacity:0;
+      transform:scale(.94);
+      animation:sv-launch-mark-in 420ms cubic-bezier(.2,.8,.3,1) 55ms both;
+      transition:transform 620ms cubic-bezier(.22,.75,.25,1), opacity 520ms ease-out;
+    }
+    .sv-launch-splash__glow{
+      position:absolute;
+      z-index:-1;
+      inset:-28px;
+      border-radius:50%;
+      background:radial-gradient(circle, rgba(102,80,246,.20) 0%, rgba(51,139,245,.12) 37%, rgba(33,200,231,.06) 54%, transparent 72%);
+      filter:blur(7px);
+      opacity:.8;
+      animation:sv-launch-glow-breathe 2.5s ease-in-out infinite;
+      transition:opacity 440ms ease-out, transform 620ms cubic-bezier(.22,.75,.25,1);
+    }
+    .sv-launch-splash__logo{
+      display:block;
+      width:100%;
+      height:100%;
+      border:1px solid rgba(255,255,255,.78);
+      border-radius:50%;
+      background:linear-gradient(140deg, #8a4ff3, #358cf2 58%, #1cc9e8);
+      box-shadow:0 12px 26px rgba(62,84,198,.16);
+      object-fit:cover;
+    }
+    .sv-launch-splash__branding{
+      position:absolute;
+      right:20px;
+      bottom:max(26px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+      left:20px;
+      display:grid;
+      justify-items:center;
+      gap:3px;
+      text-align:center;
+      pointer-events:none;
+    }
+    .sv-launch-splash__name{
+      margin:0;
+      background:linear-gradient(100deg, #704af0, #3289ef 61%, #16bfe2);
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+      font:800 .72rem/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing:.18em;
+    }
+    .sv-launch-splash__tagline{
+      margin:0;
+      color:#7b8499;
+      font:600 .66rem/1.25 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing:.025em;
+    }
+    #sv-launch-splash.is-exiting .sv-launch-splash__mark{
+      opacity:0;
+      transform:translateY(-4px) scale(1.035);
+    }
+    #sv-launch-splash.is-exiting .sv-launch-splash__glow{
+      opacity:0;
+      transform:scale(1.08);
+    }
+    @keyframes sv-launch-mark-in{
+      from{ opacity:0; transform:scale(.94); }
+      to{ opacity:1; transform:scale(1); }
+    }
+    @keyframes sv-launch-glow-breathe{
+      0%,100%{ opacity:.68; transform:scale(.98); }
+      50%{ opacity:.9; transform:scale(1.025); }
+    }
+    @media (prefers-reduced-motion:reduce){
+      #sv-launch-splash{ transition:opacity 160ms linear, visibility 0s linear 160ms; }
+      .sv-launch-splash__mark,
+      .sv-launch-splash__glow{ animation:none !important; }
+      .sv-launch-splash__mark{ opacity:1; transform:none; }
+      #sv-launch-splash.is-exiting .sv-launch-splash__mark{ transform:none; }
+      #sv-launch-splash.is-exiting .sv-launch-splash__glow{ transform:none; }
+    }
+  </style>
+
   {# عنوان ديناميكي + افتراضي محترم للسيو #}
   <title>{{ title or "Sevor — Rent Anything Worldwide | Rent any car, tool or equipment" }}</title>
 
@@ -1507,6 +1644,87 @@ window.onpageshow = function(e){
   data-auth="{{ '1' if session_user else '0' }}"
   data-path="{{ request.url.path if request else '' }}"
   class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
+  {# Initial-entry launch surface. It deliberately stays separate from the
+     normal link-navigation loader below. #}
+  <div id="sv-launch-splash" aria-hidden="true">
+    <div class="sv-launch-splash__center">
+      <div class="sv-launch-splash__mark">
+        <span class="sv-launch-splash__glow"></span>
+        <img class="sv-launch-splash__logo"
+             src="{{ url_for('static', path='images/ui/sevor-logo-180.png') }}"
+             width="180" height="180" alt="" loading="eager" fetchpriority="high" decoding="sync">
+      </div>
+    </div>
+    <div class="sv-launch-splash__branding">
+      <p class="sv-launch-splash__name">SEVOR</p>
+      <p class="sv-launch-splash__tagline">Rent everything.</p>
+    </div>
+  </div>
+  <noscript><style>#sv-launch-splash{display:none !important;}</style></noscript>
+  <script id="sv-launch-splash-js">
+  (function () {
+    var root = document.documentElement;
+    var splash = document.getElementById('sv-launch-splash');
+    if (!splash || !root.classList.contains('sv-launch-pending')) return;
+
+    var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var exitDuration = reducedMotion ? 160 : 620;
+    var didExit = false;
+    var safetyTimer;
+
+    function leave() {
+      if (didExit) return;
+      didExit = true;
+      if (safetyTimer) window.clearTimeout(safetyTimer);
+
+      try { sessionStorage.setItem('sevor_launch_splash_seen', '1'); } catch (_) {}
+      splash.classList.add('is-exiting');
+
+      window.setTimeout(function () {
+        splash.hidden = true;
+        root.classList.remove('sv-launch-pending');
+        root.classList.add('sv-launch-seen');
+      }, exitDuration);
+    }
+
+    function leaveAfterFirstPaint() {
+      // Safe Mode intentionally turns requestAnimationFrame into a no-op.
+      // The short timer is a guard for that mode, not an artificial splash delay.
+      if (window.__SAFE_MODE__ || typeof window.requestAnimationFrame !== 'function') {
+        window.setTimeout(leave, 0);
+        return;
+      }
+
+      var painted = false;
+      var paintGuard = window.setTimeout(function () {
+        if (!painted) leave();
+      }, 80);
+
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          painted = true;
+          window.clearTimeout(paintGuard);
+          leave();
+        });
+      });
+    }
+
+    function ready() {
+      leaveAfterFirstPaint();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', ready, { once: true });
+    } else {
+      ready();
+    }
+
+    // If an unrelated lifecycle failure occurs, never leave a transparent layer
+    // over an error page forever. This does not extend a normal launch.
+    safetyTimer = window.setTimeout(leave, 7000);
+  })();
+  </script>
+
   <!-- Global Page Loader -->
 <div id="sv-page-loader" class="sv-page-loader hidden">
   <div class="sv-spinner"></div>
