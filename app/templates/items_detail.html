@@ -245,7 +245,21 @@
     .item-detail__link:hover { color: var(--detail-blue); text-decoration: underline; }
 
     .item-detail__owner-link { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; }
-    .item-detail__owner-avatar { flex: 0 0 auto; width: 58px; height: 58px; border: 2px solid #eef1fb; border-radius: 50%; object-fit: cover; background: #eef1f7; }
+    .item-detail .item-detail__owner-avatar {
+      display: block;
+      flex: 0 0 58px;
+      width: 58px !important;
+      min-width: 58px;
+      max-width: 58px !important;
+      height: 58px !important;
+      min-height: 58px;
+      aspect-ratio: 1 / 1;
+      border: 2px solid #eef1fb;
+      border-radius: 50% !important;
+      object-fit: cover !important;
+      object-position: center;
+      background: #eef1f7;
+    }
     .item-detail__owner-copy { min-width: 0; }
     .item-detail__owner-name { color: var(--detail-ink); font-size: 1rem; font-weight: 790; overflow-wrap: anywhere; }
     .item-detail__owner-since { margin-top: 3px; color: var(--detail-muted); font-size: .84rem; overflow-wrap: anywhere; }
@@ -317,7 +331,7 @@
     .item-detail__review-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
     .item-detail__review { min-width: 0; padding: 14px; border: 1px solid var(--detail-line); border-radius: 14px; background: #fbfcff; }
     .item-detail__review-head { display: flex; align-items: center; gap: 9px; min-width: 0; }
-    .item-detail__review-avatar { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #edf1f7; }
+    .item-detail .item-detail__review-avatar { display: block; flex: 0 0 36px; width: 36px !important; min-width: 36px; max-width: 36px !important; height: 36px !important; min-height: 36px; aspect-ratio: 1 / 1; border-radius: 50% !important; object-fit: cover !important; object-position: center; background: #edf1f7; }
     .item-detail__review-name { min-width: 0; color: var(--detail-ink); font-size: .88rem; font-weight: 770; overflow-wrap: anywhere; }
     .item-detail__review-date { margin-top: 2px; color: var(--detail-muted); font-size: .76rem; }
     .item-detail__review-stars { margin-top: 10px; color: #eeae24; font-size: .84rem; letter-spacing: .03em; }
