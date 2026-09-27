@@ -593,7 +593,7 @@
   </div>
 
   <div class="messages-conversations" id="threadsContainer">
-    <a href="/chatbot" class="messages-conversation messages-conversation--support" data-message-row data-kind="support" data-unread="0" data-search="sevor support chatbot" aria-label="Open SEVOR Support conversation" hidden>
+    <a href="{% if active_chatbot_ticket %}/chatbot?conversation={{ active_chatbot_ticket.id }}{% else %}/chatbot{% endif %}" class="messages-conversation messages-conversation--support" data-message-row data-kind="support" data-unread="0" data-search="sevor support chatbot" aria-label="Open SEVOR Support conversation" hidden>
       <span class="messages-conversation__media" aria-hidden="true"><img class="messages-conversation__support-image" src="/static/images/ui/sevor-logo-96.png" alt="" loading="lazy" decoding="async"></span>
       <span class="messages-conversation__content">
         <span class="messages-conversation__name"><span class="messages-conversation__name-text">SEVOR Support</span></span>

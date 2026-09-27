@@ -63,6 +63,14 @@ def _bootstrap_schema(path: Path) -> None:
           sender_role VARCHAR(10), body TEXT NOT NULL, channel VARCHAR(20), created_at TIMESTAMP,
           is_read BOOLEAN, client_message_id VARCHAR(72), metadata_json TEXT
         );
+        CREATE TABLE message_threads (
+          id INTEGER PRIMARY KEY, user_a_id INTEGER NOT NULL, user_b_id INTEGER NOT NULL,
+          item_id INTEGER, created_at TIMESTAMP, last_message_at TIMESTAMP
+        );
+        CREATE TABLE messages (
+          id INTEGER PRIMARY KEY, thread_id INTEGER NOT NULL, sender_id INTEGER NOT NULL,
+          body TEXT NOT NULL, created_at TIMESTAMP, is_read BOOLEAN DEFAULT 0, read_at TIMESTAMP
+        );
         """
     )
     conn.commit()
@@ -125,6 +133,7 @@ class ChatbotSupportTests(unittest.TestCase):
                 User(id=107, first_name="Feedback", last_name="User", email="feedback@example.test", phone="7", password_hash="x", role="user", status="active", is_verified=True),
                 User(id=108, first_name="Limit", last_name="User", email="limit@example.test", phone="8", password_hash="x", role="user", status="active", is_verified=True),
                 User(id=109, first_name="Outside", last_name="User", email="outside2@example.test", phone="9", password_hash="x", role="user", status="active", is_verified=True),
+                User(id=120, first_name="Resume", last_name="User", email="resume@example.test", phone="10", password_hash="x", role="user", status="active", is_verified=True),
             ])
             item = Item(id=101, owner_id=101, title="Camera", currency="CAD", price=10, status="approved", price_per_day=10, category="other", is_active="yes")
             second_item = Item(id=102, owner_id=101, title="Tripod", currency="CAD", price=10, status="approved", price_per_day=10, category="other", is_active="yes")
@@ -372,6 +381,121 @@ class ChatbotSupportTests(unittest.TestCase):
         self.assertEqual(response.json()["conversation"]["state"], WAITING_FOR_AGENT)
         self.assertEqual(sum(m["sender_role"] == "assistant" for m in response.json()["messages"]), 2)
 
+    def test_support_entry_resumes_active_ticket_and_never_autostarts_from_closed_id(self):
+        """Returning through Messages/legacy FAQ must preserve one live ticket.
+
+        The global SEVOR Support row is a resume action.  A stale browser tab
+        that still carries a closed ticket id must receive a controlled 409,
+        not silently create another ticket.
+        """
+        db = SessionLocal()
+        try:
+            user = db.get(User, 120)
+            ticket = SupportTicket(
+                user_id=user.id,
+                subject="Resume the same support conversation",
+                channel="chatbot",
+                queue="cs_chatbot",
+                status="open",
+                ai_state="ai_active",
+                last_from="assistant",
+                unread_for_agent=False,
+                unread_for_user=False,
+            )
+            db.add(ticket)
+            db.commit()
+            db.refresh(ticket)
+            ticket_id = ticket.id
+        finally:
+            db.close()
+
+        client = TestClient(main_module.app, base_url="http://testserver.local")
+        csrf = _login(client, 120)
+        first_open = client.get("/chatbot")
+        second_open = client.get("/chatbot")
+        self.assertEqual(first_open.status_code, 200)
+        self.assertEqual(second_open.status_code, 200)
+        self.assertIn(f"const initialConversationId = {ticket_id};", first_open.text)
+        self.assertIn(f"const initialConversationId = {ticket_id};", second_open.text)
+        inbox = client.get("/messages")
+        self.assertEqual(inbox.status_code, 200, inbox.text[:1000])
+        self.assertIn(f'href="/chatbot?conversation={ticket_id}"', inbox.text)
+
+        # The old FAQ support action may still exist in cached clients.  It
+        # must join this ticket and produce its handoff event only once.
+        first_legacy = client.post(
+            "/chatbot/support",
+            data={"question": "I need a support agent.", "csrf_token": csrf},
+        )
+        self.assertEqual(first_legacy.status_code, 200, first_legacy.text)
+        self.assertEqual(first_legacy.json()["ticket_id"], ticket_id)
+        second_legacy = client.post(
+            "/chatbot/support",
+            data={"question": "I have another detail.", "csrf_token": csrf},
+        )
+        self.assertEqual(second_legacy.status_code, 200, second_legacy.text)
+        self.assertEqual(second_legacy.json()["ticket_id"], ticket_id)
+
+        db = SessionLocal()
+        try:
+            self.assertEqual(
+                db.query(SupportTicket)
+                .filter(SupportTicket.user_id == 120, SupportTicket.channel == "chatbot")
+                .count(),
+                1,
+            )
+            ticket = db.get(SupportTicket, ticket_id)
+            self.assertEqual(ticket_state(ticket), WAITING_FOR_AGENT)
+            self.assertEqual(
+                db.query(SupportMessage)
+                .filter(SupportMessage.ticket_id == ticket_id, SupportMessage.sender_role == "system")
+                .count(),
+                1,
+                "reopening support must not append a second handoff event",
+            )
+            self.assertEqual(
+                db.query(SupportMessage)
+                .filter(SupportMessage.ticket_id == ticket_id, SupportMessage.sender_role == "user")
+                .count(),
+                1,
+                "a repeated legacy support click must be a pure resume action",
+            )
+            ticket.status = "closed"
+            ticket.ai_state = RESOLVED
+            db.commit()
+        finally:
+            db.close()
+
+        stale_send = client.post(
+            "/api/chatbot/conversation/message",
+            json={
+                "body": "This stale tab must not open another ticket.",
+                "conversation_id": ticket_id,
+                "client_message_id": "stale-closed-conversation-0001",
+                "csrf_token": csrf,
+            },
+        )
+        self.assertEqual(stale_send.status_code, 409)
+        closed_legacy = client.post(
+            "/chatbot/support",
+            data={"question": "Do not create a new ticket from this old page.", "csrf_token": csrf},
+        )
+        self.assertEqual(closed_legacy.status_code, 409)
+        db = SessionLocal()
+        try:
+            self.assertEqual(
+                db.query(SupportTicket)
+                .filter(SupportTicket.user_id == 120, SupportTicket.channel == "chatbot")
+                .count(),
+                1,
+            )
+        finally:
+            db.close()
+
+        inbox_template = (Path(__file__).parents[1] / "app" / "templates" / "inbox.html").read_text(encoding="utf-8")
+        self.assertIn("active_chatbot_ticket", inbox_template)
+        self.assertIn("/chatbot?conversation={{ active_chatbot_ticket.id }}", inbox_template)
+
     def test_migrated_queue_state_unique_idempotency_and_safe_tool_minimization(self):
         db = SessionLocal()
         try:
@@ -445,6 +569,132 @@ class ChatbotSupportTests(unittest.TestCase):
             limiter.check("test-user")
         self.assertEqual(blocked.exception.status_code, 429)
         self.assertIn("Retry-After", blocked.exception.headers)
+
+    def test_waiting_ticket_can_transfer_or_close_and_customer_is_notified(self):
+        """Queue controls must work before an agent sends their first reply."""
+        db = SessionLocal()
+        try:
+            owner = db.get(User, 101)
+            transfer = SupportTicket(
+                user_id=owner.id,
+                subject="Transfer before reply",
+                channel="chatbot",
+                queue="cs_chatbot",
+                status="new",
+                ai_state=WAITING_FOR_AGENT,
+                last_from="user",
+                unread_for_agent=True,
+                unread_for_user=False,
+            )
+            close = SupportTicket(
+                user_id=owner.id,
+                subject="Close before reply",
+                channel="chatbot",
+                queue="cs_chatbot",
+                status="new",
+                ai_state=WAITING_FOR_AGENT,
+                last_from="user",
+                unread_for_agent=True,
+                unread_for_user=False,
+            )
+            transfer_mod = SupportTicket(
+                user_id=owner.id,
+                subject="Transfer to moderation before reply",
+                channel="chatbot",
+                queue="cs_chatbot",
+                status="new",
+                ai_state=WAITING_FOR_AGENT,
+                last_from="user",
+                unread_for_agent=True,
+                unread_for_user=False,
+            )
+            db.add_all((transfer, close, transfer_mod))
+            db.commit()
+            transfer_id, close_id, transfer_mod_id = transfer.id, close.id, transfer_mod.id
+        finally:
+            db.close()
+
+        queue_events, customer_events = [], []
+        old_queue_notify = chatbot_routes._notify_queue
+        old_customer_notify = chatbot_routes._notify_ticket_user
+        chatbot_routes._notify_queue = lambda db, ticket, queue, title: queue_events.append((ticket.id, queue, title))
+        chatbot_routes._notify_ticket_user = lambda db, ticket, title, body: customer_events.append((ticket.id, title, body))
+        try:
+            agent = TestClient(main_module.app, base_url="http://testserver.local")
+            csrf = _login(agent, 103)
+            transferred = agent.post(
+                f"/chatbot/ticket/{transfer_id}/transfer",
+                data={"new_queue": "md_chatbot", "csrf_token": csrf, "form_redirect": "1"},
+                follow_redirects=False,
+            )
+            self.assertEqual(transferred.status_code, 303, transferred.text)
+            self.assertEqual(transferred.headers["location"], "/md/chatbot/inbox")
+
+            transferred_to_mod = agent.post(
+                f"/chatbot/ticket/{transfer_mod_id}/transfer",
+                data={"new_queue": "mod_chatbot", "csrf_token": csrf, "form_redirect": "1"},
+                follow_redirects=False,
+            )
+            self.assertEqual(transferred_to_mod.status_code, 303, transferred_to_mod.text)
+            self.assertEqual(transferred_to_mod.headers["location"], "/mod/chatbot/inbox")
+
+            closed = agent.post(
+                f"/chatbot/ticket/{close_id}/close",
+                data={"csrf_token": csrf, "form_redirect": "1"},
+                follow_redirects=False,
+            )
+            self.assertEqual(closed.status_code, 303, closed.text)
+            self.assertEqual(closed.headers["location"], "/cs/chatbot/inbox")
+        finally:
+            chatbot_routes._notify_queue = old_queue_notify
+            chatbot_routes._notify_ticket_user = old_customer_notify
+
+        db = SessionLocal()
+        try:
+            transferred_ticket = db.get(SupportTicket, transfer_id)
+            transferred_to_mod_ticket = db.get(SupportTicket, transfer_mod_id)
+            closed_ticket = db.get(SupportTicket, close_id)
+            self.assertEqual(transferred_ticket.queue, "md_chatbot")
+            self.assertIsNone(transferred_ticket.assigned_to_id)
+            self.assertEqual(ticket_state(transferred_ticket), WAITING_FOR_AGENT)
+            self.assertTrue(transferred_ticket.unread_for_user)
+            self.assertEqual(transferred_to_mod_ticket.queue, "mod_chatbot")
+            self.assertIsNone(transferred_to_mod_ticket.assigned_to_id)
+            self.assertEqual(ticket_state(transferred_to_mod_ticket), WAITING_FOR_AGENT)
+            self.assertTrue(transferred_to_mod_ticket.unread_for_user)
+            self.assertEqual(closed_ticket.status, "closed")
+            self.assertEqual(ticket_state(closed_ticket), RESOLVED)
+            self.assertIsNotNone(closed_ticket.closed_at)
+            self.assertTrue(closed_ticket.unread_for_user)
+            transfer_message = db.query(SupportMessage).filter(
+                SupportMessage.ticket_id == transfer_id,
+                SupportMessage.sender_role == "system",
+            ).one()
+            transfer_mod_message = db.query(SupportMessage).filter(
+                SupportMessage.ticket_id == transfer_mod_id,
+                SupportMessage.sender_role == "system",
+            ).one()
+            close_message = db.query(SupportMessage).filter(
+                SupportMessage.ticket_id == close_id,
+                SupportMessage.sender_role == "system",
+            ).one()
+            self.assertIn("transferred", transfer_message.body.lower())
+            self.assertIn("transferred", transfer_mod_message.body.lower())
+            self.assertIn("closed", close_message.body.lower())
+        finally:
+            db.close()
+        self.assertEqual(
+            queue_events,
+            [
+                (transfer_id, "md_chatbot", "Sevor support transfer"),
+                (transfer_mod_id, "mod_chatbot", "Sevor support transfer"),
+            ],
+        )
+        self.assertEqual({event[0] for event in customer_events}, {transfer_id, transfer_mod_id, close_id})
+        for template_name in ("cs_chatbot_ticket.html", "md_chatbot_ticket.html", "mod_chatbot_ticket.html"):
+            template = (Path(__file__).parents[1] / "app" / "templates" / template_name).read_text(encoding="utf-8")
+            self.assertIn('name="form_redirect" value="1"', template)
+            self.assertIn("ticket.status in ['closed', 'resolved']", template)
 
     def test_safe_tools_do_not_cross_user_boundaries(self):
         from app.support_ai import safe_booking_status

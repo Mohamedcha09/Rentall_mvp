@@ -151,6 +151,19 @@ def inbox(request: Request, db: Session = Depends(get_db)):
     )
     tickets_count = len(chatbot_tickets)
 
+    # The persistent Sevor AI conversation is the canonical destination for
+    # the top-level “SEVOR Support” row.  Keep its id in the rendered link so
+    # opening that row always resumes the same unresolved support thread.  In
+    # particular, it must never be treated like a request to start over.
+    active_chatbot_ticket = next(
+        (
+            ticket
+            for ticket in chatbot_tickets
+            if str(getattr(ticket, "status", "")).lower() not in {"resolved", "closed"}
+        ),
+        None,
+    )
+
     # ========= بناء قائمة threads للـ HTML =========
     view_threads = []
     for t in threads:
@@ -206,6 +219,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             "title": "Messages",
             "threads": view_threads,
             "chatbot_tickets": chatbot_tickets,  # 👈 يُستخدم في التمبلت
+            "active_chatbot_ticket": active_chatbot_ticket,
             "tickets_count": tickets_count,      # 👈 للبادج
             "session_user": u,
             "account_limited": account_limited,
