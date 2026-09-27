@@ -16,8 +16,9 @@ import unittest
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest import mock
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 
 
@@ -102,6 +103,7 @@ from app.models_metrics import OnlineSession
 
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+JPEG_BYTES = b"\xff\xd8\xff" + b"\x00" * 64
 PDF_BYTES = b"%PDF-1.7\n1 0 obj\n<<>>\nendobj\n"
 OGG_BYTES = b"OggS" + b"\x00" * 64
 
@@ -210,6 +212,8 @@ class DirectMessageMediaTests(unittest.TestCase):
             "conversation-composer-preview--image",
             "conversation-message__images",
             "nonImageAttachments",
+            "Image unavailable",
+            "conversation-attachment-image--unavailable",
         ):
             self.assertIn(required, template)
 
@@ -361,6 +365,117 @@ class DirectMessageMediaTests(unittest.TestCase):
             params={"after": 999999, "receipts_after": receipt_cursor},
         ).json()["read_receipts"]
         self.assertEqual(len(receipts), 3)
+
+    def test_cloudinary_private_media_survives_a_new_release_filesystem(self):
+        """Durable media must not depend on the worker's local upload directory."""
+        thread_id = self._thread()
+        owner = TestClient(main_module.app)
+        participant = TestClient(main_module.app)
+        outsider = TestClient(main_module.app)
+        _login(owner, self.owner_id)
+        _login(participant, self.participant_id)
+        _login(outsider, self.outsider_id)
+
+        objects: dict[tuple[str, str], bytes] = {}
+        signed_urls: dict[str, tuple[str, str]] = {}
+        signed_counter = 0
+
+        class FakeProviderResponse:
+            def __init__(self, status_code: int, data: bytes = b""):
+                self.status_code = status_code
+                self._data = data
+
+            def iter_content(self, chunk_size: int):
+                for start in range(0, len(self._data), max(1, chunk_size)):
+                    yield self._data[start:start + max(1, chunk_size)]
+
+            def close(self):
+                return None
+
+        def fake_upload(source, **options):
+            payload = source.read()
+            objects[(options["resource_type"], options["public_id"])] = payload
+            return {"public_id": options["public_id"]}
+
+        def fake_private_download_url(public_id, _format, **options):
+            nonlocal signed_counter
+            signed_counter += 1
+            url = f"https://private-provider.test/download/{signed_counter}"
+            signed_urls[url] = (options["resource_type"], public_id)
+            return url
+
+        def fake_get(url, **_kwargs):
+            reference = signed_urls.get(url)
+            data = objects.get(reference) if reference else None
+            return FakeProviderResponse(200, data) if data is not None else FakeProviderResponse(404)
+
+        cloudinary_env = {
+            "SEVOR_MESSAGE_ATTACHMENT_STORAGE": "cloudinary",
+            "CLOUDINARY_CLOUD_NAME": "test-cloud",
+            "CLOUDINARY_API_KEY": "test-key",
+            "CLOUDINARY_API_SECRET": "test-secret",
+        }
+        with (
+            mock.patch.dict(os.environ, cloudinary_env, clear=False),
+            mock.patch.object(attachment_service.cloudinary.uploader, "upload", side_effect=fake_upload),
+            mock.patch.object(attachment_service.cloudinary.utils, "private_download_url", side_effect=fake_private_download_url),
+            mock.patch.object(attachment_service.requests, "get", side_effect=fake_get),
+        ):
+            sent = [
+                self._send(owner, thread_id, key="durable-jpeg", files=[("attachments", ("photo.jpg", JPEG_BYTES, "image/jpeg"))]),
+                self._send(owner, thread_id, key="durable-png", files=[("attachments", ("photo.png", PNG_BYTES, "image/png"))]),
+                self._send(owner, thread_id, key="durable-pdf", files=[("attachments", ("receipt.pdf", PDF_BYTES, "application/pdf"))]),
+                self._send(owner, thread_id, key="durable-voice", files={"voice": ("voice.ogg", OGG_BYTES, "audio/ogg")}),
+            ]
+            for response in sent:
+                self.assertEqual(response.status_code, 201, response.text)
+            attachments = [response.json()["message"]["attachments"][0] for response in sent]
+
+            db = SessionLocal()
+            try:
+                rows = [db.get(MessageAttachment, int(item["id"])) for item in attachments]
+                self.assertTrue(all(row and row.stored_name.startswith("cld1:") for row in rows))
+                for row in rows:
+                    with self.assertRaises(HTTPException):
+                        attachment_service.message_attachment_path(row)
+            finally:
+                db.close()
+
+            # Simulate a redeploy: the new worker has no previous local root.
+            old_roots = (
+                attachment_service.MESSAGE_ATTACHMENT_ROOT,
+                attachment_service.MESSAGE_ATTACHMENT_STAGING_ROOT,
+            )
+            try:
+                shutil.rmtree(old_roots[0], ignore_errors=True)
+                attachment_service.MESSAGE_ATTACHMENT_ROOT = self.private_root / "new-release" / "message_attachments"
+                attachment_service.MESSAGE_ATTACHMENT_STAGING_ROOT = attachment_service.MESSAGE_ATTACHMENT_ROOT / ".staging"
+
+                reloaded = TestClient(main_module.app)
+                _login(reloaded, self.participant_id)
+                page = reloaded.get(f"/messages/{thread_id}")
+                self.assertEqual(page.status_code, 200, page.text)
+                expected_payloads = (JPEG_BYTES, PNG_BYTES, PDF_BYTES, OGG_BYTES)
+                for item, expected in zip(attachments, expected_payloads):
+                    self.assertIn(item["url"], page.text)
+                    download = reloaded.get(item["url"])
+                    self.assertEqual(download.status_code, 200, download.text)
+                    self.assertEqual(download.content, expected)
+                    self.assertEqual(download.headers["cache-control"], "private, no-store")
+                    self.assertEqual(download.headers["x-content-type-options"], "nosniff")
+                    self.assertNotIn("private-provider.test", str(download.url))
+
+                # A third party still cannot turn a stable attachment route
+                # into a provider download capability.
+                self.assertEqual(outsider.get(attachments[0]["url"]).status_code, 404)
+
+                # A genuinely missing durable object becomes a typed error;
+                # the page's image fallback handles it without a broken icon.
+                objects.clear()
+                missing = reloaded.get(attachments[0]["url"])
+                self.assertEqual(missing.status_code, 410, missing.text)
+            finally:
+                (attachment_service.MESSAGE_ATTACHMENT_ROOT, attachment_service.MESSAGE_ATTACHMENT_STAGING_ROOT) = old_roots
 
     def test_rejects_dangerous_content_and_blocks_nonmembers_from_private_routes(self):
         thread_id = self._thread()

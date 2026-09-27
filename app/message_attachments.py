@@ -152,12 +152,18 @@ def is_cloudinary_message_attachment(attachment: MessageAttachment) -> bool:
     return _cloudinary_reference(getattr(attachment, "stored_name", None)) is not None
 
 
-def _cloudinary_public_id(object_token: str) -> str:
-    return f"{_cloudinary_private_folder()}/{object_token}"
+def _cloudinary_public_id(object_token: str, *, resource_type: str, extension: str) -> str:
+    # Cloudinary requires raw public IDs to include the extension. Image and
+    # video IDs intentionally do not include it.
+    suffix = extension if resource_type == "raw" else ""
+    return f"{_cloudinary_private_folder()}/{object_token}{suffix}"
 
 
 def _cloudinary_stored_name(kind: str, extension: str) -> str:
-    code = _CLOUDINARY_CODE_BY_KIND.get(kind, "r")
+    # Cloudinary treats PDFs as image resources; keeping them in that resource
+    # class avoids raw-file public-id extension rules while preserving the
+    # original private PDF bytes through the authenticated download endpoint.
+    code = "i" if kind == "file" and extension == ".pdf" else _CLOUDINARY_CODE_BY_KIND.get(kind, "r")
     return f"{CLOUDINARY_STORED_NAME_PREFIX}{code}:{uuid.uuid4().hex}{extension}"
 
 
@@ -169,7 +175,7 @@ def _cloudinary_private_download_url(attachment: MessageAttachment, *, as_attach
     resource_type, object_token, extension = reference
     try:
         return cloudinary.utils.private_download_url(
-            _cloudinary_public_id(object_token),
+            _cloudinary_public_id(object_token, resource_type=resource_type, extension=extension),
             extension.lstrip("."),
             resource_type=resource_type,
             type="private",
@@ -178,6 +184,62 @@ def _cloudinary_private_download_url(attachment: MessageAttachment, *, as_attach
         )
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Attachment is temporarily unavailable.") from exc
+
+
+def _upload_path_to_cloudinary(source_path: Path, stored_name: str) -> None:
+    """Upload an already-validated local file as one private Cloudinary asset."""
+    reference = _cloudinary_reference(stored_name)
+    if not reference:
+        raise HTTPException(status_code=503, detail="Private attachment storage is not configured.")
+    resource_type, object_token, _extension = reference
+    public_id = _cloudinary_public_id(object_token, resource_type=resource_type, extension=_extension)
+    try:
+        _configure_cloudinary()
+        with source_path.open("rb") as source:
+            result = cloudinary.uploader.upload(
+                source,
+                public_id=public_id,
+                resource_type=resource_type,
+                type="private",
+                overwrite=False,
+                unique_filename=False,
+                use_filename=False,
+            )
+        actual_public_id = str((result or {}).get("public_id") or "")
+        if actual_public_id != public_id:
+            # A provider-side naming change must not leave an unreferenced
+            # private object behind or make a DB row point at the wrong asset.
+            if actual_public_id:
+                try:
+                    cloudinary.uploader.destroy(
+                        actual_public_id,
+                        resource_type=resource_type,
+                        type="private",
+                        invalidate=True,
+                    )
+                except Exception:
+                    pass
+            raise RuntimeError("The private media provider returned an unexpected object id.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Attachment upload failed. Please try again.") from exc
+
+
+def migrate_local_message_attachment_to_cloudinary(attachment: MessageAttachment) -> str:
+    """Copy one recoverable legacy local attachment to private Cloudinary.
+
+    This intentionally does not mutate the database or delete the local source.
+    A caller must commit the returned opaque storage key first, then may remove
+    the source only after that commit succeeds.
+    """
+    if is_cloudinary_message_attachment(attachment):
+        return str(attachment.stored_name)
+    source_path = message_attachment_path(attachment)
+    extension = Path(attachment.stored_name or attachment.original_name or "").suffix.lower()
+    stored_name = _cloudinary_stored_name(str(attachment.kind or "file"), extension)
+    _upload_path_to_cloudinary(source_path, stored_name)
+    return stored_name
 
 
 def stream_cloudinary_message_attachment(attachment: MessageAttachment, *, as_attachment: bool) -> Iterator[bytes]:
@@ -475,29 +537,8 @@ def persist_staged_message_attachments(
             # cleaned if a later local/remote operation raises.
             records.append(record)
             if backend == "cloudinary":
-                reference = _cloudinary_reference(stored_name)
-                if not reference:
-                    raise HTTPException(status_code=503, detail="Private attachment storage is not configured.")
-                resource_type, object_token, _extension = reference
-                try:
-                    _configure_cloudinary()
-                    with item.temp_path.open("rb") as source:
-                        result = cloudinary.uploader.upload(
-                            source,
-                            public_id=_cloudinary_public_id(object_token),
-                            resource_type=resource_type,
-                            type="private",
-                            overwrite=False,
-                            unique_filename=False,
-                            use_filename=False,
-                        )
-                    if not (result or {}).get("public_id"):
-                        raise RuntimeError("The private media provider did not return an object id.")
-                    item.temp_path.unlink(missing_ok=True)
-                except HTTPException:
-                    raise
-                except Exception as exc:
-                    raise HTTPException(status_code=503, detail="Attachment upload failed. Please try again.") from exc
+                _upload_path_to_cloudinary(item.temp_path, stored_name)
+                item.temp_path.unlink(missing_ok=True)
             else:
                 destination = MESSAGE_ATTACHMENT_ROOT / stored_name
                 os.replace(item.temp_path, destination)
@@ -517,7 +558,7 @@ def remove_saved_message_attachment_files(records: Iterable[MessageAttachment | 
                 try:
                     _configure_cloudinary()
                     cloudinary.uploader.destroy(
-                        _cloudinary_public_id(object_token),
+                        _cloudinary_public_id(object_token, resource_type=resource_type, extension=_extension),
                         resource_type=resource_type,
                         type="private",
                         invalidate=True,

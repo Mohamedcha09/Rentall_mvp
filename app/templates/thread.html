@@ -1329,6 +1329,36 @@
       return voice;
     };
 
+    const markAttachmentImageUnavailable = (image) => {
+      if (!(image instanceof HTMLImageElement)) return;
+      const button = image.closest('.conversation-attachment-image');
+      if (!button || button.dataset.unavailable === 'true') return;
+      button.dataset.unavailable = 'true';
+      button.classList.add('conversation-attachment-image--unavailable');
+      button.removeAttribute('data-message-image');
+      button.removeAttribute('data-image-name');
+      button.setAttribute('aria-label', 'Image unavailable');
+      image.remove();
+      const label = document.createElement('span');
+      label.className = 'conversation-attachment-image__unavailable';
+      label.textContent = 'Image unavailable';
+      button.appendChild(label);
+    };
+
+    const bindAttachmentImageFallback = (image) => {
+      if (!(image instanceof HTMLImageElement)) return;
+      image.addEventListener('error', () => markAttachmentImageUnavailable(image), { once: true });
+      if (image.complete && !image.naturalWidth) markAttachmentImageUnavailable(image);
+    };
+
+    chatBox.addEventListener('error', (event) => {
+      const image = event.target;
+      if (image instanceof HTMLImageElement && image.matches('.conversation-attachment-image img')) {
+        markAttachmentImageUnavailable(image);
+      }
+    }, true);
+    chatBox.querySelectorAll('.conversation-attachment-image img').forEach(bindAttachmentImageFallback);
+
     const attachmentKind = (attachment) => attachment.kind || (attachment.is_image ? 'image' : attachment.is_voice ? 'voice' : 'file');
     const createAttachmentElement = (attachment) => {
       const kind = attachmentKind(attachment);
@@ -1344,6 +1374,7 @@
         image.alt = attachment.name || 'Image attachment';
         image.loading = 'lazy';
         image.decoding = 'async';
+        bindAttachmentImageFallback(image);
         button.appendChild(image);
         return button;
       }
