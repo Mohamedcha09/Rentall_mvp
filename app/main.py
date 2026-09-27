@@ -685,76 +685,40 @@ Base.metadata.create_all(bind=engine)
 
 
 def ensure_direct_message_media_columns():
-    """Keep legacy direct-message tables compatible with private media sends.
+    """Keep only legacy SQLite development databases compatible.
 
-    Alembic is the authoritative production migration.  This small additive
-    bridge matches the application's existing support-message compatibility
-    path so an older local/legacy database does not start returning 500s
-    between a code rollout and migration execution.
+    PostgreSQL schema changes are owned exclusively by Alembic.  A startup
+    ``ALTER TABLE`` fallback can roll back as a group and hide a failed
+    production migration, which is exactly the unsafe state this application
+    must avoid for durable attachment metadata.
     """
     try:
         try:
             backend = engine.url.get_backend_name()
         except Exception:
             backend = getattr(getattr(engine, "dialect", None), "name", "")
+        if str(backend).startswith("postgres"):
+            print("[INFO] direct-message media schema is managed by Alembic")
+            return
+        if backend != "sqlite":
+            return
         with engine.begin() as conn:
-            if backend == "sqlite":
-                message_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('messages')").all()}
-                if "client_message_id" not in message_cols:
-                    conn.exec_driver_sql("ALTER TABLE messages ADD COLUMN client_message_id VARCHAR(72);")
-                attachment_cols = {
-                    row[1] for row in conn.exec_driver_sql("PRAGMA table_info('message_attachments')").all()
-                }
-                for column, sql_type in (
-                    ("storage_backend", "VARCHAR(16)"),
-                    ("storage_key", "VARCHAR(255)"),
-                    ("storage_resource_type", "VARCHAR(16)"),
-                    ("storage_delivery_type", "VARCHAR(16)"),
-                    ("storage_format", "VARCHAR(32)"),
-                ):
-                    if attachment_cols and column not in attachment_cols:
-                        conn.exec_driver_sql(f"ALTER TABLE message_attachments ADD COLUMN {column} {sql_type};")
-                if attachment_cols:
-                    conn.exec_driver_sql(
-                        "UPDATE message_attachments SET storage_backend = CASE "
-                        "WHEN stored_name LIKE 'cld1:%' THEN 'cloudinary' ELSE 'local' END "
-                        "WHERE storage_backend IS NULL OR storage_backend = '';"
-                    )
-                    conn.exec_driver_sql(
-                        "UPDATE message_attachments SET storage_key = stored_name "
-                        "WHERE storage_backend = 'local' "
-                        "AND (storage_key IS NULL OR storage_key = '');"
-                    )
-                    conn.exec_driver_sql(
-                        "CREATE INDEX IF NOT EXISTS ix_message_attachments_storage_backend "
-                        "ON message_attachments(storage_backend);"
-                    )
-                conn.exec_driver_sql(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_messages_thread_sender_client_message "
-                    "ON messages(thread_id, sender_id, client_message_id) "
-                    "WHERE client_message_id IS NOT NULL;"
-                )
-                conn.exec_driver_sql(
-                    "CREATE INDEX IF NOT EXISTS ix_online_sessions_user_last_seen "
-                    "ON online_sessions(user_id, last_seen);"
-                )
-            elif str(backend).startswith("postgres"):
-                conn.exec_driver_sql("ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_message_id VARCHAR(72) NULL;")
-                conn.exec_driver_sql(
-                    "ALTER TABLE message_attachments ADD COLUMN IF NOT EXISTS storage_backend VARCHAR(16) NULL;"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TABLE message_attachments ADD COLUMN IF NOT EXISTS storage_key VARCHAR(255) NULL;"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TABLE message_attachments ADD COLUMN IF NOT EXISTS storage_resource_type VARCHAR(16) NULL;"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TABLE message_attachments ADD COLUMN IF NOT EXISTS storage_delivery_type VARCHAR(16) NULL;"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TABLE message_attachments ADD COLUMN IF NOT EXISTS storage_format VARCHAR(32) NULL;"
-                )
+            message_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('messages')").all()}
+            if "client_message_id" not in message_cols:
+                conn.exec_driver_sql("ALTER TABLE messages ADD COLUMN client_message_id VARCHAR(72);")
+            attachment_cols = {
+                row[1] for row in conn.exec_driver_sql("PRAGMA table_info('message_attachments')").all()
+            }
+            for column, sql_type in (
+                ("storage_backend", "VARCHAR(16)"),
+                ("storage_key", "VARCHAR(255)"),
+                ("storage_resource_type", "VARCHAR(16)"),
+                ("storage_delivery_type", "VARCHAR(16)"),
+                ("storage_format", "VARCHAR(32)"),
+            ):
+                if attachment_cols and column not in attachment_cols:
+                    conn.exec_driver_sql(f"ALTER TABLE message_attachments ADD COLUMN {column} {sql_type};")
+            if attachment_cols:
                 conn.exec_driver_sql(
                     "UPDATE message_attachments SET storage_backend = CASE "
                     "WHEN stored_name LIKE 'cld1:%' THEN 'cloudinary' ELSE 'local' END "
@@ -769,15 +733,15 @@ def ensure_direct_message_media_columns():
                     "CREATE INDEX IF NOT EXISTS ix_message_attachments_storage_backend "
                     "ON message_attachments(storage_backend);"
                 )
-                conn.exec_driver_sql(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_messages_thread_sender_client_message "
-                    "ON messages(thread_id, sender_id, client_message_id) "
-                    "WHERE client_message_id IS NOT NULL;"
-                )
-                conn.exec_driver_sql(
-                    "CREATE INDEX IF NOT EXISTS ix_online_sessions_user_last_seen "
-                    "ON online_sessions(user_id, last_seen);"
-                )
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ux_messages_thread_sender_client_message "
+                "ON messages(thread_id, sender_id, client_message_id) "
+                "WHERE client_message_id IS NOT NULL;"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_online_sessions_user_last_seen "
+                "ON online_sessions(user_id, last_seen);"
+            )
         print("[OK] ensure_direct_message_media_columns(): direct-message media ready")
     except Exception as e:
         print(f"[WARN] ensure_direct_message_media_columns failed: {e}")
