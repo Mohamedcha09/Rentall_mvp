@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, lazyload, selectinload
 from sqlalchemy import func
@@ -16,11 +16,13 @@ from .message_attachments import (
     max_attachment_bytes,
     max_attachments_per_message,
     max_voice_bytes,
+    is_cloudinary_message_attachment,
     message_attachment_path,
     persist_staged_message_attachments,
     remove_saved_message_attachment_files,
     serialize_message_attachment,
     stage_message_attachments,
+    stream_cloudinary_message_attachment,
 )
 from .models import MessageThread, Message, MessageAttachment, User, Item, SupportTicket
 from .presence import user_presence
@@ -708,6 +710,15 @@ def message_attachment_download(
         "Content-Security-Policy": "sandbox",
         "Content-Disposition": f"{'inline' if inline else 'attachment'}; filename*=UTF-8''{safe_name}",
     }
+    if is_cloudinary_message_attachment(attachment):
+        # The app remains the authorization boundary: a signed provider URL is
+        # generated and fetched only after membership was checked above, then
+        # proxied back through this stable private SEVOR endpoint.
+        return StreamingResponse(
+            stream_cloudinary_message_attachment(attachment, as_attachment=not inline),
+            media_type=attachment.content_type,
+            headers=headers,
+        )
     return FileResponse(path, media_type=attachment.content_type, headers=headers)
 
 
