@@ -222,6 +222,28 @@
 <!-- PNG icons -->
 <link rel="icon" type="image/png" href="/static/images/ui/sevor-logo-96.png" sizes="96x96">
 <link rel="apple-touch-icon" href="/static/images/ui/sevor-logo-180.png" sizes="180x180">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SEVOR">
+
+{# Native iOS launch canvases: these exist before WebKit receives the document,
+   so a Home Screen launch never falls back to a blank white surface. #}
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-320x568.png') }}" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-375x667.png') }}" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-375x812.png') }}" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-390x844.png') }}" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-393x852.png') }}" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-402x874.png') }}" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-414x896.png') }}" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-428x926.png') }}" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-430x932.png') }}" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-768x1024.png') }}" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-834x1194.png') }}" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-1024x1366.png') }}" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-1032x1376.png') }}" media="(device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-768x1024-landscape.png') }}" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-834x1194-landscape.png') }}" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-1024x1366-landscape.png') }}" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-1032x1376-landscape.png') }}" media="(device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
 
 <!-- For Google Search -->
 <meta property="og:image" content="https://sevor.net/static/img/sevor-logo.png">
