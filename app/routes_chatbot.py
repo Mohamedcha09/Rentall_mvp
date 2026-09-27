@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -60,6 +61,7 @@ from .utils import display_currency
 router = APIRouter(tags=["chatbot"])
 templates = Jinja2Templates(directory="app/templates")
 _TREE_PATH = Path(__file__).resolve().parent / "chatbot" / "tree.json"
+LOGGER = logging.getLogger(__name__)
 
 
 class ChatMessagePayload(BaseModel):
@@ -287,7 +289,34 @@ def _notify_queue(db: Session, ticket: SupportTicket, queue: str, title: str) ->
             )
         except Exception:
             # The queue row is already persisted; email/notification failure is non-fatal.
-            pass
+            db.rollback()
+            LOGGER.warning("Chatbot queue notification failed for ticket=%s queue=%s", ticket.id, queue)
+
+
+def _queue_inbox_path(queue: str) -> str:
+    """Return a fixed internal inbox path; never use a client-supplied URL."""
+    prefix = {"cs_chatbot": "cs", "md_chatbot": "md", "mod_chatbot": "mod"}.get(queue, "cs")
+    return f"/{prefix}/chatbot/inbox"
+
+
+def _notify_ticket_user(db: Session, ticket: SupportTicket, title: str, body: str) -> None:
+    """Persist a user-visible update after the ticket transition is committed.
+
+    A notification failure must never undo a completed close or transfer.  The
+    system message on the ticket remains the durable source of truth.
+    """
+    try:
+        push_notification(
+            db,
+            ticket.user_id,
+            title,
+            body,
+            url=f"/chatbot?conversation={ticket.id}",
+            kind="support",
+        )
+    except Exception:
+        db.rollback()
+        LOGGER.warning("Chatbot user notification failed for ticket=%s", ticket.id)
 
 
 @router.get("/chatbot/tree")
@@ -620,9 +649,38 @@ def chatbot_open_legacy_ticket(
     require_csrf(request, csrf_token)
     check_message_rate(request, user)
     question = validate_message(question)
-    ticket = create_ai_conversation(db, user)
-    _persist_user_message(db, ticket, user, question, None)
-    ticket, handoff_created = _handoff_after_user_message(db, ticket, user, question, "legacy_faq_not_helpful")
+    # Older FAQ clients can still post here.  They must join the user's
+    # already-open Sevor Support conversation instead of creating a second
+    # ticket every time the support entry point is clicked.
+    ticket = find_user_conversation(db, user)
+    if ticket is None:
+        # If the user already has a resolved chatbot conversation, this old
+        # endpoint has no reliable way to know that a genuinely new issue was
+        # intended.  Do not silently replace that history with another ticket;
+        # the current UI exposes an explicit “Start a new conversation” action.
+        latest_ticket = (
+            db.query(SupportTicket)
+            .filter(SupportTicket.user_id == user.id, SupportTicket.channel == "chatbot")
+            .order_by(SupportTicket.updated_at.desc(), SupportTicket.created_at.desc())
+            .first()
+        )
+        if latest_ticket is not None and ticket_state(latest_ticket) == RESOLVED:
+            raise HTTPException(
+                status_code=409,
+                detail="This conversation is resolved. Start a new conversation for a new issue",
+            )
+        ticket = create_ai_conversation(db, user)
+    state = ticket_state(ticket)
+    handoff_created = False
+    if state == AI_ACTIVE:
+        _persist_user_message(db, ticket, user, question, None)
+        ticket, handoff_created = _handoff_after_user_message(
+            db,
+            ticket,
+            user,
+            question,
+            "legacy_faq_not_helpful",
+        )
     db.commit()
     db.refresh(ticket)
     if handoff_created:
@@ -636,23 +694,13 @@ def chatbot_transfer_ticket(
     request: Request,
     new_queue: str = Form(...),
     csrf_token: Optional[str] = Form(None),
+    form_redirect: bool = Form(False),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
     require_csrf(request, csrf_token)
-    ticket = _get_ticket(db, ticket_id)
-    if authorize_ticket_access(ticket, user) != "agent":
-        raise HTTPException(status_code=403, detail="Not allowed")
-    # A ticket may have been transferred or closed after the caller opened its
-    # agent view.  Lock and re-check the live row before changing queue/state.
-    ticket, _ = lock_agent_ticket_for_mutation(
-        db,
-        ticket.id,
-        user,
-        claim_if_waiting=False,
-    )
     transfer_map = {
         "cs_chatbot": "Your conversation has been transferred to Sevor Customer Support.",
         "md_chatbot": "Your conversation has been transferred to Sevor Management Desk.",
@@ -660,13 +708,30 @@ def chatbot_transfer_ticket(
     }
     if new_queue not in transfer_map:
         raise HTTPException(status_code=422, detail="Invalid queue")
+
+    ticket = _get_ticket(db, ticket_id)
+    if authorize_ticket_access(ticket, user) != "agent":
+        raise HTTPException(status_code=403, detail="Not allowed")
     if new_queue == ticket.queue:
-        # A no-op transfer must not clear the current assignee.  Keeping the
-        # live state also prevents a stale reply form from turning a harmless
-        # repeat click into a fresh queue claim.
-        return {"ok": True, "queue": new_queue, "status": "already_in_queue"}
+        # A no-op transfer must not clear a live assignee.  The HTML forms
+        # still return the operator to the correct inbox instead of showing a
+        # raw JSON response.
+        payload = {"ok": True, "queue": new_queue, "status": "already_in_queue"}
+        return RedirectResponse(_queue_inbox_path(ticket.queue), status_code=303) if form_redirect else payload
+    # A ticket may have been transferred or closed after the caller opened its
+    # agent view.  Lock and re-check the live row before changing queue/state.
+    # These controls are also valid for an unassigned waiting ticket.  Claim
+    # it atomically first; the old False value made both buttons fail with 409
+    # until an agent sent a separate reply.
+    ticket, _ = lock_agent_ticket_for_mutation(
+        db,
+        ticket.id,
+        user,
+        claim_if_waiting=True,
+    )
     now = datetime.utcnow()
-    append_message(db, ticket, user, "system", transfer_map[new_queue], metadata={"event": "transferred", "queue": new_queue})
+    user_message = transfer_map[new_queue]
+    append_message(db, ticket, user, "system", user_message, metadata={"event": "transferred", "queue": new_queue})
     ticket.queue = new_queue
     ticket.assigned_to_id = None
     ticket.status = "new"
@@ -680,7 +745,9 @@ def chatbot_transfer_ticket(
     db.commit()
     db.refresh(ticket)
     _notify_queue(db, ticket, new_queue, "Sevor support transfer")
-    return {"ok": True, "queue": new_queue}
+    _notify_ticket_user(db, ticket, "Your SEVOR Support conversation was transferred", user_message)
+    payload = {"ok": True, "queue": new_queue}
+    return RedirectResponse(_queue_inbox_path(new_queue), status_code=303) if form_redirect else payload
 
 
 @router.post("/chatbot/ticket/{ticket_id}/close")
@@ -688,6 +755,7 @@ def chatbot_close_ticket(
     ticket_id: int,
     request: Request,
     csrf_token: Optional[str] = Form(None),
+    form_redirect: bool = Form(False),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -704,17 +772,19 @@ def chatbot_close_ticket(
             db,
             ticket.id,
             user,
-            claim_if_waiting=False,
+            claim_if_waiting=True,
         )
     except HTTPException as exc:
         # Closing is intentionally idempotent for the agent that submitted it;
         # a concurrent close must not turn into an error or revive the ticket.
         if exc.status_code == 409 and exc.detail == "Conversation is closed":
-            return {"ok": True, "status": "already_closed"}
+            payload = {"ok": True, "status": "already_closed"}
+            return RedirectResponse(_queue_inbox_path(ticket.queue), status_code=303) if form_redirect else payload
         raise
     now = datetime.utcnow()
     closer_name = (user.full_name or user.first_name or "Sevor Support").strip()
-    append_message(db, ticket, user, "system", f"This conversation has been closed by {closer_name}.", metadata={"event": "closed"})
+    user_message = f"This conversation has been closed by {closer_name}."
+    append_message(db, ticket, user, "system", user_message, metadata={"event": "closed"})
     ticket.status = "closed"
     ticket.closed_by = closer_name
     ticket.closed_at = now
@@ -727,7 +797,12 @@ def chatbot_close_ticket(
     ticket.unread_for_agent = False
     update_ticket_summary(db, ticket)
     db.commit()
-    return {"ok": True, "status": "closed", "closed_by": closer_name}
+    db.refresh(ticket)
+    # Persist the terminal state first.  A notification outage cannot reopen
+    # the ticket or erase the system message the customer will see on return.
+    _notify_ticket_user(db, ticket, "Your SEVOR Support conversation was closed", user_message)
+    payload = {"ok": True, "status": "closed", "closed_by": closer_name}
+    return RedirectResponse(_queue_inbox_path(ticket.queue), status_code=303) if form_redirect else payload
 
 
 @router.get("/chatbot/ticket/{ticket_id}")

@@ -685,8 +685,16 @@ def get_or_create_user_conversation(
     conversation_id: Optional[int] = None,
 ) -> SupportTicket:
     ticket = find_user_conversation(db, user, conversation_id)
-    if ticket and ticket_state(ticket) != RESOLVED:
-        return ticket
+    if ticket:
+        if ticket_state(ticket) != RESOLVED:
+            return ticket
+        # A browser can still have a resolved ticket open when the user taps
+        # send (for example after a delayed poll or a restored tab).  Treating
+        # that stale id as permission to create another ticket makes a normal
+        # return to Sevor Support look like the old ticket was discarded.  A
+        # new conversation is deliberately created only by the explicit
+        # `/api/chatbot/conversation/new` action.
+        raise HTTPException(status_code=409, detail="This conversation is resolved. Start a new conversation for a new issue")
     return create_ai_conversation(db, user)
 
 
