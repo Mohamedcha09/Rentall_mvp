@@ -23,7 +23,7 @@ class GlobalMessagesBadgeTemplateTests(unittest.TestCase):
         # The badge must use the SEVOR purple → blue → cyan identity, not the
         # previous Inbox-only red presentation.
         self.assertIn("linear-gradient(135deg, var(--primary, #7C4DFF), #4F6FFF, #28B8F5)", base)
-        self.assertIn("total > 99 ? '99+'", base)
+        self.assertIn("total > 9 ? '9+'", base)
         self.assertIn("if (!hasSessionUser || !navLink || !badge) return;", base)
 
         # Inbox must not be the only place that creates or fetches this badge.

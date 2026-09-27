@@ -2658,10 +2658,10 @@ window.onpageshow = function(e){
         return;
       }
 
-      const label = total > 99 ? '99+' : String(total);
-      const messageLabel = total > 99
-        ? '99 or more unread messages'
-        : `${total} unread message${total === 1 ? '' : 's'}`;
+      // Keep the exact total from the server; only the compact visual label
+      // is capped so it never crowds the Messages icon.
+      const label = total > 9 ? '9+' : String(total);
+      const messageLabel = `${total} unread message${total === 1 ? '' : 's'}`;
       badge.textContent = label;
       badge.setAttribute('aria-label', messageLabel);
       navLink.setAttribute('aria-label', `Messages, ${messageLabel}`);
