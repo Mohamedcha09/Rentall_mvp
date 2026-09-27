@@ -3,290 +3,483 @@
 
 {% block head %}
 <style>
-  /* ===== ستايل بطاقات Similar ===== */
-  :root{ --brand1:#8b5cf6; --brand2:#22d3ee; }
-
-  .sim-card{
-    position:relative; display:block;
-    background:#fff; border-radius:16px; padding:14px;
-    box-shadow:0 10px 26px rgba(17,24,39,.10);
-    border:1px solid rgba(17,24,39,.06);
-    text-decoration:none; color:inherit;
+  /* Favorites owns this visual system; shared cards and navigation stay untouched. */
+  body[data-path="/favorites"]{
+    background:#f5f7fc;
   }
-  .sim-card:hover{ box-shadow:0 14px 30px rgba(17,24,39,.14) }
+  body[data-path="/favorites"] .page{
+    min-height:100vh;
+    overflow-x:clip;
+    padding:clamp(22px,4vw,48px) clamp(16px,4vw,60px) calc(112px + env(safe-area-inset-bottom,0px)) !important;
+    background:#f5f7fc;
+  }
 
-  .sim-media{ position:relative; border-radius:14px; overflow:hidden; }
-  .sim-img{ width:100%; display:block; aspect-ratio:16/9; object-fit:cover; height:auto; }
+  .favorites-page{
+    --favorites-ink:#151933;
+    --favorites-muted:#73809d;
+    --favorites-purple:#7857ed;
+    --favorites-blue:#398bf4;
+    --favorites-cyan:#38d3ec;
+    position:relative;
+    isolation:isolate;
+    width:min(100%,1540px);
+    margin:0 auto;
+    color:var(--favorites-ink);
+  }
+  .favorites-page::before{
+    position:absolute;
+    z-index:0;
+    top:-118px;
+    right:min(-120px,-7vw);
+    width:min(510px,70vw);
+    height:350px;
+    border-radius:50%;
+    background:
+      radial-gradient(circle at 30% 42%,rgba(126,93,245,.18),transparent 42%),
+      radial-gradient(circle at 68% 32%,rgba(47,203,239,.16),transparent 47%),
+      radial-gradient(circle at 48% 76%,rgba(69,131,246,.10),transparent 54%);
+    filter:blur(14px);
+    content:"";
+    pointer-events:none;
+  }
+  .favorites-page > *{position:relative;z-index:1;}
 
-  .sim-chip{
-    position:absolute; top:10px; left:10px; z-index:2;
-    max-inline-size:calc(100% - 78px);
+  .favorites-page__header{
+    display:flex;
+    align-items:center;
+    min-width:0;
+    margin:0 0 clamp(18px,3vw,28px);
+    padding:3px 2px 0;
+  }
+  .favorites-page__identity{
+    display:flex;
+    align-items:center;
+    min-width:0;
+    gap:13px;
+  }
+  .favorites-page__heart{
+    display:grid;
+    flex:0 0 52px;
+    width:52px;
+    height:52px;
+    place-items:center;
+    color:#ea3f65;
+    background:rgba(255,255,255,.78);
+    border:1px solid rgba(128,96,234,.16);
+    border-radius:50%;
+    box-shadow:0 8px 20px rgba(103,84,206,.12),0 0 22px rgba(62,184,244,.10);
+    font-size:1.3rem;
+  }
+  .favorites-page__copy{min-width:0;}
+  .favorites-page__title{
+    margin:0;
+    color:var(--favorites-ink);
+    font-size:clamp(1.72rem,4.6vw,2.48rem);
+    font-weight:880;
+    letter-spacing:-.05em;
+    line-height:1.02;
+  }
+  .favorites-page__subtitle{
+    margin:5px 0 0;
+    color:var(--favorites-muted);
+    font-size:clamp(.82rem,2.4vw,.98rem);
+    font-weight:620;
+    line-height:1.35;
+  }
+
+  .favorites-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:16px;
+    min-width:0;
+  }
+  .favorites-card{
+    position:relative;
+    min-width:0;
     overflow:hidden;
+    isolation:isolate;
+    padding:10px;
+    background:rgba(255,255,255,.95);
+    border:1px solid rgba(95,104,160,.13);
+    border-radius:24px;
+    box-shadow:0 12px 28px rgba(41,48,100,.09),0 1px 0 rgba(255,255,255,.88) inset;
+    transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease;
+  }
+  .favorites-card::before{
+    position:absolute;
+    z-index:-1;
+    inset:0;
+    border-radius:inherit;
+    background:radial-gradient(circle at 95% 3%,rgba(59,207,235,.11),transparent 27%),radial-gradient(circle at 0 100%,rgba(121,86,237,.08),transparent 29%);
+    content:"";
+    pointer-events:none;
+  }
+  .favorites-card.is-removing{
+    opacity:0;
+    transform:scale(.982);
+    pointer-events:none;
+  }
+  .favorites-card__details-link{
+    position:absolute;
+    z-index:1;
+    inset:0;
+    border-radius:inherit;
+    text-decoration:none;
+  }
+  .favorites-card__details-link:focus-visible{
+    outline:3px solid rgba(57,139,244,.48);
+    outline-offset:-4px;
+  }
+  .favorites-card__media{
+    position:relative;
+    aspect-ratio:16 / 9;
+    overflow:hidden;
+    border-radius:17px;
+    background:#e7ecf7;
+  }
+  .favorites-card__image{
+    display:block;
+    width:100%;
+    height:100% !important;
+    max-width:none !important;
+    object-fit:cover;
+    object-position:center;
+  }
+  .favorites-card__badge{
+    position:absolute;
+    z-index:2;
+    top:10px;
+    display:inline-flex;
+    align-items:center;
+    min-height:29px;
+    max-width:calc(100% - 116px);
+    padding:0 10px;
+    overflow:hidden;
+    color:var(--favorites-ink);
+    background:rgba(255,255,255,.88);
+    border:1px solid rgba(255,255,255,.8);
+    border-radius:999px;
+    box-shadow:0 4px 12px rgba(22,31,73,.12),0 0 14px rgba(79,178,242,.09);
+    font-size:.75rem;
+    font-weight:790;
+    line-height:1;
     text-overflow:ellipsis;
     white-space:nowrap;
-    height:28px; line-height:28px; padding:0 10px;
-    display:inline-flex; align-items:center; gap:6px;
-    border-radius:999px; background:#fff; color:#111;
-    border:1px solid #e5e7eb; font-weight:600; font-size:13px;
+    backdrop-filter:blur(7px);
+    -webkit-backdrop-filter:blur(7px);
   }
-
-  .sim-rate{
-    position:absolute; top:10px; right:10px; z-index:2;
-    height:28px; line-height:28px; padding:0 10px;
-    display:inline-flex; align-items:center; gap:6px;
-    border-radius:999px; background:#fff; color:#111;
-    border:1px solid #e5e7eb; font-weight:700; font-size:13px;
-    box-shadow:0 4px 10px rgba(0,0,0,.08);
+  .favorites-card__badge--category{left:10px;}
+  .favorites-card__badge--rating{
+    right:10px;
+    gap:5px;
+    max-width:none;
   }
-  .sim-rate.empty{ display:none; }
-  .sim-rate .star{
-    font-size:15px;
-    background:linear-gradient(135deg,var(--brand1),var(--brand2));
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  .favorites-card__badge--rating .bi{color:var(--favorites-blue);font-size:.82rem;}
+  .favorites-card__favorite{
+    position:absolute;
+    z-index:3;
+    right:12px;
+    bottom:12px;
+    display:grid;
+    width:46px;
+    height:46px;
+    place-items:center;
+    padding:0;
+    color:#ec3e62;
+    background:rgba(255,255,255,.92);
+    border:1px solid rgba(255,255,255,.88);
+    border-radius:50%;
+    box-shadow:0 7px 17px rgba(34,44,92,.18),0 0 17px rgba(119,87,240,.16);
+    cursor:pointer;
+    font-size:1.22rem;
+    transition:transform .16s ease,box-shadow .16s ease,opacity .16s ease;
   }
-
-  .sim-logo{
-    position:absolute; left:10px; bottom:10px; z-index:2;
-    width:36px; height:36px; border-radius:50%; object-fit:cover;
-    padding:2px; background:linear-gradient(135deg,var(--brand1),var(--brand2));
-    box-shadow:0 6px 14px rgba(0,0,0,.18);
+  .favorites-card__favorite:focus-visible{
+    outline:3px solid rgba(57,139,244,.48);
+    outline-offset:3px;
   }
-
-  .sim-body{ padding-top:8px; }
-  .sim-head{
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
-    margin:0 0 4px 0;
+  .favorites-card__favorite:disabled{cursor:wait;opacity:.7;}
+  .favorites-card__content{
+    position:relative;
+    min-width:0;
+    padding:13px 4px 3px;
   }
-  .sim-title{
-    margin:0; padding:0; font-weight:800; font-size:18px; line-height:1.15;
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  .favorites-card__title{
+    display:-webkit-box;
+    margin:0;
+    overflow:hidden;
+    color:var(--favorites-ink);
+    font-size:clamp(1.02rem,2.5vw,1.18rem);
+    font-weight:850;
+    letter-spacing:-.032em;
+    line-height:1.18;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    overflow-wrap:anywhere;
   }
-
-  .sim-fav{
-    position:static; background:transparent; border:0;
-    display:inline-grid; place-items:center; cursor:pointer;
-  }
-  .sim-fav i{
-    font-size:22px;
-    background:linear-gradient(135deg,var(--brand1),var(--brand2));
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 0 3px rgba(139,92,246,.35));
-    transition:transform .12s ease;
-  }
-  .sim-fav:hover i{ transform:translateY(-1px); }
-
-  .sim-sub{ color:#6b7280; font-size:13px; margin:0; line-height:1.2; overflow-wrap:anywhere; }
-  .sim-meta{
-    display:flex; align-items:center; gap:8px; color:#6b7280;
-    font-size:13px; margin:2px 0 6px 0; line-height:1.2;
-  }
-  .sim-meta .vsep{ width:1px; height:12px; background:#e5e7eb; opacity:.9; }
-
-  .sim-cut{ margin:2px 0 4px 0; border:0; height:0; border-top:1.8px dashed rgba(0,0,0,.18); opacity:.8; }
-
-  .sim-price-row{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; margin-top:-2px; }
-  .sim-price-old{ font-size:12.5px; color:#9ca3af; text-decoration:line-through; }
-  .sim-price-now{ font-size:15.5px; font-weight:800; color:#111; }
-  .sim-unit{ font-size:11px; color:#6b7280; margin-left:4px; }
-
-  .empty-box{ padding:24px 8px; text-align:center; }
-  .empty-box img{
-    display:block; margin:10px auto; max-width:320px; width:76%;
-    height:auto; object-fit:contain; opacity:.98;
-  }
-
-  /* ===== الموبايل: عمودي ===== */
-  .favorites-grid{
+  .favorites-card__location{
     display:flex;
-    flex-direction:column;
-    gap:16px;
-    padding:0 12px 24px;
+    align-items:center;
+    gap:6px;
+    min-width:0;
+    margin:7px 0 0;
+    overflow:hidden;
+    color:var(--favorites-muted);
+    font-size:.83rem;
+    font-weight:640;
+    line-height:1.25;
   }
-  .favorites-grid .sim-card{
-    width:100%;
-    max-width:100%;
+  .favorites-card__location .bi{flex:0 0 auto;color:#7774db;font-size:.95rem;}
+  .favorites-card__location span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .favorites-card__bottom{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    min-width:0;
+    margin-top:16px;
   }
+  .favorites-card__price{
+    min-width:0;
+    color:var(--favorites-ink);
+    font-size:clamp(1.04rem,2.65vw,1.26rem);
+    font-weight:870;
+    letter-spacing:-.033em;
+    line-height:1.1;
+    white-space:nowrap;
+  }
+  .favorites-card__unit{
+    margin-inline-start:4px;
+    color:var(--favorites-muted);
+    font-size:.68em;
+    font-weight:700;
+    letter-spacing:0;
+  }
+  .favorites-card__view{
+    display:inline-flex;
+    align-items:center;
+    flex:0 0 auto;
+    gap:7px;
+    min-height:34px;
+    padding:0 11px 0 13px;
+    color:#5542d7;
+    background:linear-gradient(108deg,rgba(125,89,242,.10),rgba(57,139,244,.10),rgba(53,211,236,.12));
+    border:1px solid rgba(109,104,229,.12);
+    border-radius:999px;
+    box-shadow:0 5px 14px rgba(102,86,222,.11),0 0 15px rgba(53,211,236,.09);
+    font-size:.78rem;
+    font-weight:790;
+    line-height:1;
+    white-space:nowrap;
+  }
+  .favorites-card__view .bi{font-size:1rem;}
+  .favorites-empty{
+    width:min(100%,520px);
+    margin:clamp(30px,8vw,70px) auto;
+    padding:34px 24px;
+    color:var(--favorites-ink);
+    background:rgba(255,255,255,.9);
+    border:1px solid rgba(95,104,160,.13);
+    border-radius:24px;
+    box-shadow:0 12px 30px rgba(41,48,100,.08);
+    text-align:center;
+  }
+  .favorites-empty__heart{
+    display:grid;
+    width:54px;
+    height:54px;
+    margin:0 auto 15px;
+    place-items:center;
+    color:#ec3e62;
+    background:linear-gradient(135deg,rgba(131,84,243,.12),rgba(28,199,233,.12));
+    border:1px solid rgba(111,95,232,.13);
+    border-radius:50%;
+    box-shadow:0 7px 18px rgba(94,83,206,.10);
+    font-size:1.35rem;
+  }
+  .favorites-empty h2{margin:0;color:var(--favorites-ink);font-size:1.18rem;font-weight:850;letter-spacing:-.03em;}
+  .favorites-empty p{margin:7px 0 18px;color:var(--favorites-muted);font-size:.9rem;line-height:1.5;}
+  .favorites-empty a{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    min-height:38px;
+    padding:0 14px;
+    color:#5542d7;
+    background:rgba(117,88,238,.08);
+    border:1px solid rgba(109,104,229,.14);
+    border-radius:999px;
+    font-size:.84rem;
+    font-weight:790;
+    text-decoration:none;
+  }
+  .favorites-empty a:focus-visible{outline:3px solid rgba(57,139,244,.48);outline-offset:3px;}
 
-  /* ===== الحاسوب: أفقي ===== */
-  @media (min-width:992px){
-    .favorites-grid{
-      flex-direction:row;
-      gap:18px;
-      overflow-x:auto;
-      scroll-snap-type:x mandatory;
-      -webkit-overflow-scrolling:touch;
-      padding:6px 16px 24px;
-    }
-    .favorites-grid .sim-card{
-      flex:0 0 300px;
-      max-width:300px;
-      scroll-snap-align:start;
+  @media (hover:hover){
+    .favorites-card:hover{transform:translateY(-2px);box-shadow:0 17px 35px rgba(41,48,100,.12),0 1px 0 rgba(255,255,255,.9) inset;}
+    .favorites-card__favorite:hover{transform:scale(1.045);box-shadow:0 9px 20px rgba(34,44,92,.20),0 0 20px rgba(119,87,240,.20);}
+    .favorites-empty a:hover{background:rgba(117,88,238,.13);}
+  }
+  @media (min-width:680px){
+    .favorites-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}
+  }
+  @media (min-width:1120px){
+    .favorites-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;}
+  }
+  @media (min-width:1640px){
+    .favorites-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+  }
+  @media (max-width:360px){
+    body[data-path="/favorites"] .page{padding-inline:12px !important;}
+    .favorites-page__heart{flex-basis:46px;width:46px;height:46px;font-size:1.14rem;}
+    .favorites-page__identity{gap:10px;}
+    .favorites-card{padding:8px;border-radius:21px;}
+    .favorites-card__media{border-radius:15px;}
+    .favorites-card__favorite{right:9px;bottom:9px;width:42px;height:42px;font-size:1.12rem;}
+    .favorites-card__content{padding:11px 3px 2px;}
+    .favorites-card__bottom{gap:8px;margin-top:13px;}
+    .favorites-card__view{min-height:32px;padding-inline:10px;font-size:.73rem;}
+  }
+  @media (max-width:768px){
+    body[data-path="/favorites"] :is(header.topbar,.m-top-tabs,.notif-panels,.search-wrapper,.page-header,.stripe-banner,.connect-banner,.earnings-banner,.payout-warning,.stripe-connect-box){display:none !important;}
+    body[data-path="/favorites"] .page{
+      padding:calc(17px + env(safe-area-inset-top,0px)) 16px calc(104px + env(safe-area-inset-bottom,0px)) !important;
     }
   }
-
-  .favorites-grid::-webkit-scrollbar{height:8px;}
-  .favorites-grid::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;}
-
-  @media (max-width: 768px) {
-    header.topbar,
-    .m-top-tabs,
-    .notif-panels,
-    .search-wrapper,
-    .page-header {
-        display: none !important;
+  @supports (-webkit-touch-callout:none){
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse){
+      body[data-path="/favorites"] :is(header.topbar,.m-top-tabs.d-lg-none,.notif-panels,.search-wrapper,.page-header,.stripe-banner,.connect-banner,.earnings-banner,.payout-warning,.stripe-connect-box){display:none !important;}
+      body[data-path="/favorites"] .page{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px)) !important;}
     }
-    body.has-tabbar{
-        padding-top: 0 !important;
-    }
-}
-
+  }
+  @media (prefers-reduced-motion:reduce){
+    .favorites-card,
+    .favorites-card__favorite{transition:none;}
+  }
 </style>
-
-<style>
-  @media (max-width: 768px) {
-    /* إخفاء Banner Stripe Connect في الهاتف فقط */
-    .stripe-banner, 
-    .connect-banner,
-    .earnings-banner {
-        display: none !important;
-    }
-    
-    /* إخفاء أي كارد مشابه */
-    .alert,
-    .payout-warning,
-    .stripe-connect-box {
-        display: none !important;
-    }
-  }
-</style>
-
-<style>
-/* iPad: preserve the full-width mobile favorites list instead of desktop rails. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    body[data-path="/favorites"] header.topbar,
-    body[data-path="/favorites"] .m-top-tabs.d-lg-none,
-    body[data-path="/favorites"] .notif-panels,
-    body[data-path="/favorites"] .search-wrapper,
-    body[data-path="/favorites"] .page-header,
-    body[data-path="/favorites"] .stripe-banner,
-    body[data-path="/favorites"] .connect-banner,
-    body[data-path="/favorites"] .earnings-banner,
-    body[data-path="/favorites"] .payout-warning,
-    body[data-path="/favorites"] .stripe-connect-box{
-      display:none !important;
-    }
-    body[data-path="/favorites"]{padding-top:env(safe-area-inset-top,0px);}
-    .favorites-grid{
-      display:flex !important;
-      flex-direction:column !important;
-      width:100%;
-      max-width:980px;
-      margin-inline:auto;
-      gap:20px !important;
-      overflow:visible !important;
-      padding:8px 20px calc(132px + env(safe-area-inset-bottom,0px)) !important;
-    }
-    .favorites-grid .sim-card{
-      flex:0 0 auto !important;
-      width:100% !important;
-      max-width:100% !important;
-      scroll-snap-align:none !important;
-    }
-    @media (orientation:landscape){
-      .favorites-grid{max-width:1100px;padding-inline:28px !important;}
-    }
-  }
-}
-</style>
-
 {% endblock %}
 
 {% block content %}
-<h4 class="mb-3">❤️ My Favorites</h4>
+<section class="favorites-page" aria-labelledby="favoritesTitle">
+  <header class="favorites-page__header">
+    <div class="favorites-page__identity">
+      <span class="favorites-page__heart" aria-hidden="true"><i class="bi bi-heart-fill"></i></span>
+      <div class="favorites-page__copy">
+        <h1 class="favorites-page__title" id="favoritesTitle">My Favorites</h1>
+        <p class="favorites-page__subtitle">Items you saved for later</p>
+      </div>
+    </div>
+  </header>
 
-{% if items and items|length > 0 %}
-  <div class="favorites-grid">
+  <div class="favorites-grid" data-favorites-grid{% if not items %} hidden{% endif %} aria-label="Saved items">
     {% for s in items %}
-
       {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
                       else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
                       else s.image_path)) %}
-      {% if cover and not (cover.startswith('http') or cover.startswith('/')) %}
-        {% set cover = '/' ~ cover %}
-      {% endif %}
+      <article class="favorites-card" data-favorite-card>
+        <a class="favorites-card__details-link" href="/items/{{ s.id }}" aria-label="View details for {{ s.title }}"></a>
+        <div class="favorites-card__media">
+          <img class="favorites-card__image"
+               src="{{ cover|media_url if cover else url_for('static', path='placeholder.png') }}"
+               alt="{{ s.title|e }}"
+               width="1280"
+               height="720"
+               {% if loop.index <= 2 %}fetchpriority="high"{% else %}loading="lazy"{% endif %}
+               decoding="async"
+               onerror="this.onerror=null;this.src='{{ url_for('static', path='placeholder.png') }}';">
 
-      <a class="sim-card" href="/items/{{ s.id }}">
-        <div class="sim-media">
-          <img class="sim-img"
-               src="{{ cover or url_for('static', path='placeholder.png') }}"
-               alt="{{ s.title|e }}">
+          {% if s.category %}
+            <span class="favorites-card__badge favorites-card__badge--category">{{ category_label(s.category) }}</span>
+          {% endif %}
+          {% if s.rating is not none and (s.rating_count|default(0)) > 0 %}
+            <span class="favorites-card__badge favorites-card__badge--rating" aria-label="{{ '%.1f'|format(s.rating) }} out of 5 from {{ s.rating_count }} reviews"><i class="bi bi-star-fill" aria-hidden="true"></i><span>{{ '%.1f'|format(s.rating) }}</span></span>
+          {% endif %}
 
-          <div class="sim-chip">{{ category_label(s.category) }}</div>
-
-          <div class="sim-rate">
-            <span class="star">★</span>{{ '%.1f'|format(s.rating) }}
-          </div>
+          <button class="favorites-card__favorite js-fav is-favorite"
+                  type="button"
+                  data-item-id="{{ s.id }}"
+                  aria-pressed="true"
+                  aria-label="Remove from favorites"
+                  title="Remove from favorites">
+            <i class="bi bi-heart-fill" aria-hidden="true"></i>
+          </button>
         </div>
 
-        <div class="sim-body">
-          <div class="sim-title">{{ s.title }}</div>
-          <div class="sim-sub">{{ s.city or '—' }}</div>
-
-          <hr class="sim-cut">
-
-          <div class="sim-price-row">
-            <div class="sim-price-now">
-              {{ s.display_price }} {{ s.display_currency }}
-              <span class="sim-unit">/ day</span>
-            </div>
+        <div class="favorites-card__content">
+          <h2 class="favorites-card__title">{{ s.title }}</h2>
+          {% if s.city %}
+            <p class="favorites-card__location"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>{{ s.city }}</span></p>
+          {% endif %}
+          <div class="favorites-card__bottom">
+            <div class="favorites-card__price">{{ s.display_price }} {{ s.display_currency }} <span class="favorites-card__unit">/ day</span></div>
+            <span class="favorites-card__view" aria-hidden="true">View details <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
           </div>
         </div>
-      </a>
-
+      </article>
     {% endfor %}
   </div>
 
-{% else %}
-  <div class="empty-box">
-    <img src="{{ url_for('static', path='photo/son.png') }}">
-  </div>
-{% endif %}
+  <section class="favorites-empty" data-favorites-empty{% if items %} hidden{% endif %} aria-labelledby="favoritesEmptyTitle">
+    <div class="favorites-empty__heart" aria-hidden="true"><i class="bi bi-heart"></i></div>
+    <h2 id="favoritesEmptyTitle">No saved items yet</h2>
+    <p>Items you save will appear here.</p>
+    <a href="/items">Explore listings <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+  </section>
+  <p class="visually-hidden" data-favorites-status aria-live="polite"></p>
+</section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(function () {
-  async function toggleFav(el){
-    const id = el.dataset.itemId;
-    const icon = el.querySelector('i');
-    const wasFilled = icon.classList.contains('bi-heart-fill');
+(() => {
+  const shell = document.querySelector('.favorites-page');
+  if (!shell) return;
 
-    icon.classList.toggle('bi-heart-fill', !wasFilled);
-    icon.classList.toggle('bi-heart', wasFilled);
-    el.classList.toggle('on', !wasFilled);
-    el.setAttribute('aria-pressed', String(!wasFilled));
+  const grid = shell.querySelector('[data-favorites-grid]');
+  const emptyState = shell.querySelector('[data-favorites-empty]');
+  const status = shell.querySelector('[data-favorites-status]');
+  const announce = (message) => { if (status) status.textContent = message; };
 
-    try{
-      let res = await fetch(`/api/favorites/${id}`, {
-        method: wasFilled ? 'DELETE' : 'POST',
+  const revealEmptyState = () => {
+    if (!grid || grid.querySelector('[data-favorite-card]')) return;
+    grid.hidden = true;
+    if (emptyState) emptyState.hidden = false;
+  };
+
+  const removeFavorite = async (button) => {
+    if (button.disabled) return;
+    const itemId = button.dataset.itemId;
+    const card = button.closest('[data-favorite-card]');
+    if (!itemId || !card) return;
+
+    button.disabled = true;
+    try {
+      const response = await fetch(`/api/favorites/${encodeURIComponent(itemId)}`, {
+        method: 'DELETE',
         credentials: 'same-origin'
       });
-      if (!res.ok) throw new Error();
-    }catch{
-      icon.classList.toggle('bi-heart-fill', wasFilled);
-      icon.classList.toggle('bi-heart', !wasFilled);
-      el.classList.toggle('on', wasFilled);
-      el.setAttribute('aria-pressed', String(wasFilled));
-    }
-  }
+      if (!response.ok && response.status !== 404) throw new Error('Favorite update failed');
 
-  document.addEventListener('click', e=>{
-    const fav = e.target.closest('.js-fav');
-    if(!fav) return;
-    e.preventDefault();
-    e.stopPropagation();
-    toggleFav(fav);
+      button.setAttribute('aria-pressed', 'false');
+      card.classList.add('is-removing');
+      announce('Item removed from favorites.');
+      window.setTimeout(() => {
+        card.remove();
+        revealEmptyState();
+      }, 180);
+    } catch (_) {
+      button.disabled = false;
+      announce('Could not update favorites. Please try again.');
+    }
+  };
+
+  shell.addEventListener('click', (event) => {
+    const button = event.target.closest('.favorites-card__favorite.js-fav');
+    if (!button || !shell.contains(button)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    removeFavorite(button);
   });
 })();
 </script>

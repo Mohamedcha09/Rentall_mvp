@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from .database import get_db
-from .models import User, Item, Favorite, FxRate
+from .models import User, Item, Favorite, FxRate, ItemReview
 from .utils import category_label
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
@@ -101,6 +101,27 @@ def favorites_page(request: Request, db: Session = Depends(get_db), user: Option
         if it:
             items.append(it)
 
+    # Read all real item review aggregates in one query for the presentation
+    # layer.  A listing without reviews intentionally has no rating badge.
+    ratings_by_item_id = {}
+    item_ids = [it.id for it in items]
+    if item_ids:
+        rating_rows = (
+            db.query(
+                ItemReview.item_id,
+                func.avg(ItemReview.stars).label("avg_stars"),
+                func.count(ItemReview.id).label("rating_count"),
+            )
+            .filter(ItemReview.item_id.in_(item_ids))
+            .group_by(ItemReview.item_id)
+            .all()
+        )
+        ratings_by_item_id = {
+            row.item_id: (float(row.avg_stars), int(row.rating_count or 0))
+            for row in rating_rows
+            if row.avg_stars is not None and row.rating_count
+        }
+
     session_user = request.session.get("user") or {}
     if session_user.get("display_currency"):
         user_cur = session_user["display_currency"]
@@ -113,6 +134,7 @@ def favorites_page(request: Request, db: Session = Depends(get_db), user: Option
     for it in items:
         base = it.currency or "CAD"
         amount = getattr(it, "price_per_day", None) or getattr(it, "price", 0)
+        rating, rating_count = ratings_by_item_id.get(it.id, (None, 0))
 
         enriched.append({
             "id": it.id,
@@ -120,7 +142,8 @@ def favorites_page(request: Request, db: Session = Depends(get_db), user: Option
             "image_path": it.image_path,
             "city": it.city,
             "category": it.category,
-            "rating": getattr(it, "avg_stars", None) or getattr(it, "rating_avg", None) or 4.8,
+            "rating": rating,
+            "rating_count": rating_count,
             "display_price": fx_convert(amount, base, user_cur, fx),
             "display_currency": user_cur,
         })
