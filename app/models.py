@@ -330,8 +330,9 @@ class MessageAttachment(Base):
     stored_name = Column(String(96), nullable=False, unique=True)
     content_type = Column(String(100), nullable=False)
     size_bytes = Column(Integer, nullable=False)
-    # Browser-derived duration is display metadata only.  Playback always
-    # uses the persisted, validated audio file after a refresh.
+    # Reserved for future server-side media inspection.  The current UI derives
+    # duration from the persisted audio file in the native player rather than
+    # trusting browser-supplied metadata.
     duration_ms = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 

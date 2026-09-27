@@ -800,7 +800,7 @@
                       </button>
                     {% elif attachment.kind == 'voice' %}
                       <div class="conversation-voice">
-                        <audio controls preload="metadata" src="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" data-voice-duration="{{ attachment.duration_ms or '' }}" aria-label="Voice message"></audio>
+                        <audio controls preload="metadata" src="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" aria-label="Voice message"></audio>
                         <span class="conversation-voice__duration" aria-label="Voice message duration">{% if attachment.duration_ms %}{{ '%d:%02d'|format((attachment.duration_ms // 60000), ((attachment.duration_ms // 1000) % 60)) }}{% endif %}</span>
                       </div>
                     {% else %}
@@ -845,7 +845,6 @@
       <label class="visually-hidden" for="conversationMessage">Message</label>
       <input type="hidden" name="csrf_token" id="conversationCsrf" value="{{ csrf_token }}">
       <input type="hidden" name="client_message_id" id="conversationClientMessageId" value="{{ client_message_id }}">
-      <input type="hidden" name="voice_duration_ms" id="conversationVoiceDuration" value="">
       <input id="conversationAttachmentInput" type="file" name="attachments" multiple accept="{{ attachment_accept }}" hidden>
       <div id="conversationComposerPreviews" class="conversation-composer__previews" hidden aria-live="polite"></div>
       <div id="conversationRecording" class="conversation-recording" hidden aria-live="polite">
@@ -888,7 +887,6 @@
     const recordingStop = document.getElementById('conversationRecordingStop');
     const csrfInput = document.getElementById('conversationCsrf');
     const clientMessageIdInput = document.getElementById('conversationClientMessageId');
-    const voiceDurationInput = document.getElementById('conversationVoiceDuration');
     const errorMessage = document.getElementById('composerError');
     const typingMount = document.getElementById('typingMount');
     const presenceElement = document.getElementById('conversationPresence');
@@ -1045,7 +1043,6 @@
         audio.controls = true;
         audio.preload = 'metadata';
         audio.src = attachment.url || '';
-        audio.dataset.voiceDuration = attachment.duration_ms || '';
         audio.setAttribute('aria-label', 'Voice message');
         const duration = document.createElement('span');
         duration.className = 'conversation-voice__duration';
@@ -1259,7 +1256,6 @@
           if (isVoice) {
             pendingVoiceFile = null;
             pendingVoiceDuration = 0;
-            if (voiceDurationInput) voiceDurationInput.value = '';
           } else {
             selectedAttachments.splice(index, 1);
           }
@@ -1329,7 +1325,6 @@
       probe.addEventListener('loadedmetadata', () => {
         if (Number.isFinite(probe.duration) && probe.duration > 0) {
           pendingVoiceDuration = Math.round(probe.duration * 1000);
-          if (voiceDurationInput) voiceDurationInput.value = String(pendingVoiceDuration);
         }
         renderPreviews();
       }, { once: true });
@@ -1435,7 +1430,6 @@
       selectedAttachments.forEach((file) => requestData.append('attachments', file, file.name));
       if (pendingVoiceFile) {
         requestData.set('voice', pendingVoiceFile, pendingVoiceFile.name);
-        requestData.set('voice_duration_ms', String(pendingVoiceDuration || ''));
       }
       fetch(`/messages/${threadId}`, { method: 'POST', headers: { Accept: 'application/json' }, body: requestData })
         .then(async (response) => {
@@ -1471,7 +1465,6 @@
           selectedAttachments = [];
           pendingVoiceFile = null;
           pendingVoiceDuration = 0;
-          if (voiceDurationInput) voiceDurationInput.value = '';
           renderPreviews();
           clientMessageIdInput.value = createClientMessageId();
           stopTyping();
