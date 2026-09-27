@@ -66,12 +66,16 @@
   }
   .booking-new__thumbnail,
   .booking-new__thumbnail-fallback{
-    flex:0 0 auto;
     width:48px;
     height:48px;
     border-radius:16px;
     border:1px solid rgba(99,90,184,.14);
     box-shadow:0 7px 17px rgba(57,70,125,.10);
+  }
+  .booking-new__thumbnail-wrap{
+    flex:0 0 auto;
+    width:48px;
+    height:48px;
   }
   .booking-new__thumbnail{ object-fit:cover; background:#eef0fb; }
   .booking-new__thumbnail-fallback{
@@ -457,14 +461,17 @@
     </a>
     <div class="booking-new__product">
       {% if booking_cover %}
-        <img
-          class="booking-new__thumbnail"
-          src="{{ booking_image_src(booking_cover) }}"
-          width="48"
-          height="48"
-          alt=""
-          decoding="async"
-          onerror="this.onerror=null;this.src='/static/placeholder.png'">
+        <span class="booking-new__thumbnail-wrap">
+          <img
+            class="booking-new__thumbnail"
+            src="{{ booking_image_src(booking_cover) }}"
+            width="48"
+            height="48"
+            alt=""
+            decoding="async"
+            onerror="this.onerror=null;this.hidden=true;this.nextElementSibling.hidden=false">
+          <span class="booking-new__thumbnail-fallback" aria-hidden="true" hidden><i class="bi bi-box-seam"></i></span>
+        </span>
       {% else %}
         <span class="booking-new__thumbnail-fallback" aria-hidden="true"><i class="bi bi-box-seam"></i></span>
       {% endif %}
@@ -727,7 +734,10 @@
     } else if (rangeHasConflict(startDate, iso)) {
       endDate = '';
       activeField = 'end';
+      syncForm();
       setFeedback('These dates aren’t available. Please choose another period.');
+      renderCalendar();
+      return;
     } else {
       endDate = iso;
     }
