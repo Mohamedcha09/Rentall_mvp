@@ -148,12 +148,12 @@
 
   .conversation-item-context{
     display:grid;
-    grid-template-columns:64px minmax(0,1fr) auto;
+    grid-template-columns:56px minmax(0,1fr) auto;
     align-items:center;
-    gap:12px;
+    gap:10px;
     min-width:0;
     margin:12px 16px 0;
-    padding:9px;
+    padding:8px;
     color:inherit;
     background:rgba(255,255,255,.95);
     border:1px solid rgba(84,68,146,.11);
@@ -166,11 +166,13 @@
   .conversation-item-context:hover{ border-color:rgba(101,78,196,.21); box-shadow:0 11px 24px rgba(43,34,83,.085); transform:translateY(-1px); }
   .conversation-item-context:active{ transform:scale(.995); }
   .conversation-item-context__image{
-    width:64px;
-    height:64px;
+    display:block;
+    width:56px;
+    height:56px;
+    aspect-ratio:1 / 1;
     object-fit:cover;
     background:#eceffa;
-    border-radius:14px;
+    border-radius:13px;
   }
   .conversation-item-context__body{ min-width:0; }
   .conversation-item-context__title{
@@ -187,7 +189,7 @@
   .conversation-item-context__meta{
     display:block;
     overflow:hidden;
-    margin-top:5px;
+    margin-top:3px;
     color:#807a91;
     font-size:.82rem;
     font-weight:600;
@@ -347,15 +349,76 @@
     white-space:nowrap;
   }
   .conversation-attachment-file__meta{ display:block; margin-top:2px; font-size:.7rem; opacity:.78; }
-  .conversation-voice{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    gap:7px;
+  .conversation-voice{ position:relative; min-width:0; }
+  .conversation-voice audio{ width:min(100%,250px); height:34px; }
+  .conversation-voice__player{
+    display:none;
     align-items:center;
+    gap:7px;
+    width:min(100%,255px);
     min-width:0;
   }
-  .conversation-voice audio{ width:min(100%,250px); height:34px; }
+  .conversation-voice[data-enhanced="true"] .conversation-voice__audio{
+    position:absolute;
+    width:1px;
+    height:1px;
+    overflow:hidden;
+    clip:rect(0 0 0 0);
+    clip-path:inset(50%);
+    white-space:nowrap;
+  }
+  .conversation-voice[data-enhanced="true"] .conversation-voice__duration{ display:none; }
+  .conversation-voice[data-enhanced="true"] .conversation-voice__player{ display:flex; }
+  .conversation-voice__toggle{
+    display:inline-grid;
+    place-items:center;
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    padding:0;
+    color:#6554d8;
+    background:rgba(105,83,208,.12);
+    border:0;
+    border-radius:50%;
+    cursor:pointer;
+  }
+  .conversation-voice__toggle:focus-visible{ outline:3px solid rgba(91,141,244,.33); outline-offset:2px; }
+  .conversation-voice__wave-wrap{ position:relative; flex:1 1 auto; min-width:58px; height:28px; }
+  .conversation-voice__wave{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    gap:2px;
+    overflow:hidden;
+  }
+  .conversation-voice__bar{
+    display:block;
+    width:3px;
+    min-height:4px;
+    flex:1 1 0;
+    height:var(--voice-bar-height, 40%);
+    background:rgba(101,84,216,.28);
+    border-radius:999px;
+    transition:background .12s linear, opacity .12s linear;
+  }
+  .conversation-voice__bar.is-played{ background:#6655d8; }
+  .conversation-voice__seek{
+    position:absolute;
+    inset:0;
+    z-index:1;
+    width:100%;
+    height:100%;
+    margin:0;
+    opacity:0;
+    cursor:pointer;
+  }
+  .conversation-voice__current,
   .conversation-voice__duration{ color:inherit; font-size:.7rem; font-variant-numeric:tabular-nums; opacity:.82; }
+  .conversation-voice__current{ min-width:28px; text-align:right; }
+  .conversation-bubble--me .conversation-voice__toggle{ color:#fff; background:rgba(255,255,255,.2); }
+  .conversation-bubble--me .conversation-voice__bar{ background:rgba(255,255,255,.37); }
+  .conversation-bubble--me .conversation-voice__bar.is-played{ background:#fff; }
   .conversation-message__meta{
     display:flex;
     align-items:center;
@@ -533,40 +596,62 @@
   }
   .conversation-composer-preview__remove:hover{ color:#3c3552; background:rgba(91,78,157,.11); }
   .conversation-composer-preview--voice{
-    flex-wrap:wrap;
-    max-width:min(100%,330px);
+    flex:1 1 auto;
+    max-width:100%;
+    min-height:42px;
+    padding:5px;
   }
-  .conversation-composer-preview--voice audio{ width:min(210px,55vw); height:31px; }
+  .conversation-composer-preview--voice .conversation-composer-preview__remove{
+    order:-2;
+    margin-left:0;
+    color:#a54859;
+    background:rgba(202,75,94,.09);
+  }
+  .conversation-composer-preview--voice .conversation-voice__player{ order:-1; width:100%; }
+  .conversation-composer-preview--voice .conversation-voice__toggle{ width:29px; height:29px; flex-basis:29px; }
   .conversation-recording{
-    display:flex;
+    display:grid;
+    grid-template-columns:34px auto minmax(58px,1fr) 36px;
     align-items:center;
     gap:8px;
     min-width:0;
-    margin:0 0 9px;
-    padding:8px 10px;
+    min-height:47px;
+    margin:0;
+    padding:4px;
     color:#514966;
-    background:#f5f3fa;
+    background:#f5f5f9;
     border:1px solid rgba(91,78,157,.11);
-    border-radius:13px;
+    border-radius:17px;
     font-size:.78rem;
     font-weight:750;
   }
-  .conversation-recording__live{ display:inline-flex; align-items:center; gap:5px; color:#c84758; }
+  .conversation-composer[data-recording="true"] .conversation-composer__row,
+  .conversation-composer[data-recording="true"] .conversation-composer__previews{ display:none; }
+  .conversation-recording__live{ display:inline-flex; align-items:center; gap:5px; min-width:39px; color:#c84758; }
   .conversation-recording__dot{ width:7px; height:7px; background:#d4495b; border-radius:50%; }
   .conversation-recording__timer{ font-variant-numeric:tabular-nums; }
+  .conversation-recording__wave{
+    display:block;
+    width:100%;
+    height:31px;
+    min-width:0;
+  }
   .conversation-recording__action{
-    min-height:30px;
-    margin-left:auto;
-    padding:4px 8px;
-    color:#5f4fc0;
-    background:#fff;
-    border:1px solid rgba(91,78,157,.14);
-    border-radius:9px;
-    font:inherit;
-    font-size:.74rem;
+    display:inline-grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    padding:0;
+    color:#6554d8;
+    background:rgba(101,83,208,.1);
+    border:0;
+    border-radius:50%;
+    font-size:1rem;
     cursor:pointer;
   }
-  .conversation-recording__action + .conversation-recording__action{ margin-left:0; }
+  .conversation-recording__action--cancel{ color:#a54859; background:rgba(202,75,94,.09); }
+  .conversation-recording__action--stop{ width:36px; height:36px; color:#fff; background:linear-gradient(135deg,#8158eb 0%,#5894f4 100%); box-shadow:0 4px 10px rgba(91,70,201,.2); }
+  .conversation-recording__action:focus-visible{ outline:3px solid rgba(91,141,244,.33); outline-offset:2px; }
   .conversation-composer__input{
     box-sizing:border-box;
     flex:1 1 auto;
@@ -679,10 +764,10 @@
     .conversation-header{ gap:9px; min-height:68px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
     .conversation-back{ width:41px; height:41px; border-radius:14px; }
     .conversation-avatar{ width:43px; height:43px; flex-basis:43px; border-radius:15px; }
-    .conversation-item-context{ grid-template-columns:57px minmax(0,1fr) auto; gap:10px; margin-inline:12px; padding:8px; border-radius:17px; }
-    .conversation-item-context__image{ width:57px; height:57px; border-radius:12px; }
+    .conversation-item-context{ grid-template-columns:52px minmax(0,1fr) auto; gap:8px; margin-inline:12px; padding:7px; border-radius:16px; }
+    .conversation-item-context__image{ width:52px; height:52px; border-radius:12px; }
     .conversation-scroll{ padding:18px 12px 23px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
-    .conversation-message--me{ padding-left:8%; }
+    .conversation-message--me{ padding-left:8%; margin-right:4px; }
     .conversation-message--other{ padding-right:3%; }
     .conversation-message--other.conversation-message--continuation{ padding-left:38px; }
     .conversation-message__content{ max-width:84%; }
@@ -695,7 +780,7 @@
   @media (max-height:520px) and (orientation:landscape){
     .conversation-header{ min-height:58px; padding-top:8px; padding-bottom:8px; }
     .conversation-avatar{ width:40px; height:40px; flex-basis:40px; border-radius:13px; }
-    .conversation-item-context{ margin-top:8px; padding:7px; }
+    .conversation-item-context{ grid-template-columns:49px minmax(0,1fr) auto; margin-top:8px; padding:7px; }
     .conversation-item-context__image{ width:49px; height:49px; }
     .conversation-composer{ padding-top:8px; padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px)); }
     .conversation-composer__input,.conversation-send{ min-height:42px; height:42px; }
@@ -725,6 +810,11 @@
   [data-theme="dark"] .conversation-recording{ color:#e8e4f2; background:#2a2b42; border-color:rgba(255,255,255,.1); }
   [data-theme="dark"] .conversation-composer-preview__remove,
   [data-theme="dark"] .conversation-recording__action{ color:#d8d0ff; background:#202136; }
+  [data-theme="dark"] .conversation-recording__action--cancel{ color:#ffb5c0; background:rgba(226,91,111,.13); }
+  [data-theme="dark"] .conversation-recording__action--stop{ color:#fff; background:linear-gradient(135deg,#8158eb 0%,#5894f4 100%); }
+  [data-theme="dark"] .conversation-voice__toggle{ color:#d8d0ff; background:rgba(216,208,255,.13); }
+  [data-theme="dark"] .conversation-voice__bar{ background:rgba(216,208,255,.28); }
+  [data-theme="dark"] .conversation-voice__bar.is-played{ background:#a8c7ff; }
 
   @media (prefers-reduced-motion:reduce){
     .page--focused-conversation *, .page--focused-conversation *::before, .page--focused-conversation *::after{
@@ -800,7 +890,7 @@
                       </button>
                     {% elif attachment.kind == 'voice' %}
                       <div class="conversation-voice">
-                        <audio controls preload="metadata" src="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" aria-label="Voice message"></audio>
+                        <audio class="conversation-voice__audio" controls preload="metadata" src="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" aria-label="Voice message"></audio>
                         <span class="conversation-voice__duration" aria-label="Voice message duration">{% if attachment.duration_ms %}{{ '%d:%02d'|format((attachment.duration_ms // 60000), ((attachment.duration_ms // 1000) % 60)) }}{% endif %}</span>
                       </div>
                     {% else %}
@@ -847,11 +937,12 @@
       <input type="hidden" name="client_message_id" id="conversationClientMessageId" value="{{ client_message_id }}">
       <input id="conversationAttachmentInput" type="file" name="attachments" multiple accept="{{ attachment_accept }}" hidden>
       <div id="conversationComposerPreviews" class="conversation-composer__previews" hidden aria-live="polite"></div>
-      <div id="conversationRecording" class="conversation-recording" hidden aria-live="polite">
-        <span class="conversation-recording__live"><span class="conversation-recording__dot" aria-hidden="true"></span>Recording</span>
-        <span id="conversationRecordingTimer" class="conversation-recording__timer">00:00</span>
-        <button id="conversationRecordingCancel" class="conversation-recording__action" type="button">Cancel</button>
-        <button id="conversationRecordingStop" class="conversation-recording__action" type="button">Stop</button>
+      <div id="conversationRecording" class="conversation-recording" hidden>
+        <button id="conversationRecordingCancel" class="conversation-recording__action conversation-recording__action--cancel" type="button" aria-label="Discard voice recording" title="Discard recording"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+        <span class="conversation-recording__live" aria-label="Recording voice message"><span class="conversation-recording__dot" aria-hidden="true"></span><span id="conversationRecordingTimer" class="conversation-recording__timer">0:00</span></span>
+        <canvas id="conversationRecordingWave" class="conversation-recording__wave" aria-hidden="true"></canvas>
+        <button id="conversationRecordingStop" class="conversation-recording__action conversation-recording__action--stop" type="button" aria-label="Stop and preview voice recording" title="Stop and preview"><i class="bi bi-stop-fill" aria-hidden="true"></i></button>
+        <span class="visually-hidden">Recording voice message</span>
       </div>
       <div class="conversation-composer__row">
         <button id="conversationAttachmentButton" class="conversation-composer__media" type="button" aria-label="Attach image or file" title="Attach image or file"><i class="bi bi-paperclip" aria-hidden="true"></i></button>
@@ -883,6 +974,7 @@
     const previews = document.getElementById('conversationComposerPreviews');
     const recording = document.getElementById('conversationRecording');
     const recordingTimer = document.getElementById('conversationRecordingTimer');
+    const recordingWave = document.getElementById('conversationRecordingWave');
     const recordingCancel = document.getElementById('conversationRecordingCancel');
     const recordingStop = document.getElementById('conversationRecordingStop');
     const csrfInput = document.getElementById('conversationCsrf');
@@ -912,6 +1004,12 @@
     let recordingStartedAt = 0;
     let recordingInterval = null;
     let discardRecording = false;
+    let recordingAudioContext = null;
+    let recordingAudioSource = null;
+    let recordingAnalyser = null;
+    let recordingWaveFrame = null;
+    let recordingWaveData = null;
+    let recordingWaveLastDrawAt = 0;
     let typingLastSentAt = 0;
 
     if (!chatBox || !form || !input || !sendButton || !typingMount || !attachmentInput || !attachmentButton || !voiceButton) return;
@@ -954,7 +1052,9 @@
     const updateSendState = () => {
       sendButton.disabled = isSending || (!input.value.trim() && !hasPendingMedia());
       attachmentButton.disabled = isSending || Boolean(activeRecorder) || Boolean(pendingVoiceFile);
-      voiceButton.disabled = isSending || Boolean(activeRecorder) || selectedAttachments.length > 0;
+      voiceButton.disabled = isSending || Boolean(activeRecorder) || selectedAttachments.length > 0 || Boolean(pendingVoiceFile);
+      if (activeRecorder) form.dataset.recording = 'true';
+      else delete form.dataset.recording;
     };
 
     const makeAvatar = () => {
@@ -1016,7 +1116,117 @@
       };
       audio.addEventListener('loadedmetadata', update, { once: true });
       if (audio.readyState >= 1) update();
-      if (audio.readyState >= 1) update();
+    };
+
+    const voiceBarLevels = [32, 53, 71, 43, 61, 35, 76, 49, 28, 66, 44, 83, 38, 58, 29, 72, 47, 63];
+    const makeVoiceBars = () => {
+      const waveform = document.createElement('span');
+      waveform.className = 'conversation-voice__wave';
+      waveform.setAttribute('aria-hidden', 'true');
+      voiceBarLevels.forEach((level) => {
+        const bar = document.createElement('i');
+        bar.className = 'conversation-voice__bar';
+        bar.style.setProperty('--voice-bar-height', `${level}%`);
+        waveform.appendChild(bar);
+      });
+      return waveform;
+    };
+    const setVoiceToggleState = (button, isPlaying) => {
+      if (!button) return;
+      button.setAttribute('aria-label', isPlaying ? 'Pause voice message' : 'Play voice message');
+      button.title = isPlaying ? 'Pause' : 'Play';
+      const icon = button.querySelector('i');
+      if (icon) icon.className = `bi ${isPlaying ? 'bi-pause-fill' : 'bi-play-fill'}`;
+    };
+    const enhanceVoicePlayer = (voice) => {
+      if (!voice || voice.dataset.enhanced === 'true') return;
+      const audio = voice.querySelector('audio');
+      const durationLabel = voice.querySelector('.conversation-voice__duration');
+      if (!audio || !durationLabel) return;
+
+      const player = document.createElement('div');
+      player.className = 'conversation-voice__player';
+      const toggle = document.createElement('button');
+      toggle.className = 'conversation-voice__toggle';
+      toggle.type = 'button';
+      const toggleIcon = document.createElement('i');
+      toggleIcon.className = 'bi bi-play-fill';
+      toggleIcon.setAttribute('aria-hidden', 'true');
+      toggle.appendChild(toggleIcon);
+      const waveWrap = document.createElement('span');
+      waveWrap.className = 'conversation-voice__wave-wrap';
+      const waveform = makeVoiceBars();
+      const seek = document.createElement('input');
+      seek.className = 'conversation-voice__seek';
+      seek.type = 'range';
+      seek.min = '0';
+      seek.max = '100';
+      seek.value = '0';
+      seek.step = '0.01';
+      seek.setAttribute('aria-label', 'Voice playback position');
+      waveWrap.append(waveform, seek);
+      const current = document.createElement('span');
+      current.className = 'conversation-voice__current';
+      current.textContent = durationLabel.textContent || '0:00';
+      player.append(toggle, waveWrap, current);
+      voice.appendChild(player);
+
+      const update = () => {
+        const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+        const position = duration ? Math.min(Math.max(audio.currentTime || 0, 0), duration) : 0;
+        seek.max = String(duration || 100);
+        seek.value = String(position);
+        if (duration) durationLabel.textContent = formatDuration(duration * 1000);
+        current.textContent = duration ? formatDuration((audio.paused ? duration : position) * 1000) : (durationLabel.textContent || '0:00');
+        const progress = duration ? position / duration : 0;
+        waveform.querySelectorAll('.conversation-voice__bar').forEach((bar, index, bars) => {
+          bar.classList.toggle('is-played', progress >= (index + 1) / bars.length);
+        });
+        setVoiceToggleState(toggle, !audio.paused);
+      };
+      toggle.addEventListener('click', () => {
+        if (audio.paused) audio.play().catch(() => {});
+        else audio.pause();
+      });
+      seek.addEventListener('input', () => {
+        const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+        if (!duration) return;
+        audio.currentTime = Math.min(Math.max(Number(seek.value) || 0, 0), duration);
+        update();
+      });
+      ['loadedmetadata', 'durationchange', 'timeupdate', 'play', 'pause', 'ended'].forEach((eventName) => audio.addEventListener(eventName, update));
+      bindVoiceDuration(audio, durationLabel);
+      audio.addEventListener('error', () => {
+        // Keep the native control as an accessible fallback if a browser
+        // cannot initialize the enhanced player for this particular file.
+        voice.dataset.enhanced = 'fallback';
+        audio.controls = true;
+        audio.tabIndex = 0;
+        audio.removeAttribute('aria-hidden');
+      }, { once: true });
+      audio.controls = false;
+      audio.tabIndex = -1;
+      audio.setAttribute('aria-hidden', 'true');
+      voice.dataset.enhanced = 'true';
+      update();
+    };
+
+    const createVoiceElement = (source, initialDuration) => {
+      const voice = document.createElement('div');
+      voice.className = 'conversation-voice';
+      const audio = document.createElement('audio');
+      audio.className = 'conversation-voice__audio';
+      audio.controls = true;
+      audio.preload = 'metadata';
+      audio.src = source || '';
+      audio.setAttribute('aria-label', 'Voice message');
+      const duration = document.createElement('span');
+      duration.className = 'conversation-voice__duration';
+      duration.setAttribute('aria-label', 'Voice message duration');
+      if (initialDuration) duration.textContent = formatDuration(initialDuration);
+      voice.append(audio, duration);
+      enhanceVoicePlayer(voice);
+      return voice;
     };
 
     const createAttachmentElement = (attachment) => {
@@ -1037,19 +1247,7 @@
         return button;
       }
       if (kind === 'voice') {
-        const voice = document.createElement('div');
-        voice.className = 'conversation-voice';
-        const audio = document.createElement('audio');
-        audio.controls = true;
-        audio.preload = 'metadata';
-        audio.src = attachment.url || '';
-        audio.setAttribute('aria-label', 'Voice message');
-        const duration = document.createElement('span');
-        duration.className = 'conversation-voice__duration';
-        duration.setAttribute('aria-label', 'Voice message duration');
-        voice.append(audio, duration);
-        bindVoiceDuration(audio, duration);
-        return voice;
+        return createVoiceElement(attachment.url || '', attachment.duration_ms);
       }
       const link = document.createElement('a');
       link.className = 'conversation-attachment-file';
@@ -1218,6 +1416,41 @@
       const addPreview = (file, index, isVoice) => {
         const preview = document.createElement('div');
         preview.className = `conversation-composer-preview${isVoice ? ' conversation-composer-preview--voice' : ''}`;
+        if (isVoice) {
+          preview.classList.add('conversation-voice');
+          preview.setAttribute('aria-label', 'Voice message ready to send');
+          const remove = document.createElement('button');
+          remove.className = 'conversation-composer-preview__remove';
+          remove.type = 'button';
+          remove.setAttribute('aria-label', 'Discard voice message');
+          remove.title = 'Discard recording';
+          const removeIcon = document.createElement('i');
+          removeIcon.className = 'bi bi-trash3';
+          removeIcon.setAttribute('aria-hidden', 'true');
+          remove.appendChild(removeIcon);
+          remove.addEventListener('click', () => {
+            pendingVoiceFile = null;
+            pendingVoiceDuration = 0;
+            renderPreviews();
+            updateSendState();
+          });
+          const audio = document.createElement('audio');
+          audio.className = 'conversation-voice__audio';
+          audio.controls = true;
+          audio.preload = 'metadata';
+          const url = URL.createObjectURL(file);
+          previewObjectUrls.push(url);
+          audio.src = url;
+          audio.setAttribute('aria-label', 'Preview voice message');
+          const duration = document.createElement('span');
+          duration.className = 'conversation-voice__duration';
+          duration.setAttribute('aria-label', 'Voice message duration');
+          if (pendingVoiceDuration) duration.textContent = formatDuration(pendingVoiceDuration);
+          preview.append(remove, audio, duration);
+          enhanceVoicePlayer(preview);
+          previews.appendChild(preview);
+          return;
+        }
         const isImage = !isVoice && /^image\//.test(file.type || '');
         if (isImage) {
           const image = document.createElement('img');
@@ -1235,30 +1468,15 @@
         }
         const details = document.createElement('span');
         details.className = 'conversation-composer-preview__name';
-        details.textContent = isVoice ? `Voice message${pendingVoiceDuration ? ` · ${formatDuration(pendingVoiceDuration)}` : ''}` : file.name;
+        details.textContent = file.name;
         preview.appendChild(details);
-        if (isVoice) {
-          const audio = document.createElement('audio');
-          audio.controls = true;
-          audio.preload = 'metadata';
-          const url = URL.createObjectURL(file);
-          previewObjectUrls.push(url);
-          audio.src = url;
-          audio.setAttribute('aria-label', 'Preview voice message');
-          preview.appendChild(audio);
-        }
         const remove = document.createElement('button');
         remove.className = 'conversation-composer-preview__remove';
         remove.type = 'button';
-        remove.setAttribute('aria-label', `Remove ${isVoice ? 'voice message' : file.name}`);
+        remove.setAttribute('aria-label', `Remove ${file.name}`);
         remove.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
         remove.addEventListener('click', () => {
-          if (isVoice) {
-            pendingVoiceFile = null;
-            pendingVoiceDuration = 0;
-          } else {
-            selectedAttachments.splice(index, 1);
-          }
+          selectedAttachments.splice(index, 1);
           renderPreviews();
           updateSendState();
         });
@@ -1274,6 +1492,96 @@
       if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
       activeStream = null;
     };
+    const clearRecordingWave = () => {
+      if (!recordingWave) return;
+      const context = recordingWave.getContext('2d');
+      if (context) context.clearRect(0, 0, recordingWave.width, recordingWave.height);
+    };
+    const stopRecordingVisualizer = () => {
+      if (recordingWaveFrame) window.cancelAnimationFrame(recordingWaveFrame);
+      recordingWaveFrame = null;
+      recordingWaveLastDrawAt = 0;
+      try { if (recordingAudioSource) recordingAudioSource.disconnect(); } catch (_) {}
+      try { if (recordingAnalyser) recordingAnalyser.disconnect(); } catch (_) {}
+      const context = recordingAudioContext;
+      recordingAudioContext = null;
+      recordingAudioSource = null;
+      recordingAnalyser = null;
+      recordingWaveData = null;
+      if (context && context.state !== 'closed' && typeof context.close === 'function') context.close().catch(() => {});
+      clearRecordingWave();
+    };
+    const drawRecordingWave = (timestamp) => {
+      if (!recordingWave || !recordingAnalyser || !recordingWaveData) return;
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion && timestamp - recordingWaveLastDrawAt < 120) {
+        recordingWaveFrame = window.requestAnimationFrame(drawRecordingWave);
+        return;
+      }
+      recordingWaveLastDrawAt = timestamp;
+      const rect = recordingWave.getBoundingClientRect();
+      const cssWidth = Math.max(0, Math.floor(rect.width));
+      const cssHeight = Math.max(0, Math.floor(rect.height));
+      if (!cssWidth || !cssHeight) {
+        recordingWaveFrame = window.requestAnimationFrame(drawRecordingWave);
+        return;
+      }
+      const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+      const width = Math.floor(cssWidth * pixelRatio);
+      const height = Math.floor(cssHeight * pixelRatio);
+      if (recordingWave.width !== width || recordingWave.height !== height) {
+        recordingWave.width = width;
+        recordingWave.height = height;
+      }
+      const context = recordingWave.getContext('2d');
+      if (!context) return;
+      recordingAnalyser.getByteFrequencyData(recordingWaveData);
+      context.clearRect(0, 0, width, height);
+      const bars = 22;
+      const gap = 2 * pixelRatio;
+      const barWidth = Math.max(2 * pixelRatio, (width - gap * (bars - 1)) / bars);
+      const gradient = context.createLinearGradient(0, 0, width, 0);
+      gradient.addColorStop(0, '#8058ea');
+      gradient.addColorStop(.56, '#5b91f2');
+      gradient.addColorStop(1, '#39bfd5');
+      context.fillStyle = gradient;
+      for (let index = 0; index < bars; index += 1) {
+        const sampleIndex = Math.min(recordingWaveData.length - 1, Math.floor((index + 1) * recordingWaveData.length / (bars + 2)));
+        const adjacent = recordingWaveData[Math.min(recordingWaveData.length - 1, sampleIndex + 1)];
+        const level = (recordingWaveData[sampleIndex] + adjacent) / (2 * 255);
+        const barHeight = Math.max(3 * pixelRatio, Math.min(height, (Math.pow(level, .68) * .96 + .1) * height));
+        const x = index * (barWidth + gap);
+        const y = (height - barHeight) / 2;
+        const radius = Math.min(barWidth / 2, 3 * pixelRatio);
+        context.beginPath();
+        if (typeof context.roundRect === 'function') context.roundRect(x, y, barWidth, barHeight, radius);
+        else context.rect(x, y, barWidth, barHeight);
+        context.fill();
+      }
+      recordingWaveFrame = window.requestAnimationFrame(drawRecordingWave);
+    };
+    const startRecordingVisualizer = (stream) => {
+      stopRecordingVisualizer();
+      if (!recordingWave || !stream) return;
+      const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextConstructor) return;
+      try {
+        const context = new AudioContextConstructor();
+        const source = context.createMediaStreamSource(stream);
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 128;
+        analyser.smoothingTimeConstant = .76;
+        source.connect(analyser);
+        recordingAudioContext = context;
+        recordingAudioSource = source;
+        recordingAnalyser = analyser;
+        recordingWaveData = new Uint8Array(analyser.frequencyBinCount);
+        if (context.state === 'suspended') context.resume().catch(() => {});
+        recordingWaveFrame = window.requestAnimationFrame(drawRecordingWave);
+      } catch (_) {
+        stopRecordingVisualizer();
+      }
+    };
     const updateRecordingTimer = () => {
       if (!recordingTimer) return;
       recordingTimer.textContent = formatDuration(Date.now() - recordingStartedAt);
@@ -1282,8 +1590,9 @@
       if (recordingInterval) window.clearInterval(recordingInterval);
       recordingInterval = null;
       if (recording) recording.hidden = true;
-      if (recordingTimer) recordingTimer.textContent = '00:00';
+      if (recordingTimer) recordingTimer.textContent = '0:00';
       activeRecorder = null;
+      stopRecordingVisualizer();
       stopMediaStream();
       updateSendState();
     };
@@ -1360,6 +1669,7 @@
         recordingStartedAt = Date.now();
         updateRecordingTimer();
         recordingInterval = window.setInterval(updateRecordingTimer, 250);
+        startRecordingVisualizer(activeStream);
         if (recording) recording.hidden = false;
         updateSendState();
       } catch (error) {
@@ -1564,6 +1874,7 @@
     });
     window.addEventListener('pagehide', () => {
       stopTyping();
+      stopRecordingVisualizer();
       if (activeRecorder && activeRecorder.state !== 'inactive') {
         discardRecording = true;
         activeRecorder.stop();
@@ -1580,7 +1891,7 @@
     autoResize();
     updateSendState();
     updatePresence({ online: presenceElement && presenceElement.dataset.online === 'true', last_seen: presenceElement && presenceElement.dataset.lastSeen });
-    document.querySelectorAll('.conversation-voice audio').forEach((audio) => bindVoiceDuration(audio, audio.closest('.conversation-voice')?.querySelector('.conversation-voice__duration')));
+    document.querySelectorAll('.conversation-voice').forEach((voice) => enhanceVoicePlayer(voice));
     window.setInterval(pollTyping, 2000);
     window.setInterval(pollConversation, 5000);
     window.setInterval(refreshPresenceLabel, 30000);
