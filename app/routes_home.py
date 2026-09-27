@@ -135,6 +135,18 @@ def _apply_category_filter(qs, code: str, label: str):
     )
 
 
+def _pick_random_rows(rows: list[Item], limit: int) -> list[Item]:
+    """Keep each home shelf random without issuing another database query."""
+    return random.sample(rows, k=min(max(limit, 0), len(rows)))
+
+
+def _matches_home_category(item: Item, code: str) -> bool:
+    """Match the established SQL ILIKE('%category%') shelf behavior in memory."""
+    category = (getattr(item, "category", "") or "").casefold()
+    target = (code or "").casefold()
+    return not target or target in category
+
+
 # ================= Static loaders =================
 def _static_root() -> Path:
 
@@ -448,60 +460,24 @@ def home_page(
         )
     )
 
-    if filtering:
-        nearby_rows = (
-            filtered_q
-            .order_by(func.random())
-            .limit(20)
-            .all()
-        )
-    else:
-        nearby_rows = (
-            base_q
-            .order_by(func.random())
-            .limit(20)
-            .all()
-        )
+    # The previous implementation ran a random SQL query for every shelf.
+    # On the production database those sequential round trips delayed the first
+    # HTML byte by several seconds. Fetch the already-filtered catalogue once,
+    # then keep the same independent random selection for every shelf in memory.
+    catalogue_rows = (filtered_q if filtering else base_q).all()
+    nearby_rows = _pick_random_rows(catalogue_rows, 20)
 
     category_rows_by_code: dict[str, list[Item]] = {}
     for cat in db_categories:
         code = cat.name
-        q = base_q
-
-        if filtering:
-            q = _apply_city_or_gps_filter(
-                q,
-                city,
-                lat,
-                lng,
-                radius_km,
-            )
-
-        q = _apply_category_filter(q, code, code)
-
-        rows = (
-            q
-            .order_by(func.random())
-            .limit(12)
-            .all()
+        rows = _pick_random_rows(
+            [item for item in catalogue_rows if _matches_home_category(item, code)],
+            12,
         )
         if rows:
             category_rows_by_code[code] = rows
 
-    if filtering:
-        all_rows = (
-            filtered_q
-            .order_by(func.random())
-            .limit(60)
-            .all()
-        )
-    else:
-        all_rows = (
-            base_q
-            .order_by(func.random())
-            .limit(60)
-            .all()
-        )
+    all_rows = _pick_random_rows(catalogue_rows, 60)
 
     displayed_ids = list(
         dict.fromkeys(

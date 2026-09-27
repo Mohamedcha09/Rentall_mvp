@@ -49,6 +49,49 @@
       overflow:hidden;
       overscroll-behavior:none;
     }
+    /*
+       Parser-time launch mark.  The full splash element is intentionally at
+       the start of <body>, but this base template has a substantial legacy
+       <head>.  On a slow connection WebKit can paint that head before it has
+       reached <body>.  This pseudo-element uses the same local SEVOR asset
+       and therefore puts the logo on screen as soon as the critical head is
+       parsed; the full splash seamlessly takes over once its DOM is reached.
+    */
+    html.sv-launch-pending::before{
+      content:"";
+      position:fixed;
+      top:50%;
+      left:50%;
+      z-index:2147483646;
+      width:clamp(76px, 20vw, 90px);
+      height:clamp(76px, 20vw, 90px);
+      border:1px solid rgba(255,255,255,.78);
+      border-radius:50%;
+      background:
+        url('{{ url_for('static', path='images/ui/sevor-logo-180.png') }}') center/cover no-repeat,
+        linear-gradient(140deg, #8a4ff3, #358cf2 58%, #1cc9e8);
+      box-shadow:0 0 0 22px rgba(102,80,246,.07), 0 0 34px rgba(51,139,245,.18), 0 12px 26px rgba(62,84,198,.16);
+      transform:translate(-50%,-50%);
+      pointer-events:none;
+    }
+    html.sv-launch-pending::after{
+      content:"SEVOR\A Rent everything.";
+      position:fixed;
+      right:20px;
+      bottom:max(26px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+      left:20px;
+      z-index:2147483646;
+      color:#65718c;
+      font:700 .66rem/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing:.025em;
+      text-align:center;
+      white-space:pre;
+      pointer-events:none;
+    }
+    html.sv-launch-pending.sv-launch-dom-ready::before,
+    html.sv-launch-pending.sv-launch-dom-ready::after,
+    html.sv-launch-seen::before,
+    html.sv-launch-seen::after{ content:none; display:none; }
     #sv-launch-splash{
       position:fixed;
       inset:0;
@@ -236,6 +279,7 @@
 <link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-414x896.png') }}" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-428x926.png') }}" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-430x932.png') }}" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-iphone-440x956.png') }}" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-768x1024.png') }}" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-834x1194.png') }}" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="{{ url_for('static', path='images/ui/launch/sevor-launch-ipad-1024x1366.png') }}" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
@@ -1710,6 +1754,9 @@ window.onpageshow = function(e){
   (function () {
     var root = document.documentElement;
     var splash = document.getElementById('sv-launch-splash');
+    // The parser-time fallback in the critical head has already shown the
+    // real logo.  The full splash now owns the visual layer and will fade out.
+    root.classList.add('sv-launch-dom-ready');
     if (!splash || !root.classList.contains('sv-launch-pending')) return;
 
     var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
