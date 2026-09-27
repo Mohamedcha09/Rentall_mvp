@@ -1374,8 +1374,8 @@ body[data-path="/"] .home-root{
 body[data-path="/"] .paypal-callout{
   width:min(calc(100% - 32px),1220px);
   margin:10px auto 16px !important;
-  padding:10px 12px !important;
-  gap:10px !important;
+  padding:6px 10px !important;
+  gap:8px !important;
   border:1px solid rgba(93,116,220,.13) !important;
   border-radius:17px !important;
   color:var(--home-ref-ink) !important;
@@ -1384,7 +1384,7 @@ body[data-path="/"] .paypal-callout{
 }
 body[data-path="/"] .paypal-callout.home-paypal-callout{
   position:relative;
-  min-height:64px;
+  min-height:50px;
   flex-direction:row !important;
   align-items:center !important;
   cursor:pointer;
@@ -1395,7 +1395,7 @@ body[data-path="/"] .paypal-callout.home-paypal-callout::after{
   content:"›";
   flex:0 0 auto;
   color:#5f59dc;
-  font-size:1.55rem;
+  font-size:1.3rem;
   font-weight:500;
   line-height:1;
 }
@@ -1403,26 +1403,26 @@ body[data-path="/"] .home-paypal__body{
   display:flex;
   align-items:center;
   flex:1 1 auto;
-  gap:10px;
+  gap:8px;
   min-width:0;
 }
 body[data-path="/"] .home-paypal__icon{
   display:grid;
   place-items:center;
-  flex:0 0 42px;
-  width:42px;
-  height:42px;
-  border-radius:14px;
+  flex:0 0 34px;
+  width:34px;
+  height:34px;
+  border-radius:11px;
   color:#1677db;
   background:rgba(255,255,255,.84);
   box-shadow:0 3px 9px rgba(61,91,190,.07);
-  font-size:23px;
+  font-size:19px;
 }
 body[data-path="/"] .home-paypal__copy{flex:1 1 auto; min-width:0;}
 body[data-path="/"] .home-paypal__title{
   margin:0 0 1px;
   color:var(--home-ref-ink);
-  font-size:clamp(.9rem,.87rem + .16vw,1rem);
+  font-size:clamp(.84rem,.82rem + .12vw,.94rem);
   font-weight:800;
   letter-spacing:-.02em;
 }
@@ -1430,8 +1430,8 @@ body[data-path="/"] .home-paypal__description{
   margin:0;
   overflow:hidden;
   color:var(--home-ref-muted);
-  font-size:.78rem;
-  line-height:1.25;
+  font-size:.7rem;
+  line-height:1.15;
   white-space:nowrap;
   text-overflow:ellipsis;
 }
@@ -1830,13 +1830,13 @@ body[data-path="/"] .home-location-search #homeCitySugg > button{border-radius:1
 
 /* Main content and real listing data. */
 body[data-path="/"] .home-content{min-width:0;}
-body[data-path="/"] .home-section{min-width:0; margin:0 0 32px;}
+body[data-path="/"] .home-section{min-width:0; margin:0 0 8px;}
 body[data-path="/"] .home-section__header{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  margin:0 1px 13px;
+  margin:0 1px 5px;
 }
 body[data-path="/"] .home-section__title{
   margin:0;
@@ -2005,7 +2005,7 @@ body[data-path="/"] .home-listing__reviews{color:var(--home-ref-muted); font-wei
 }
 
 /* Category rails keep their existing arrows and native touch scroll. */
-body[data-path="/"] .home-rail-section{margin-top:35px;}
+body[data-path="/"] .home-rail-section{margin-top:8px;}
 body[data-path="/"] .home-rail-header__actions{display:flex; align-items:center; gap:6px;}
 body[data-path="/"] .home-rail-button{
   display:grid;
@@ -2024,7 +2024,7 @@ body[data-path="/"] .home-rail{
   min-width:0;
   gap:14px;
   overflow-x:auto;
-  padding:2px 1px 12px;
+  padding:2px 1px 4px;
   overscroll-behavior-inline:contain;
   scroll-behavior:smooth;
   scroll-snap-type:x proximity;
@@ -2089,10 +2089,10 @@ body[data-path="/"] .home-empty{
 /* Breakpoint-specific content proportions. iPad is kept out of desktop sizing. */
 @media (max-width:360px){
   body[data-path="/"] .home-root{padding-inline:12px;}
-  body[data-path="/"] .paypal-callout{width:calc(100% - 24px); padding:12px !important; gap:10px !important;}
-  body[data-path="/"] .paypal-callout.home-paypal-callout{min-height:60px; flex-direction:row !important; align-items:center !important;}
-  body[data-path="/"] .home-paypal__icon{flex-basis:38px; width:38px; height:38px; border-radius:12px; font-size:21px;}
-  body[data-path="/"] .home-paypal__description{font-size:.73rem;}
+  body[data-path="/"] .paypal-callout{width:calc(100% - 24px); padding:6px 10px !important; gap:8px !important;}
+  body[data-path="/"] .paypal-callout.home-paypal-callout{min-height:48px; flex-direction:row !important; align-items:center !important;}
+  body[data-path="/"] .home-paypal__icon{flex-basis:32px; width:32px; height:32px; border-radius:10px; font-size:18px;}
+  body[data-path="/"] .home-paypal__description{font-size:.68rem;}
   body[data-path="/"] .paypal-callout .home-paypal__cta{width:auto !important; min-height:0 !important; padding:0 !important; font-size:0 !important;}
   body[data-path="/"] .home-location-search{grid-template-columns:minmax(0,1fr) auto; padding:7px;}
   body[data-path="/"] .home-location-search__submit{grid-column:1 / -1; min-height:42px; width:100%;}
@@ -2146,57 +2146,59 @@ body[data-path="/"] .paypal-callout{margin:6px auto 10px !important;}
 body[data-path="/"] .home-hero-wrap{margin:0 0 10px;}
 body[data-path="/"] .home-location-wrap{margin:0 0 17px;}
 body[data-path="/"] .home-location-search{
-  gap:6px;
-  padding:5px;
+  gap:4px;
+  padding:3px;
   border-radius:999px;
   box-shadow:0 6px 16px rgba(31,43,91,.07);
 }
-body[data-path="/"] .home-location-search__field{gap:9px; padding-inline:9px;}
-body[data-path="/"] .home-location-search__field > .bi{font-size:1.22rem;}
-body[data-path="/"] .home-location-search #homeCityInput{height:44px;}
+body[data-path="/"] .home-location-search__field{gap:7px; padding-inline:8px;}
+body[data-path="/"] .home-location-search__field > .bi{font-size:1.05rem;}
+body[data-path="/"] .home-location-search #homeCityInput{height:38px; font-size:.9rem;}
 body[data-path="/"] .home-location-search__tool,
 body[data-path="/"] .home-location-search__submit{
-  min-height:44px;
+  min-height:38px;
   border-radius:999px;
 }
 body[data-path="/"] .home-location-search__tool{
-  width:44px;
-  height:44px;
+  width:38px;
+  height:38px;
   border-color:rgba(23,32,63,.09);
   background:#f8f9fd;
   box-shadow:none;
 }
-body[data-path="/"] .home-location-search__tool .bi{font-size:1rem;}
+body[data-path="/"] .home-location-search__tool .bi{font-size:.92rem;}
 body[data-path="/"] .home-location-search #homeClearGPS.home-location-search__tool--clear{
-  width:30px !important;
-  min-height:30px !important;
-  height:30px !important;
-  right:5px;
+  width:26px !important;
+  min-height:26px !important;
+  height:26px !important;
+  right:4px;
   border-radius:50% !important;
 }
 body[data-path="/"] .home-location-search__submit{
-  min-width:96px;
-  padding-inline:15px;
+  min-width:90px;
+  padding-inline:12px;
+  font-size:.88rem;
   box-shadow:0 5px 12px rgba(83,88,239,.19);
 }
 @media (max-width:360px){
   body[data-path="/"] .home-location-search{
-    grid-template-columns:minmax(0,1fr) 40px auto;
-    gap:5px;
-    padding:5px;
+    grid-template-columns:minmax(0,1fr) 36px auto;
+    gap:4px;
+    padding:3px;
   }
-  body[data-path="/"] .home-location-search #homeCityInput{height:40px; font-size:.88rem;}
+  body[data-path="/"] .home-location-search #homeCityInput{height:36px; font-size:.84rem;}
   body[data-path="/"] .home-location-search__tool{
-    width:40px;
-    min-height:40px;
-    height:40px;
+    width:36px;
+    min-height:36px;
+    height:36px;
   }
   body[data-path="/"] .home-location-search__submit{
     grid-column:auto;
     width:auto;
-    min-width:86px;
-    min-height:40px;
-    padding-inline:12px;
+    min-width:82px;
+    min-height:36px;
+    padding-inline:10px;
+    font-size:.84rem;
   }
 }
 @media (min-width:992px){

@@ -1,2126 +1,810 @@
-{# app/templates/items_detail.html #}
+{# Item detail: presentation only. Data, routes, and authorization remain in app/items.py. #}
 {% extends "base.html" %}
-{% from "_badges.html" import render_badges %}
 {% block content %}
 
-<style>
-/* ====== Base (Desktop) ====== */
-:root{
-  --bg-1:#0b1220; --bg-2:#0f172a; --card:#0f172acc;
-  --stroke:rgba(255,255,255,.12); --stroke-soft:rgba(255,255,255,.08);
-  --txt:#eaf0ff; --muted:#9fb0d8; --brand:#3b82f6; --ok:#10b981;
-  --glass:rgba(255,255,255,.06);
-  --shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
-}
-.items-shell{max-width:1100px;margin:18px auto;padding:0 12px}
-.grid-2{display:grid;gap:18px;grid-template-columns:1.2fr .8fr}
-@media (max-width:920px){.grid-2{grid-template-columns:1fr}}
-.card-glass{background:linear-gradient(180deg,var(--glass),transparent);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;backdrop-filter:blur(8px);box-shadow:var(--shadow)}
-.card-body{padding:18px}
-.card-title{margin:0 0 8px 0;font-weight:800;letter-spacing:.2px}
-.small-muted{color:var(--muted);font-size:13px}
-.badge-pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.05);font-size:12px;color:var(--muted)}
-.gallery{background:#0c1324;border-bottom:1px solid var(--stroke-soft)}
-.gallery-main{position:relative;aspect-ratio:16/10;width:100%;background:#0a0f1e;overflow:hidden}
-.gallery-main img{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center}
-.gallery-menu{position:absolute;top:10px;right:10px}
-.gallery-menu .btn-menu{background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--stroke);border-radius:12px;padding:6px 10px;line-height:1;font-weight:700}
-.gallery-menu .dropdown-menu{border-radius:12px;overflow:hidden;border:1px solid var(--stroke)}
-.thumbs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);scroll-snap-type:x mandatory}
-.thumbs img{width:86px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--stroke-soft);cursor:pointer;opacity:.85;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease;scroll-snap-align:center}
-.thumbs img:hover{transform:translateY(-2px);opacity:1;box-shadow:0 4px 14px rgba(0,0,0,.25)}
-.thumbs img.active{outline:2px solid var(--brand);opacity:1}
-.btnx{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;font-weight:700;text-decoration:none;cursor:pointer;user-select:none;border:1px solid var(--stroke);backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:var(--txt);transition:transform .12s ease,background .2s ease,border-color .2s ease}
-.btnx:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2)}
-.btnx-primary{border-color:rgba(59,130,246,.6);background:linear-gradient(180deg,rgba(59,130,246,.35),rgba(59,130,246,.1))}
-.btnx-green{border-color:rgba(16,185,129,.6);background:linear-gradient(180deg,rgba(16,185,129,.35),rgba(16,185,129,.1))}
-.btnx-ghost{border-color:var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
-.btns-row{display:flex;flex-wrap:wrap;gap:10px}
-.owner-row{display:flex;align-items:center;gap:12px}
-.owner-row > :last-child{min-width:0;overflow-wrap:anywhere}
-.owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
-.hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
-
-/* Stars */
-.stars-bw,.rv-stars{display:inline-flex;gap:4px;font-size:16px;line-height:1;letter-spacing:0}
-.stars-bw span,.rv-stars span{display:inline-block;width:1em;text-align:center}
-.stars-bw .full,.rv-stars .full{color:#111}
-.stars-bw .empty,.rv-stars .empty{color:#bdbdbd}
-
-/* Top stats row */
-.stat-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 10px}
-.stat-left,.stat-right{display:flex;align-items:center;gap:8px}
-.stat-right a{font-weight:800;text-decoration:none;color:#111}
-.stat-right a .muted{color:#717171}
-
-/* ===== Similar items — unified ===== */
-.sim-wrap{ margin:16px 0 8px }
-.sim-row{ display:flex; gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; padding:2px 12px 16px; -webkit-overflow-scrolling:touch; }
-.sim-card{
-  position:relative; scroll-snap-align:start; flex:0 0 78vw; max-width:78vw;
-  background:#fff; border-radius:16px; padding:16px;
-  box-shadow:0 10px 26px rgba(17,24,39,.10); border:1px solid rgba(17,24,39,.06);
-}
-@media(min-width:768px){ .sim-card{ flex:0 0 300px; max-width:300px } }
-
-/* الغلاف */
-.sim-media{ position:relative; border-radius:16px; overflow:hidden; }
-.sim-img{
-  width:100%; display:block;
-  aspect-ratio:16/9;             /* يتحكم في الارتفاع */
-  object-fit:cover;
-  height:auto;                    /* مهم: لا min/max ثابت */
-}
-
-/* العناصر الطافية فوق الصورة */
-.sim-chip, .sim-rate{
-  position:absolute; top:10px; z-index:2;
-  height:28px; line-height:28px; padding:0 10px;
-  display:inline-flex; align-items:center; gap:6px;
-  border-radius:999px; background:#fff; color:#111;
-  border:1px solid #e5e7eb; font-weight:700; font-size:13px;
-}
-.sim-chip{
-  left:10px;
-  font-weight:600;
-  max-inline-size:calc(100% - 72px);
-  min-width:0;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.sim-rate.empty{ display:none; }  /* أخفي الدائرة عند عدم وجود تقييم */
-.sim-rate .star{ font-size:14px }
-
-/* زر القلب */
-.sim-fav{
-  position:absolute; top:10px; right:10px; z-index:3;
-  width:40px; height:40px; border-radius:50%; display:grid; place-items:center;
-  background:#fff; border:1px solid #e5e7eb; box-shadow:0 8px 18px rgba(0,0,0,.12);
-  cursor:pointer;
-}
-.sim-fav i{ font-size:18px }
-.sim-fav.on i{ color:var(--brand1) }
-
-/* النص أسفل الصورة */
-.sim-body{ padding-top:12px }
-.sim-title{
-  font-weight:800; font-size:19px; color:#111; margin:0 0 8px 0;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-}
-.sim-sub{ color:#6b7280; font-size:13px; margin:0 0 10px 0; line-height:1.45 }
-
-/* سطر الميتاداتا */
-.sim-meta{
-  display:flex; align-items:center; gap:12px; color:#6b7280;
-  font-size:13.5px; line-height:1.45; font-variant-numeric:tabular-nums;
-  margin-bottom:14px;
-}
-.sim-meta .vsep{ width:1px; height:14px; background:#e5e7eb; flex:0 0 1px; opacity:.9; }
-
-/* فاصل منقّط */
-.sim-cut{ margin:0 0 12px 0; border:0; height:0; border-top:1px dashed rgba(17,24,39,.18); }
-
-/* الأسعار */
-.sim-price-row{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
-.sim-price-old{ color:#9ca3af; text-decoration:line-through; font-size:14.5px; }
-.sim-price-now{ color:#111; font-weight:900; font-size:21px; }
-.sim-unit{ color:#6b7280; font-size:12.5px; margin-left:4px; }
-
-/* تفاعل */
-.sim-card:hover{ box-shadow:0 14px 30px rgba(17,24,39,.14) }
-
-/* ===== Mobile look ===== */
-@media (max-width:768px){
-  body{background:#fff;color:#111}
-  .items-shell{padding:0;margin:0;max-width:none}
-  .grid-2{display:block}
-  .gallery{background:#fff;border:0}
-  .gallery-main{height:58vh;max-height:520px;border-radius:0}
-  .gallery-main img{object-fit:cover;will-change:transform,opacity}
-  .hero-fade{
-    position:absolute;inset:0;pointer-events:none;
-    background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,.05) 58%, #fff 100%);
-    opacity:.0;transition:opacity .25s ease;
-  }
-  .card-glass{background:transparent;border:0;box-shadow:none}
-  .air-sheet{
-    background:#fff;color:#111;margin-top:-24px;
-    border-top-left-radius:28px;border-top-right-radius:28px;
-    padding:22px 18px 18px;
-    box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0;position:relative;
-  }
-  .air-sheet::before{
-    content:"";position:absolute;top:0;left:0;right:0;height:14px;border-top-left-radius:28px;border-top-right-radius:28px;
-    background:linear-gradient(to bottom, rgba(0,0,0,.06), rgba(0,0,0,0));
-    opacity:.35;pointer-events:none
-  }
-  .card-title{font-size:28px;font-weight:800;margin-bottom:6px;color:#111;letter-spacing:.2px}
-  .small-muted{color:#717171!important;font-size:14px;line-height:1.5}
-  .hr{background:#e5e7eb}
-
-  /* Bottom booking bar */
-  .air-fixed{
-    position:fixed !important; left:0; right:0; bottom:0;
-    z-index:10000;background:#fff !important;border-top:1px solid #eee;
-    padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
-    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;
-    box-shadow:0 -6px 18px rgba(0,0,0,.08);
-  }
-  .air-underlay{
-    position:fixed; left:0; right:0; bottom:0;
-    height:calc(18px + env(safe-area-inset-bottom,0px));
-    background:#fff; z-index:9999; pointer-events:none;
-  }
-  .air-price{display:flex;min-width:0;flex-direction:column;line-height:1.2;overflow-wrap:anywhere}
-  .air-price .now{font-weight:800;font-size:20px}
-  .air-price .per{color:#717171;font-size:12px}
-  .air-cta{
-    flex:0 0 auto;min-width:150px;text-align:center;height:48px;line-height:48px;padding:0 20px;border-radius:14px;
-    font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block
-  }
-  .air-fixed .small-muted{flex:0 0 100%;margin-top:0 !important;overflow-wrap:anywhere}
-  @media (max-width:360px){
-    .air-fixed{padding-inline:12px;gap:8px}
-    .air-cta{min-width:132px;padding-inline:12px}
-  }
-
-  /* Reviews cards */
-  .rv-strip{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px 2px}
-  .rv-card{scroll-snap-align:start;flex:0 0 84vw;min-width:0;background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)}
-  .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-  .rv-head > :last-child{min-width:0;overflow-wrap:anywhere}
-  .rv-comment{overflow-wrap:anywhere}
-  .rv-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
-  .rv-meta{color:#6b7280;font-size:12px}
-  .rv-stars{font-size:13px}
-
-  /* FABs */
-  .air-fab-left,.air-fab-right{
-    position:absolute; top:calc(8px + env(safe-area-inset-top,0px));
-    z-index:10020; display:flex; gap:10px;
-  }
-  .air-fab-left{ left:12px; }
-  .air-fab-right{ right:12px; }
-  .air-fab{
-    appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
-    background:rgba(255,255,255,.95); box-shadow:0 8px 20px rgba(0,0,0,.18);
-    display:grid; place-items:center; font-size:18px; line-height:1;
-  }
-
-  .air-pager{
-    position:absolute; bottom:12px; right:12px;
-    background:rgba(0,0,0,.55); color:#fff; font-weight:600;
-    padding:6px 10px; border-radius:10px; font-size:12px;
-    border:1px solid rgba(255,255,255,.25); z-index:10010;
-  }
-
-  body.item-page{ margin-top:0 !important; padding-top:0 !important; }
-  .items-shell{ margin-top:0 !important; }
-  .gallery{ margin-top:calc(-1 * env(safe-area-inset-top, 0px)); }
-  .gallery-main{ height:calc(58vh + env(safe-area-inset-top, 0px)); border-radius:0; }
-}
-
-/* Heart micro-anim */
-.air-fab.is-on { background: rgba(255,255,255,.95); }
-@keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
-.air-fab.fav-anim { animation: fav-pop .25s ease; }
-
-/* ==== Kill top gap from base header (mobile, this page only) ==== */
-@media (max-width: 768px){
-  html, body.item-page{ margin-top:0 !important; padding-top:0 !important; scroll-padding-top:0 !important; }
-  .item-page #page-wrapper{ padding-top:0 !important; }
-  .item-page .navbar,
-  .item-page .appbar,
-  .item-page .site-nav,
-  .item-page .airbar-top{ display:none !important; }
-  .gallery{ margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important; }
-  .gallery-main{ height:calc(58vh + env(safe-area-inset-top,0px)) !important; border-radius:0 !important; }
-}
-
-/* ===== Mobile hero like Airbnb (bordered card) ===== */
-@media (max-width:768px){
-  .gallery{ margin-top:0 !important; background:#fff; border:0; padding:12px; }
-  .gallery-main{
-    height:58vh !important;
-    max-height:520px !important;
-    border-radius:24px !important;
-    overflow:hidden !important;
-  }
-}
-
-/* ======= Brand unify (purple → sky) ======= */
-:root{
-  --brand1:#8b5cf6; --brand2:#22d3ee;
-  --brand-grad:linear-gradient(135deg,var(--brand1),var(--brand2));
-  --brand-ring: color-mix(in oklab, var(--brand2) 60%, white);
-  --btn-glass: color-mix(in oklab, white 12%, transparent);
-  --btn-glass-strong: color-mix(in oklab, white 18%, transparent);
-  --btn-shadow: 0 10px 22px rgba(24, 24, 38, .18), 0 4px 10px rgba(24, 24, 38, .12);
-  --btn-shadow-strong: 0 14px 30px rgba(24, 24, 38, .22), 0 6px 14px rgba(24, 24, 38, .16);
-}
-
-/* Buttons unify */
-.btnx,.air-cta,.item-page .btn{
-  appearance:none;border:0;border-radius:14px;font-weight:800;letter-spacing:.2px;text-decoration:none;line-height:1;height:48px;padding:0 20px;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s ease, box-shadow .2s ease, background .3s ease, opacity .2s ease;will-change:transform;
-}
-.btnx-primary,.btnx-green,.air-cta,.item-page .btn.btn-primary{
-  background:var(--brand-grad); color:#fff !important; box-shadow:var(--btn-shadow);
-}
-.btnx-primary:hover,.btnx-green:hover,.air-cta:hover,.item-page .btn.btn-primary:hover{
-  transform:translateY(-1px); box-shadow:var(--btn-shadow-strong); filter:saturate(1.08);
-}
-.btnx-primary:active,.btnx-green:active,.air-cta:active,.item-page .btn.btn-primary:active{
-  transform:translateY(0); filter:saturate(1);
-}
-.btnx-ghost,.item-page .btn.btn-outline-secondary{
-  background:var(--btn-glass); color:#111;
-  border:1px solid color-mix(in oklab, var(--brand2) 25%, rgba(0,0,0,.12));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.35);
-}
-.btnx-ghost:hover,.item-page .btn.btn-outline-secondary:hover{
-  background:var(--btn-glass-strong); transform:translateY(-1px);
-}
-#reportSheet .btn.btn-danger{ background:var(--brand-grad); border:0; color:#fff; box-shadow:var(--btn-shadow); }
-#reportSheet .btn.btn-danger:hover{ box-shadow:var(--btn-shadow-strong); transform:translateY(-1px); }
-.btnx:focus-visible,.air-cta:focus-visible,.item-page .btn:focus-visible{ outline:0; box-shadow:0 0 0 4px var(--brand-ring); }
-.air-cta{ min-width:160px; height:52px; line-height:52px; padding:0 22px; border-radius:16px; }
-.air-fab{ background:rgba(255,255,255,.9); border:1px solid rgba(0,0,0,.06); box-shadow:0 8px 20px rgba(0,0,0,.16); }
-@media (prefers-reduced-motion:reduce){ .btnx,.air-cta,.item-page .btn{ transition:none; } }
-.btnx-lightwide{ display:block; width:100%; text-align:center; padding:14px 18px; border-radius:16px; background:rgba(255,255,255,.75); border:1px solid #e5e7eb; color:#111; font-weight:800; box-shadow:0 10px 22px rgba(0,0,0,.06); }
-.btnx-lightwide:hover{ background:#fff }
-.btns-row{ display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; width:100%; }
-.btns-row .btnx{ flex:1 1 0; text-align:center; height:52px; border-radius:16px; }
-@media (max-width:480px){ .btns-row .btnx{ min-width:0; height:50px; } }
-@media (max-width:360px){ .btns-row .btnx{ flex-basis:100%; } }
-.website-link-wrap{display:flex;justify-content:center;min-width:0;margin-top:12px;text-align:center}
-.website-link-wrap .btnx{max-width:100%;height:auto;min-height:48px;padding:12px 20px;white-space:normal;overflow-wrap:anywhere;text-align:center}
-.btnx-website{border-color:rgba(34,211,238,.7);background:var(--brand-grad);color:#fff;box-shadow:var(--btn-shadow)}
-.btnx-website:hover{color:#fff;box-shadow:var(--btn-shadow-strong)}
-.website-unavailable{margin:0;color:var(--muted);font-size:14px}
-</style>
-
-<style>
-  /* اجعل الشيت أعلى من الشريط */
-  #reportSheet{ z-index:11000 !important; --bs-offcanvas-height:85vh; }
-  .offcanvas-backdrop{ z-index:10990 !important; }
-  @media (max-width:768px){
-    #reportSheet{
-      box-sizing:border-box;
-      padding-top:env(safe-area-inset-top,0px);
-    }
-    #reportSheet .offcanvas-body{
-      padding-bottom:max(1rem, calc(env(safe-area-inset-bottom,0px) + 1rem));
-    }
-  }
-
-  /* ستايل النجمة المتدرّج */
-  .sim-rate .star{
-    font-size:16px;
-    background:linear-gradient(135deg,#7529f9,#00ccff);
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 0 4px rgba(59,130,246,.4));
-  }
-
-  /* رأس البطاقة: عنوان يسار + قلب يمين */
-.sim-head{
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
-  margin:0 0 6px 0;              /* تقارب مثل الصورة الثانية */
-}
-
-/* العنوان أكثر إحكامًا */
-.sim-title{
-  margin:0; padding:0;
-  font-weight:800; font-size:18px; line-height:1.2; /* أصغر وقريب */
-}
-
-/* القلب عند العنوان (غير متموضع فوق الصورة) */
-/* القلب بجانب العنوان — قابل للنقر فوق الرابط دائمًا */
-.sim-head .sim-fav{
-  position:static;            /* يبقى بجانب العنوان */
-  width:36px; height:36px;
-  border-radius:50%;
-  display:grid; place-items:center;
-  background:#fff;
-  border:1px solid #e5e7eb;
-  box-shadow:0 6px 14px rgba(0,0,0,.10);
-  cursor:pointer;
-
-  z-index:5;                  /* ↑ فوق أي طبقة */
-  pointer-events:auto;        /* يستقبل النقر دائمًا */
-  -webkit-tap-highlight-color:transparent;
-}
-.sim-head .sim-fav i{ pointer-events:none; } /* لو ضغطت على <i> نفسها */
-
-
-/* أي قلب داخل الصورة يبقى بأسلوبه القديم (لو بقي في بطاقات أخرى) */
-.sim-media .sim-fav{
-  position:absolute; top:10px; right:10px;
-}
-
-/* سطر الوصف والمسافات — تقارب مثل المثال */
-.sim-sub{ color:#6b7280; font-size:13px; margin:0 0 6px 0; line-height:1.35; }
-.sim-meta{ gap:10px; font-size:13px; margin-bottom:8px; line-height:1.35; }
-
-/* هوامش البطاقة أقل قليلًا */
-.sim-card{ padding:14px; }
-
-/* ======= Move rating stars (★) to top right ======= */
-.sim-rate{
-  position:absolute;
-  top:10px; 
-  right:10px;           /* ← أقصى اليمين */
-  z-index:3;
-  height:28px; 
-  line-height:28px; 
-  padding:0 10px;
-  display:inline-flex; 
-  align-items:center; 
-  gap:6px;
-  border-radius:999px; 
-  background:#fff; 
-  color:#111;
-  border:1px solid #e5e7eb; 
-  font-weight:700; 
-  font-size:13px;
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
-  max-inline-size:calc(100% - 72px);
-  min-width:0;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.sim-rate .star{
-  font-size:15px;
-  background:linear-gradient(135deg,#8b5cf6,#22d3ee);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-}
-
-
-/* ——— تكثيف المسافات مثل TooGoodToGo ——— */
-.sim-head{
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  margin:0 0 4px 0;                    /* رأس البطاقة قريب */
-}
-.sim-head > *{ min-width:0; }
-.sim-title{
-  margin:0; padding:0;
-  font-weight:800; font-size:18px; line-height:1.15;
-  /* لو كان عندك -webkit-line-clamp؛ يظل شغال */
-  overflow-wrap:anywhere;
-}
-.sim-sub{
-  color:#6b7280; font-size:13px;
-  margin:0; line-height:1.2;           /* لا هوامش زائدة */
-}
-.sim-meta{
-  display:flex; align-items:center; gap:8px;
-  color:#6b7280; font-size:13px;
-  margin:2px 0 6px 0; line-height:1.2; /* أقرب للسطرين فوق */
-}
-.sim-meta .vsep{ height:12px; }
-
-/* ——— قلب بدون دائرة + تدرّج البنفسجي→السماوي ——— */
-:root{
-  --brand1:#8b5cf6;   /* بنفسجي */
-  --brand2:#22d3ee;   /* أزرق سماوي */
-}
-.sim-head .sim-fav{
-  position:static;           /* بجانب العنوان */
-  width:auto; height:auto;   /* نلغي أبعاد الدائرة القديمة */
-  padding:0; margin:0;
-  background:transparent; border:0; box-shadow:none;
-  display:inline-grid; place-items:center;
-  cursor:pointer;
-}
-.sim-head .sim-fav i{
-  font-size:22px; line-height:1;
-  background:linear-gradient(135deg,var(--brand1),var(--brand2));
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 0 3px rgba(139,92,246,.35));
-  transition:transform .12s ease;
-}
-.sim-head .sim-fav:hover i{ transform:translateY(-1px); }
-
-/* عندما تتبدّل للأيقونة المعبّأة نحافظ على نفس التدرّج */
-.sim-head .sim-fav i.bi-heart-fill{
-  background:linear-gradient(135deg,var(--brand1),var(--brand2));
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-}
-
-/* نتأكد أن القواعد القديمة (الدائرة البيضاء) لا تؤثر هنا */
-.sim-media .sim-fav{ position:absolute; }        /* للنسخ التي فوق الصورة فقط */
-
-/* لوجو/أفاتار المالك أسفل يسار الصورة */
-/* حلقة متدرّجة (بنفسجي → سماوي) حول صورة المالك */
-.sim-logo{
-  position:absolute; left:10px; bottom:10px; z-index:3;
-  width:38px; height:38px; border-radius:50%; object-fit:cover;
-  display:block;
-  padding:2px;                               /* يخلق سماكة الحلقة */
-  background:linear-gradient(135deg,var(--brand1),var(--brand2));
-  border:0;                                  /* لا إطار أبيض */
-  box-shadow:0 6px 14px rgba(0,0,0,.18);
-}
-@media (max-width:768px){ .sim-logo{ width:36px; height:36px; } }
-
-
-/* سعر صغير ونظيف مثل TooGoodToGo */
-.sim-price-row{ gap:6px; align-items:baseline; }
-.sim-price-old{
-  font-size:12.5px; color:#9ca3af; text-decoration:line-through;
-}
-.sim-price-now{
-  font-size:16px; font-weight:800; color:#111;   /* ← كان 21px */
-}
-.sim-unit{
-  font-size:11.5px; color:#6b7280; margin-left:4px;
-}
-
-/* لو تحب تبقيه أصغر قليلًا على الموبايل فقط */
-@media (max-width:768px){
-  .sim-price-now{ font-size:15.5px; }
-  .sim-price-old{ font-size:12px; }
-  .sim-unit{ font-size:11px; }
-}
-
-/* تصغير إضافي للمسافة بين الخط المنقّط ونهاية البطاقة */
-.sim-cut {
-  margin: 2px 0 4px 0 !important;   /* أقصر أكثر */
-}
-
-.sim-price-row {
-  margin-top: -2px !important;      /* تقريب السعر لفوق */
-  padding-top: 0 !important;
-}
-
-.sim-card {
-  padding-bottom: 6px !important;   /* أقل فراغ أسفل البطاقة */
-}
-
-/* جعل الخط المتقطع أوضح وأكثر ظهور */
-.sim-cut {
-  margin: 2px 0 4px 0 !important;
-  border: 0;
-  height: 0;
-  border-top: 1.8px dashed rgba(0,0,0,0.18); /* ← أكثر وضوحًا وسماكة طفيفة */
-  opacity: 0.8; /* يظهر بشكل أوضح */
-}
-
-/* تصغير المسافة بين الصورة وحدود البطاقة */
-.sim-card {
-  padding: 10px !important;         /* كانت 14 أو 16px — الآن أقل */
-  border-radius: 16px;
-}
-
-/* جعل الصورة تملأ البطاقة تقريبًا */
-.sim-media {
-  margin: 0 !important;             /* يلغي أي مسافة إضافية */
-  border-radius: 14px !important;   /* نفس شكل البطاقة تقريبًا */
-  overflow: hidden;
-}
-
-/* تعديل المسافات أسفل الصورة لتبدو مضغوطة أكثر */
-.sim-body {
-  padding-top: 8px !important;      /* كانت 12px — أصبحت أصغر */
-}
-
-</style>
-<style>
-  /* ===== Unify near-white backgrounds to #f4f6fb (except fixed bar) ===== */
-  :root{ --near:#f4f6fb; }
-
-  /* الخلفية العامة */
-  body{ background:var(--near) !important; }
-
-  /* غلاف الجاليري على الموبايل (كان #fff) */
-  @media (max-width:768px){
-    .gallery{ background:var(--near) !important; border:0 !important; }
-  }
-
-  /* ورقة المحتوى البيضاء (air-sheet) */
-  .air-sheet{ background:var(--near) !important; color:#111; }
-
-  /* بطاقات الريفيو (كانت #fff) */
-  .rv-card{
-    background:var(--near) !important;
-    border-color:#e6eaf5 !important;      /* حدود أنعم تناسب الخلفية الجديدة */
-    box-shadow:0 6px 14px rgba(0,0,0,.04) !important;
-  }
-
-  /* بطاقة العناصر المشابهة إن أردتها بنفس الخلفية (اختياري) */
-  /* .sim-card{ background:var(--near) !important; } */
-
-  /* أسفل الصفحة (الـ underlay) يمشي مع خلفية الموقع */
-  .air-underlay{ background:var(--near) !important; }
-
-  /* الأزرار العريضة “عرض كل المراجعات…” تبقى مقروءة */
-  .btnx-lightwide{ border-color:#e6eaf5 !important; }
-
-  /* ===== الاستثناء: “الشريط الثابت” يبقى أبيض صافٍ ===== */
-  .air-fixed{ background:#fff !important; }
-
-  
-</style>
-
-<style>
-  .sim-head .sim-fav{
-    position: relative !important;
-    z-index: 5 !important;
-    pointer-events: auto !important;
-  }
-  .sim-head .sim-fav i{
-    pointer-events: none !important;
-  }
-  a.sim-card{ cursor:pointer; }
-
-  /* ================================
-   DESKTOP POLISH (>= 992px ONLY)
-   ضع هذا البلوك في آخر الملف
-   ================================ */
-@media (min-width: 992px){
-
-  /* خلفية هادئة ونص داكن */
-  body{ background:#f6f7fb !important; color:#111 !important; }
-
-  /* حاوية أوسع وهوامش متساوية */
-  .items-shell{ max-width:1220px; padding:0 20px; margin:28px auto; }
-
-  /* شبكة مريحة: محتوى عريض + عمود ثانوي أضيق لو لزم */
-  .grid-2{
-    display:grid; gap:22px;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
-    align-items:start;
-  }
-
-  /* كارد أبيض نظيف بدل الزجاج */
-  .card-glass{
-    background:#fff !important;
-    border:1px solid #e6eaf5 !important;
-    border-radius:20px !important;
-    box-shadow:0 8px 28px rgba(16,24,40,.08) !important;
-    overflow:hidden;
-  }
-  .card-body{ padding:24px !important; }
-
-  /* الجاليري: حواف، ظل خفيف، ارتفاع ثابت مريح */
-  .gallery{
-    background:#fff !important; border:0 !important; padding:16px;
-  }
-  .gallery-main{
-    aspect-ratio:auto; height:540px; max-height:62vh;
-    border-radius:16px; overflow:hidden; background:#0a0f1e;
-    box-shadow:0 8px 24px rgba(0,0,0,.12);
-  }
-  .gallery-main img{ object-fit:cover; }
-  .gallery-menu .btn-menu{
-    background:rgba(255,255,255,.9); color:#111;
-    border-color:#e6eaf5;
-  }
-
-  /* مصغّرات واضحة بمحاذاة أجمل */
-  .thumbs{
-    padding:14px 2px 2px; gap:12px;
-    background:transparent;
-  }
-  .thumbs img{
-    width:110px; height:74px; border-radius:12px;
-    border:1px solid #e6eaf5 !important; opacity:.95;
-  }
-  .thumbs img:hover{ transform:translateY(-3px) scale(1.02); box-shadow:0 8px 18px rgba(0,0,0,.12); }
-  .thumbs img.active{ outline:2px solid #8b5cf6; }
-
-  /* الورقة البيضاء (air-sheet) تصبح بطاقة أولى مرتبة */
-  .air-sheet{
-    background:#fff !important; color:#111 !important;
-    margin-top:16px; border:1px solid #e6eaf5; border-radius:20px;
-    padding:24px 24px 20px !important; box-shadow:0 8px 24px rgba(16,24,40,.06);
-  }
-  .air-sheet::before{ display:none; }
-
-  /* عناوين ونصوص أوضح على الديسكتوب */
-  .card-title{ font-size:32px !important; margin-bottom:8px !important; letter-spacing:.1px; }
-  .small-muted{ color:#6b7280 !important; font-size:14px !important; }
-
-  .hr{ background:#e6eaf5 !important; height:1px !important; margin:16px 0 !important; }
-
-  /* شريط السعر والزر (يبقى داخل الكارد على الديسكتوب) */
-  #airBar{
-    position:static !important; box-shadow:none !important; border:0 !important;
-    padding:0 !important; background:transparent !important; display:flex; gap:14px;
-    align-items:center; justify-content:space-between;
-  }
-  #airUnder{ display:none !important; }
-  .air-price .now{ font-size:22px !important; }
-  .air-cta{ height:48px !important; line-height:48px !important; border-radius:14px !important; padding:0 22px !important; }
-
-  /* صف الإحصاءات أعلى الوصف */
-  .stat-row{ margin:6px 0 12px !important; }
-  .stars-bw .full{ color:#111; }
-  .stars-bw .empty{ color:#c7cbd6; }
-
-  /* ===== Reviews: شبكة بدل سكرول أفقي على الديسكتوب ===== */
-  .rv-strip{
-    display:grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap:16px !important; overflow:visible !important; padding:0 !important;
-  }
-  .rv-card{
-    background:#fff !important; border:1px solid #e6eaf5 !important;
-    border-radius:16px !important; box-shadow:0 8px 20px rgba(16,24,40,.06) !important;
-    padding:16px !important;
-  }
-  .rv-head{ margin-bottom:8px !important; }
-  .rv-meta{ color:#6b7280 !important; }
-
-  /* ===== Similar: شبكة نظيفة بدل سكرول أفقي ===== */
-  .sim-wrap{ margin:8px 0 0; }
-  .sim-row{
-    display:grid !important; gap:18px !important;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
-    overflow:visible !important; padding:4px 0 0 !important;
-  }
-  .sim-card{
-    max-width:none !important; flex:none !important; scroll-snap-align:none !important;
-    background:#fff; border:1px solid #e6eaf5; border-radius:16px;
-    padding:14px; box-shadow:0 10px 24px rgba(16,24,40,.08);
-    transition:transform .12s ease, box-shadow .2s ease;
-  }
-  .sim-card:hover{ transform:translateY(-2px); box-shadow:0 14px 30px rgba(16,24,40,.12); }
-  .sim-media{ border-radius:14px; overflow:hidden; }
-  .sim-img{ height:180px; }
-  .sim-chip,.sim-rate{
-    background:#fff; border:1px solid #e6eaf5;
-  }
-  .sim-title{ font-size:18px; line-height:1.25; margin:6px 0 6px; }
-  .sim-sub{ color:#6b7280; margin:0 0 6px; }
-  .sim-meta{ gap:10px; margin-bottom:10px; }
-  .sim-price-old{ font-size:13px; }
-  .sim-price-now{ font-size:18px; }
-  .sim-unit{ font-size:12px; }
-
-  /* زر القلب بجانب العنوان بدون مشاكل تراكب */
-  .sim-head .sim-fav{
-    position:static; width:auto; height:auto; background:transparent; border:0; box-shadow:none;
-  }
-  .sim-head .sim-fav i{
-    font-size:22px; background:linear-gradient(135deg,#8b5cf6,#22d3ee);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 0 3px rgba(139,92,246,.28));
-  }
-
-  /* كارد المالك */
-  .owner-row .owner-avatar{ box-shadow:none; border:1px solid #e6eaf5; }
-  .badge-pill{
-    background:#f9fafb; border:1px solid #e6eaf5; color:#6b7280;
-  }
-
-  /* أزرار موحّدة أخف على الديسكتوب */
-  .btnx,.air-cta,.item-page .btn{
-    box-shadow:0 10px 22px rgba(24,24,38,.10);
-  }
-  .btnx-ghost,.item-page .btn.btn-outline-secondary{
-    background:#fff; border:1px solid #e6eaf5;
-  }
-
-  /* تباعد عام أنظف بين الأقسام داخل العمود */
-  .grid-2 > * + *{ margin-top:0; }
-  .hr.d-md-none{ display:none !important; } /* الفاصل الخاص بالموبايل نخفيه على الديسكتوب */
-
-  /* إصلاحات صغيرة لتباين عناصر سوداء قديمة */
-  .stars-bw .full,.rv-stars .full{ color:#111 !important; }
-  .rv-stars .empty{ color:#c7cbd6 !important; }
-}
-/* ================================
-   DESKTOP FULL STYLE (>=992px)
-   يحافظ على الموبايل كما هو
-==================================*/
-@media (min-width: 992px){
-
-  /* خلفية ونص عام للديسكتوب */
-  body{
-    background: #f4f6fb !important;
-    color: #111 !important;
-  }
-
-  /* الحاوية والعمودان */
-  .items-shell{max-width: 1200px; padding: 28px 18px; margin: 28px auto;}
-  .grid-2{
-    display: grid; gap: 22px;
-    grid-template-columns: 1.15fr .85fr;  /* المعرض يسار/المعلومات يمين */
-    align-items: start;
-  }
-
-  /* ===== المعرض (يسار) ===== */
-  .gallery{
-    background: #fff; border: 1px solid rgba(17,24,39,.08);
-    border-radius: 16px; padding: 12px;
-    box-shadow: 0 10px 26px rgba(17,24,39,.06);
-  }
-  .gallery-main{
-    aspect-ratio: 16/10; height: auto; border-radius: 12px; overflow: hidden;
-  }
-  .gallery-main img{object-fit: cover;}
-  .thumbs{
-    background: linear-gradient(180deg, rgba(0,0,0,.02), transparent);
-    border-top: 1px solid rgba(17,24,39,.06);
-    padding: 10px 8px;
-  }
-
-  /* قائمة ⋮ تظهر دائمًا بالديسكتوب */
-  .gallery-menu{display:block !important}
-
-  /* ===== لوحة المعلومات (يمين) ===== */
-  .air-sheet{
-    background:#fff !important; color:#111 !important;
-    border: 1px solid rgba(17,24,39,.08); border-radius: 16px;
-    padding: 22px 18px 20px; margin-top: 0;
-    box-shadow: 0 10px 26px rgba(17,24,39,.06);
-  }
-  .card-title{font-size:26px; font-weight:800; margin: 0 0 8px}
-  .small-muted{color:#6b7280 !important}
-  .hr{background: rgba(17,24,39,.08) !important}
-
-  /* الأزرار */
-  .btnx,.air-cta{height:48px; border-radius:14px}
-  .btnx-ghost{color:#111}
-  .btns-row{gap:12px}
-
-  /* أخفِ شريط الحجز السفلي على الديسكتوب */
-  .air-fixed, .air-underlay{display:none !important}
-
-  /* ================= Reviews =================
-     تحويل الشريط الأفقي إلى شبكة نظيفة */
-  .rv-wrap{ margin-top: 8px }
-  .rv-strip{
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-    overflow: visible; padding: 0;
-  }
-
-  .rv-card{
-    background:#fff !important;
-    border:1px solid rgba(17,24,39,.08) !important;
-    border-radius:16px; padding:14px;
-    box-shadow:0 8px 18px rgba(17,24,39,.06) !important;
-  }
-
-  /* لا تجعل أي نص داخل البطاقة يكبر بشكل غريب */
-  .rv-card *{ font-size: 14px; line-height: 1.5 }
-  .rv-head{ display:flex; align-items:center; gap:10px; margin-bottom:6px }
-  .rv-ava{ width:46px; height:46px; border-radius:50%; object-fit:cover }
-  .rv-meta{ color:#6b7280; font-size:12.5px }
-  .rv-stars{ font-size:14px; margin-top:4px }
-  /* لو دخلت أرقام/وقت فقط مثل "17:58" نحافظ على حجم طبيعي */
-  .rv-card h1, .rv-card h2, .rv-card h3{ font-size:16px; margin: 0 }
-  .rv-card time, .rv-card .time, .rv-card .num-ltr{ font-variant-numeric: tabular-nums }
-
-  /* زر "View all review(s)" */
-  .btnx-lightwide{
-    max-width: 420px; margin: 10px auto 0; display:block;
-  }
-
-  /* ============ Similar near you ============ */
-  .sim-wrap{ margin-top: 8px }
-  .sim-row{
-    display:grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap:18px; overflow:visible; padding:0 !important;
-  }
-  @media (min-width: 1400px){
-    .sim-row{ grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  }
-  .sim-card{
-    max-width:none; flex:0 0 auto;
-    background:#fff; border:1px solid rgba(17,24,39,.08);
-    box-shadow:0 10px 26px rgba(17,24,39,.08);
-    border-radius:16px; padding:14px;
-  }
-  .sim-media{ border-radius:14px; overflow:hidden }
-  .sim-title{ color:#111; font-size:18px; margin-bottom:6px }
-  .sim-sub,.sim-meta{ color:#6b7280 }
-  .sim-cut{ margin:6px 0 10px !important }
-
-  /* ===== تفاصيل صغيرة إضافية ===== */
-  .stat-row{ margin-bottom: 12px }
-  .stars-bw .full{ color:#111 }      /* نجوم تقييم أسود نقي */
-  .stars-bw .empty{ color:#bdbdbd }
-}
-
-</style>
-
-<style>
-/* ===== Desktop layout only ===== */
-@media (min-width:1024px){
-
-  /* عمودين: يسار المنشور، يمين التعليقات */
-  .grid-2{
-    grid-template-columns: minmax(640px, 1fr) 420px;
-    align-items: start;
-    column-gap: 22px;
-  }
-
-  /* لا أشرطة فاصلة داخل الشبكة */
-  .grid-2 > .hr{ display:none !important; }
-
-  /* ===== Reviews كعمود يمين “بطاقة لاصقة” تتبدّل كل 3 ثواني ===== */
-  #reviews{
-    position: sticky; top: 92px;
-    max-height: calc(100vh - 120px);
-    overflow: hidden;
-    background: #fff; color:#111;
-    border: 1px solid #e6eaf5;
-    border-radius: 16px;
-    padding: 14px;
-    box-shadow: 0 12px 28px rgba(17,24,39,.08);
-    /* تأكد أنها تُعامل كعنصر عمود ثاني */
-    grid-column: 2 / 3;
-  }
-  #reviews > h5{ margin: 2px 0 10px 0; }
-
-  /* نخلي مسار الكروت داخلي بدل سطر أفقي */
-  #reviews .rv-strip{
-    display:block; overflow:hidden; padding:0; margin:0;
-  }
-  #reviews .rv-card{
-    display:none;               /* جميعها مخفية… */
-    border:1px solid #eef2ff !important;
-    background:#fff !important;
-    border-radius:14px !important;
-    box-shadow:0 8px 18px rgba(0,0,0,.05) !important;
-    padding:12px !important; margin:0 !important;
-  }
-  #reviews .rv-card.active{    /* …إلا الكارت الحالية */
-    display:block;
-  }
-  #reviews .rv-head{ margin-bottom:6px; }
-  #reviews .rv-meta{ color:#6b7280; }
-
-  /* زر "View all…" الخاص بالموبايل نخفيه على الدِسكتوب */
-  #reviews + a.btnx-lightwide{ display:none !important; }
-
-  /* ===== Similar & Owner في الوسط أسفل الشبكة ===== */
-
-  /* الكتلة “Similar near you” تمتد العرض وتتوسّط */
-  .sim-wrap{
-    grid-column: 1 / -1;          /* تمتد عبر العمودين */
-    width: min(1100px, 92vw);
-    margin: 22px auto 10px auto;
-  }
-
-  /* بطاقات similar تبقى كما هي، فقط نزيد هوامش بسيطة */
-  .sim-row{ padding-left: 6px; padding-right: 6px; }
-
-  /* بطاقة الـOwner تتوسّط وتمتد العرض */
-  .owner-card{
-    grid-column: 1 / -1;
-    width: min(1100px, 92vw);
-    margin: 14px auto 0 auto;
-    background:#fff;
-    border:1px solid #e6eaf5;
-    box-shadow:0 10px 26px rgba(17,24,39,.08);
-  }
-
-  /* زر “Report this listing” أسفله بنفس المحاذاة الوسطى */
-  .container:has(> button[data-bs-target="#reportSheet"]){
-    grid-column: 1 / -1;
-    width: min(1100px, 92vw);
-    margin: 14px auto 24px auto;
-  }
-
-  /* خلفية الصفحة على الدِسكتوب تبقى الفاتحة الموحّدة */
-  body{ background:#f4f6fb; }
-}
-</style>
-
-<style>
-/* ===== Desktop only — لا يغيّر الموبايل ===== */
-@media (min-width: 992px){
-
-  /* نحول الصفحة لشبكة على مستوى items-shell
-     حتى نضع الـ Reviews يمين بدون تغيير الـ HTML */
-  .items-shell{
-    max-width: 1200px;
-    display: grid;
-    grid-template-columns: 1.35fr .65fr; /* يسار عريض + يمين أضيق */
-    column-gap: 24px;
-    align-items: start;
-  }
-
-  /* العمود الأيسر: الكارد الكبيرة تبقى في العمود 1 */
-  .items-shell > .grid-2{ grid-column: 1; }
-
-  /* العمود الأيمن: قسم الـ Reviews نرفعه لأعلى ونثبّته */
-  .items-shell > #reviews{
-    grid-column: 2;
-    grid-row: 1;                  /* بجانب الصورة مباشرة */
-    position: sticky;
-    top: 24px;                    /* يثبت تحت الترويسة */
-    background: #fff;
-    border: 1px solid #e7e9f1;
-    border-radius: 16px;
-    padding: 14px;
-    box-shadow: 0 10px 24px rgba(16,24,40,.06);
-  }
-  /* عنوان القسم */
-  #reviews > h5{ margin: 0 0 10px 0; }
-
-  /* بطاقات الريفيو داخل اللوحة اليمنى تبدو أنظف */
-  #reviews .rv-strip{ display: block; padding: 0; overflow: visible; }
-  #reviews .rv-card{
-    background: #fff;
-    border: 1px solid #eef0f6;
-    border-radius: 14px;
-    padding: 12px;
-    box-shadow: 0 6px 14px rgba(0,0,0,.05);
-    margin-bottom: 10px;
-  }
-  #reviews .btnx-lightwide{ width: 100%; margin-top: 8px; }
-
-  /* خلي الزر الطويل أو العناصر تحت الصورة ما تدخل تحت اللوحة اليمنى */
-  .items-shell .air-sheet,
-  .items-shell .card-glass{
-    /* لا شيء يتأثر، تبقى في العمود الأيسر تلقائيًا */
-  }
-
-  /* توسيط Similar و Owner تحت الصف الأول */
-  .items-shell > .sim-wrap,
-  .items-shell > .card-glass:has(.owner-row){
-    grid-column: 1 / -1;          /* يمتد عبر العمودين */
-    max-width: 980px;
-    margin: 22px auto 10px;
-  }
-
-  /* سطر "Similar near you" كسلايدر تمرير أفقي أنظف في الدِسكتوب */
-  .sim-row{
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    gap: 16px;
-    padding: 2px 6px 16px;
-  }
-  .sim-card{ flex: 0 0 300px; max-width: 300px; scroll-snap-align: start; }
-
-  /* توسيط محتوى Owner */
-  .owner-row{ justify-content: center; }
-  .btns-row{ justify-content: center; }
-}
-
-/* تحسينات شكلية خفيفة للدِسكتوب فقط */
-@media (min-width: 992px){
-  .gallery{ border: 0; background: transparent; }
-  .air-sheet{ border-top-left-radius: 18px; border-top-right-radius: 18px; }
-}
-.sim-meta > span:first-child{ min-width:0; overflow-wrap:anywhere; }
-
-/* ====== DESKTOP FIX ONLY (>=992px) ====== */
-@media (min-width:992px){
-
-  /* تخطيط عمودين واضح: اليسار المنشور، اليمين Reviews ثابت */
-  .items-shell{
-    display:grid !important;
-    grid-template-columns:minmax(680px,1fr) 380px !important;
-    column-gap:24px !important;
-    align-items:start !important;
-    max-width:1200px !important;
-    margin:28px auto !important;
-    padding:0 18px !important;
-    background: #f4f6fb !important;
-  }
-
-  /* الكارد الكبيرة تبقى في العمود الأيسر */
-  .items-shell > .grid-2{ grid-column:1 !important; }
-
-  /* Reviews ثابتة أعلى يمين */
-  #reviews{
-    grid-column:2 !important;
-    grid-row:1 !important;
-    position:sticky !important;
-    top:16px !important;
-    margin:0 !important;
-    background:#fff !important;
-    border:1px solid #e6eaf5 !important;
-    border-radius:16px !important;
-    padding:14px !important;
-    box-shadow:0 10px 24px rgba(16,24,40,.06) !important;
-  }
-  /* داخل لوحة الريفيو لا سكرول أفقي ولا جريد */
-  #reviews .rv-strip{ display:block !important; overflow:visible !important; padding:0 !important; }
-  #reviews .rv-card{ display:none !important; }         /* كلها مخفية */
-  #reviews .rv-card.active{ display:block !important; } /* الحالية فقط */
-
-  /* زر "View all…" بجانب الريفيو نخفيه على الديسكتوب */
-  #reviews + a.btnx-lightwide{ display:none !important; }
-
-  /* ===== “Similar near you” سلايدر ومتوسّطة ===== */
-  .sim-wrap{
-    grid-column:1 / -1 !important;         /* تمتد عبر العمودين */
-    width:min(1100px,92vw) !important;
-    margin:22px auto 10px auto !important; /* بالوسط */
-  }
-  .sim-row{
-    display:flex !important;
-    gap:16px !important;
-    overflow-x:auto !important;
-    scroll-snap-type:x mandatory !important;
-    padding:2px 8px 16px !important;
-  }
-  .sim-card{
-    flex:0 0 300px !important;
-    max-width:300px !important;
-    scroll-snap-align:start !important;
-  }
-
-  /* ===== Owner بالوسط تحت السيميلر ===== */
-  .card-glass:has(.owner-row){
-    grid-column:1 / -1 !important;
-    width:min(900px,92vw) !important;
-    margin:14px auto 0 auto !important;    /* بالوسط */
-    background:#fff !important;
-    border:1px solid #e6eaf5 !important;
-    border-radius:16px !important;
-    box-shadow:0 10px 24px rgba(16,24,40,.06) !important;
-  }
-  .owner-row{ justify-content:center !important; }
-  .btns-row{ justify-content:center !important; }
-
-  /* تأكيد عدم وجود جريد سابق للسيميلر/الريفيو يفسد التخطيط */
-  .rv-strip, .sim-row{ grid-template-columns:none !important; }
-}
-
-/* ====== Smooth Transition Effects ====== */
-.gallery-main img {
-  transition: opacity .35s ease, transform .35s ease;
-}
-
-.gallery-main.fade-out img {
-  opacity: 0;
-  transform: scale(1.03);
-}
-
-.gallery-main.fade-in img {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* أثناء السحب */
-.gallery-main.dragging img {
-  transition: none !important;
-  opacity: 0.75;
-  transform: translateX(var(--drag-x));
-}
-
-
-/* ===== iOS APP FIX — SAFE AREA WHITE BAR ===== */
-@media (max-width: 768px) {
-
-  body.item-page::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-
-    /* المفتاح الحقيقي */
-    height: env(safe-area-inset-top);
-
-    background: #fff;
-    z-index: 10050;
-    pointer-events: none;
-  }
-
-}
-.air-cta-disabled{
-  opacity:.55;
-  pointer-events:none;   /* أهم سطر */
-  cursor:not-allowed;
-  user-select:none;
-}
-
-/* iPad: keep the touch-first detail flow instead of the >=992px desktop sidebar. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    .items-shell{
-      display:block !important;
-      width:100%;
-      max-width:none !important;
-      margin:0 !important;
-      padding:0 !important;
-      background:#fff !important;
-    }
-    .items-shell > .grid-2{
-      display:block !important;
-      grid-template-columns:1fr !important;
-      min-width:0;
-      gap:0 !important;
-    }
-    .items-shell > .grid-2,
-    .items-shell > .sim-wrap,
-    .items-shell > .card-glass:has(.owner-row){
-      grid-column:auto !important;
-      grid-row:auto !important;
-      width:auto !important;
-      max-width:none !important;
-      margin:0 !important;
-    }
-    .items-shell .card-glass{
-      background:transparent !important;
-      border:0 !important;
-      border-radius:0 !important;
-      box-shadow:none !important;
-      overflow:visible !important;
-    }
-    .gallery{
-      padding:20px !important;
-      background:#fff !important;
-      border:0 !important;
-      border-radius:0 !important;
-      box-shadow:none !important;
-    }
-    .gallery-main{
-      height:min(58vh,620px) !important;
-      max-height:620px !important;
-      aspect-ratio:auto !important;
-      border-radius:24px !important;
-      overflow:hidden !important;
-      box-shadow:none !important;
-    }
-    .gallery-main img{object-fit:cover !important;}
-    .gallery-menu.d-none.d-md-block{display:none !important;}
-    .air-fab-left.d-md-none,
-    .air-fab-right.d-md-none{
-      position:absolute;
-      top:calc(8px + env(safe-area-inset-top,0px));
-      z-index:10020;
-      display:flex !important;
-      gap:10px;
-    }
-    .air-fab-left.d-md-none{left:20px;}
-    .air-fab-right.d-md-none{right:20px;}
-    .air-fab{
-      display:grid;
-      place-items:center;
-      width:44px;
-      height:44px;
-      border-radius:50%;
-      font-size:18px;
-      line-height:1;
-    }
-    .air-pager{
-      position:absolute;
-      right:32px;
-      bottom:32px;
-      z-index:10010;
-      padding:6px 10px;
-      color:#fff;
-      background:rgba(0,0,0,.55);
-      border:1px solid rgba(255,255,255,.25);
-      border-radius:10px;
-      font-size:12px;
-      font-weight:600;
-    }
-    .hr.d-md-none{display:block !important;}
-    .air-sheet{
-      margin-top:-28px !important;
-      padding:28px 28px 24px !important;
-      background:#fff !important;
-      color:#111 !important;
-      border:1px solid #eee !important;
-      border-bottom:0 !important;
-      border-top-left-radius:28px !important;
-      border-top-right-radius:28px !important;
-      box-shadow:0 -6px 20px rgba(0,0,0,.06) !important;
-    }
-    .air-sheet::before{
-      content:"";
-      position:absolute;
-      top:0;
-      left:0;
-      right:0;
-      height:14px;
-      display:block !important;
-      border-top-left-radius:28px;
-      border-top-right-radius:28px;
-      background:linear-gradient(to bottom,rgba(0,0,0,.06),rgba(0,0,0,0));
-      opacity:.35;
-      pointer-events:none;
-    }
-    .card-title{font-size:clamp(28px,3vw,34px) !important;color:#111 !important;}
-    .small-muted{color:#717171 !important;}
-    #reviews{
-      position:static !important;
-      max-height:none !important;
-      overflow:visible !important;
-      margin:0 !important;
-      padding:22px 20px 0 !important;
-      background:#fff !important;
-      border:0 !important;
-      border-radius:0 !important;
-      box-shadow:none !important;
-    }
-    #reviews .rv-strip,
-    .rv-strip{
-      display:flex !important;
-      grid-template-columns:none !important;
-      gap:16px !important;
-      overflow-x:auto !important;
-      overflow-y:visible !important;
-      padding:2px 2px 14px !important;
-      scroll-snap-type:x mandatory;
-    }
-    #reviews .rv-card,
-    #reviews .rv-card.active,
-    .rv-card{
-      display:block !important;
-      flex:0 0 min(68vw,460px) !important;
-      min-width:0;
-      padding:16px !important;
-      background:#fff !important;
-      border:1px solid #eee !important;
-      border-radius:16px !important;
-      box-shadow:0 6px 14px rgba(0,0,0,.05) !important;
-      scroll-snap-align:start;
-    }
-    #reviews + a.btnx-lightwide{display:block !important;}
-    .sim-wrap{
-      margin:20px 0 0 !important;
-      padding:0 20px;
-    }
-    .sim-row{
-      display:flex !important;
-      grid-template-columns:none !important;
-      gap:16px !important;
-      overflow-x:auto !important;
-      overflow-y:visible !important;
-      padding:2px 2px 16px !important;
-      scroll-snap-type:x mandatory;
-    }
-    .sim-card{
-      flex:0 0 clamp(260px,32vw,360px) !important;
-      max-width:clamp(260px,32vw,360px) !important;
-      padding:14px !important;
-      background:#fff !important;
-      border:1px solid #e6eaf5 !important;
-      border-radius:16px !important;
-      box-shadow:0 10px 24px rgba(16,24,40,.08) !important;
-      scroll-snap-align:start !important;
-    }
-    #airBar{
-      position:fixed !important;
-      left:0 !important;
-      right:0 !important;
-      bottom:calc(var(--sv-tabbar,64px) + var(--sv-lift,20px) + 24px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
-      z-index:1040 !important;
-      padding:14px 24px !important;
-      display:flex !important;
-      flex-wrap:wrap;
-      gap:14px;
-      align-items:center;
-      justify-content:space-between;
-      background:#fff !important;
-      border-top:1px solid #eee !important;
-      box-shadow:0 -6px 18px rgba(0,0,0,.08) !important;
-    }
-    #airUnder{display:none !important;}
-    #airBar .air-cta{min-width:200px;}
-    body[data-path^="/items/"].has-tabbar .page{
-      padding-bottom:calc(220px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
-    }
-    @media (orientation:landscape){
-      .gallery{padding-inline:28px !important;}
-      .gallery-main{height:min(56vh,580px) !important;}
-      #reviews,.sim-wrap{padding-inline:28px;}
-      #airBar{padding-inline:32px !important;}
-    }
-  }
-}
-
-
-</style>
-
-
-
-
-
-<section class="items-shell">
-  {% if not item %}
-    <div class="card-glass"><div class="card-body"><div class="alert alert-danger">Item not found.</div></div></div>
-  {% else %}
-
-  <div class="grid-2">
-    <!-- ===== Item / Gallery ===== -->
-    <div class="card-glass">
-      <div class="gallery">
-{# استخدم الصور الجديدة من DB #}
-{% set imgs = item.image_urls or [] %}
-
-{% if not imgs %}
-  {# fallback للصور القديمة لو المستخدم رفع فقط صورة واحدة #}
-  {% if item.image_path %}
-    {% set imgs = [item.image_path] %}
-  {% else %}
-    {% set imgs = [] %}
-  {% endif %}
-{% endif %}
-
-{% set current = imgs[0] if imgs else None %}
-
-
-        {% macro build_src(p) -%}
-          {%- set s = (p or '') -%}
-          {%- if not (s.startswith('http') or s.startswith('/')) -%}{%- set s = '/' + s -%}{%- endif -%}
-          {{- s -}}
-        {%- endmacro %}
-
-        <div class="gallery-main" id="gMain">
-          {% if current %}
-            <img id="mainImg" src="{{ current }}"alt="item image">
-            <div class="hero-fade" id="heroFade"></div>
-          {% else %}
-            <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
-          {% endif %}
-
-          <!-- ⋮ Menu (desktop) -->
-          <div class="gallery-menu dropdown d-none d-md-block">
-            <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="Options">⋮</button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><button class="dropdown-item" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" id="openReportBtn" type="button">🚩 Report listing</button></li>
-            </ul>
-          </div>
-
-          <!-- FAB left/right -->
-          <div class="air-fab-left d-md-none">
-            <a class="air-fab keep" href="javascript:history.length>1?history.back():'/'" aria-label="Back">
-              <i class="bi bi-arrow-left"></i>
-            </a>
-          </div>
-          <div class="air-fab-right d-md-none">
-            <button type="button" class="air-fab js-share keep" aria-label="Share" data-title="{{ item.title }}" data-url="{{ request.url }}"><i class="bi bi-share"></i></button>
-            <button type="button" class="air-fab js-fav keep" aria-label="Save" data-item-id="{{ item.id }}" data-on="{{ 1 if is_favorite else 0 }}">
-              <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
-            </button>
-          </div>
-
-          <div class="air-pager" id="airPager">1/1</div>
-
-{% if imgs|length > 1 %}
-  <div class="thumbs" id="thumbs">
-    {% for s in imgs %}
-      <img data-src="{{ s }}" data-index="{{ loop.index0 }}"
-           class="{% if loop.index0==0 %}active{% endif %}"
-           src="{{ s }}" loading="lazy" decoding="async">
-    {% endfor %}
-  </div>
-{% endif %}
-
-        </div>
-      </div>
-
-      <!-- ===== White Rounded Sheet ===== -->
-      <div class="card-body air-sheet">
-        <h2 class="card-title">{{ item.title }}</h2>
-        <div class="small-muted" style="margin-bottom:6px">
-          {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
-        </div>
-
-{# كتلة السعر الرئيسية + سطر السعر الأصلي #}
-<div class="price-lead" style="margin:6px 0 8px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
-  <div class="lead-now" style="font-weight:800;font-size:1.1rem">
-    {# السعر المحوَّل بعملة العرض #}
-    {% if display_price is defined and display_currency is defined %}
-      {{ display_price | money(display_currency) }}
-    {% else %}
-      {{ display_price | money(display_currency) }}
-    {% endif %}
-    <span class="small-muted">/ day</span>
-  </div>
-</div>
-
-
-
-        {# Top stats #}
-        {% set _avg = item_rating_avg or 0 %}
-        {% set _cnt = item_rating_count or 0 %}
-        <div class="stat-row">
-          <div class="stat-left">
-            <span class="stars-bw" aria-label="{{ '%.2f'|format(_avg) }} out of 5">
-              {% set full = _avg|round(0, 'floor')|int %}
-              {% set half = 1 if _avg - full >= 0.5 else 0 %}
-              {% for i in range(0, full) %}<span class="full">★</span>{% endfor %}
-              {% if half %}<span class="full">★</span>{% endif %}
-              {% for i in range(0, 5 - full - half) %}<span class="empty">☆</span>{% endfor %}
-            </span>
-            <small class="num-ltr">{{ '%.2f'|format(_avg) }} / 5</small>
-          </div>
-          <div class="stat-right">
-            <a href="#reviews"><span class="num-ltr">{{ _cnt }}</span> <span class="muted">review(s)</span></a>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        {# Description BEFORE reviews #}
-        {% if item.description %}
-          <p style="white-space:pre-wrap;line-height:1.9;color:#374151">{{ item.description }}</p>
-        {% else %}
-          <div class="badge-pill">No description</div>
-        {% endif %}
-
-        <div class="hr"></div>
-
-        <!-- Buttons -->
-        <div class="btns-row">
-          {% if owner %}
-            {% if session_user %}
-              <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
-            {% else %}
-              <a class="btnx btnx-primary" href="/login?next={{ request.url | urlencode }}">Contact</a>
-            {% endif %}
-          {% endif %}
-          <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
-        </div>
-
-        <div class="website-link-wrap">
-          {% if website_url %}
-            <a class="btnx btnx-website" href="{{ website_url }}" target="_blank" rel="noopener noreferrer">
-              <span aria-hidden="true">🌐</span>
-              Visit website
-            </a>
-          {% else %}
-            <p class="website-unavailable">No website available</p>
-          {% endif %}
-        </div>
-
-        <!-- Bottom Booking Bar -->
-        <div class="air-fixed" id="airBar" role="region" aria-label="Booking bar">
-          <div class="air-price">
-          <span class="now">
-  {% if display_price is defined and display_currency is defined %}
-    {{ display_price | money(display_currency) }}
-  {% else %}
-    {{ display_price | money(display_currency) }}
-  {% endif %}
-</span>
-
-            <span class="per">per day</span>
-          </div>
-{% if not session_user %}
-  <a class="air-cta"
-     href="/login?next={{ request.url | urlencode }}"
-     style="opacity:.55; pointer-events:auto;">
-    Book now
-  </a>
-
-{% elif (session_user.get("status") or "") != "approved" %}
-  <span class="air-cta air-cta-disabled" aria-disabled="true">
-    Book now
-  </span>
-  <div class="small-muted" style="margin-top:8px">
-    Your account must be approved by admin to book.
-  </div>
-
-{% else %}
-  <a class="air-cta"
-     href="/bookings/new?item_id={{ item.id }}&disp_cur={{ display_currency }}">
-    Book now
-  </a>
-{% endif %}
-
-        </div>
-      </div>
-      <div class="air-underlay" id="airUnder"></div>
-    </div>
-
-    <!-- ===== REVIEWS ===== -->
-    <div class="hr"></div>
-    <section id="reviews" class="rv-wrap" aria-label="Reviews">
-      <h5 style="margin:0 0 10px 0">Reviews</h5>
-
-      {% set _avg = item_rating_avg or 0 %}
-      {% set _cnt = item_rating_count or 0 %}
-
-      {% if item_reviews and item_reviews|length %}
-        <div class="rv-strip">
-          {% for r in item_reviews %}
-            <div class="rv-card" id="review-{{ r.id }}">
-              <div class="rv-head">
-                {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
-                <img class="rv-ava" src="{{ avatar }}" alt="avatar" loading="lazy" decoding="async">
-                <div>
-                  <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
-                  <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
-                </div>
-              </div>
-
-              <div class="rv-stars" title="{{ r.stars }} / 5">
-                {% for _ in range(r.stars) %}<span class="full">★</span>{% endfor %}
-                {% for _ in range(5 - r.stars) %}<span class="empty">☆</span>{% endfor %}
-              </div>
-
-              {% if r.comment %}
-                <div class="rv-comment" style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
-              {% endif %}
-            </div>
-          {% endfor %}
-        </div>
-
-        <a href="/items/{{ item.id }}/reviews" class="btnx btnx-lightwide" style="margin-top:10px">
-          View all {{ _cnt }} review(s)
-        </a>
-      {% else %}
-        <div class="small-muted">No reviews yet.</div>
-      {% endif %}
-    </section>
-    <div class="hr"></div>
-
-    {% if similar_items and similar_items|length %}
-    <section class="sim-wrap" aria-label="Similar near you">
-      <h5 style="margin:0 0 10px 0">Similar near you</h5>
-
-      <!-- مهم: لفّ الكروت داخل sim-row -->
-      <div class="sim-row">
-        {% for s in similar_items %}
-          {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
-                          else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
-                          else s.image_path)) %}
-          {% if cover and not (cover.startswith('http') or cover.startswith('/')) %}
-            {% set cover = '/' ~ cover %}
-          {% endif %}
-
-          <a class="sim-card" href="/items/{{ s.id }}">
-            <div class="sim-media">
-              <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}" alt="{{ s.title|e }}" loading="lazy" decoding="async">
-              {# مصدر الأفاتار (عدّل اسم الحقل حسب بياناتك) #}
-{% set logo_src =
-     (s.owner_avatar_path if s.owner_avatar_path else
-     (s.owner and s.owner.avatar_path) if s.owner else
-     None) %}
-{% if logo_src and not (logo_src.startswith('http') or logo_src.startswith('/')) %}
-  {% set logo_src = '/' ~ logo_src %}
-{% endif %}
-
-{% if logo_src %}
-  <img class="sim-logo" src="{{ logo_src }}" alt="owner logo" loading="lazy" decoding="async">
-{% endif %}
-
-
-              <div class="sim-chip">{{ s.category_label or s.category }}</div>
-
-              {% set s_avg_raw = s.avg_stars or s.rating_avg or s.average_rating or s.avg or s.stars_avg or s.starsAverage or s.score or s.rating %}
-              {% if s_avg_raw is not none and (s_avg_raw|string).strip() not in ('', 'None', 'null') %}
-                {% set s_avg = ((s_avg_raw|string).replace(',', '.')|float) %}
-              {% else %}
-                {% set s_avg = none %}
-              {% endif %}
-              {% set has_rating = (s_avg is not none and s_avg > 0) %}
-              <div class="sim-rate {{ '' if has_rating else 'empty' }}"
-                   aria-label="{{ has_rating and ('%.1f'|format(s_avg) ~ ' stars') or 'No ratings yet' }}">
-                {% if has_rating %}<span class="star">★</span>{{ '%.1f'|format(s_avg) }}{% endif %}
-              </div>
-            </div>
-
-            <div class="sim-body">
-  <div class="sim-head">
-    <div class="sim-title">{{ s.title }}</div>
-    {% set is_saved = favorite_ids and (s.id in favorite_ids) %}
-<span role="button" tabindex="0"
-      class="sim-fav js-sim-fav {{ 'on' if is_saved else '' }}"
-      data-item-id="{{ s.id }}" aria-label="Save">
-  <i class="bi {{ 'bi-heart-fill' if is_saved else 'bi-heart' }}"></i>
-</span>
-
-  </div>
-
-              <div class="sim-sub">{{ s.subtype or s.kind or s.category_label or s.category }}</div>
-
-              <div class="sim-meta">
-                <span>{{ s.city or '—' }}</span>
-                <i class="vsep" aria-hidden="true"></i>
-                <span>{{ (s.distance_km|string + ' km') if s.distance_km is defined else 'Nearby' }}</span>
-              </div>
-
-              <hr class="sim-cut">
-
-              <div class="sim-price-row">
-                {% if s.old_price_per_day %}
-                  <div class="sim-price-old">{{ s.old_price_per_day }} {{ s.currency or '$' }}</div>
-                {% else %}
-                  <div></div>
-                {% endif %}
-                  <div class="sim-price-now">
-    {% if s.display_price is defined and s.display_currency is defined %}
-      {{ s.display_price | money(s.display_currency) }} <span class="sim-unit">/ day</span>
-    {% else %}
-      {{ s.price_per_day }} {{ s.currency or '$' }} <span class="sim-unit">/ day</span>
-    {% endif %}
-  </div>
-
-              </div>
-            </div>
-          </a>
-        {% endfor %}
-      </div>
-
-      <a class="btnx btnx-lightwide" href="/items?category={{ item.category | urlencode }}&city={{ item.city | urlencode }}">
-        View more in {{ item.city or 'area' }}
-      </a>
-    </section>
-    <div class="hr"></div>
-    {% endif %}
-
-    <!-- ===== Owner Card ===== -->
-    <div class="card-glass">
-      <div class="card-body">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
-          <h5 style="margin:0">Owner</h5>
-          <span class="badge-pill">Stripe Connect • Receive earnings</span>
-        </div>
-
-        {% if owner %}
-          <div class="owner-row">
-            <img class="owner-avatar" src="{{ owner.avatar_path or url_for('static', path='placeholder.png') }}" alt="owner" loading="lazy" decoding="async">
-            <div>
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <strong>{{ owner.first_name }} {{ owner.last_name }}</strong>
-                {{ render_badges(owner_badges, 22) }}
-              </div>
-              <div class="small-muted">Member since {{ owner.created_at.strftime("%Y-%m-%d") if owner.created_at else "" }}</div>
-            </div>
-          </div>
-          <div class="hr"></div>
-          <div class="btns-row">
-            <a href="/users/{{ owner.id }}" class="btnx btnx-ghost">👤 Public profile</a>
-          </div>
-        {% else %}
-          <div class="small-muted">Owner information not available.</div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <div class="hr d-md-none"></div>
-
-  {% endif %}
-</section>
+{% macro detail_image_src(path) -%}
+  {%- set source = (path or '')|string|trim -%}
+  {%- if source and not (source.startswith('http://') or source.startswith('https://') or source.startswith('/')) -%}
+    /{{- source -}}
+  {%- else -%}
+    {{- source -}}
+  {%- endif -%}
+{%- endmacro %}
 
 {% if item %}
-<!-- ===== زر الإبلاغ أسفل الصفحة ===== -->
-<div class="container" style="max-width:900px;padding:0 12px;">
-  <button class="btn btn-outline-secondary w-100" type="button"
-          data-bs-toggle="offcanvas" data-bs-target="#reportSheet">
-    🚩 Report this listing
-  </button>
-</div>
+  {% set raw_images = item.image_urls or [] %}
+  {% if raw_images is string %}
+    {% set images = raw_images.split(',') if ',' in raw_images else [raw_images] %}
+  {% else %}
+    {% set images = raw_images %}
+  {% endif %}
+  {% if not images and item.image_path %}
+    {% set images = [item.image_path] %}
+  {% endif %}
+  {% set image_total = images|length %}
+  {% set item_city = (item.city or '')|trim %}
+  {% set item_category = (item.category_label or item.category or '')|trim %}
+  {% set rating_average = item_rating_avg or 0 %}
+  {% set rating_count = item_rating_count or 0 %}
 
-<!-- ===== Report Bottom Sheet ===== -->
-<div class="offcanvas offcanvas-top" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl" data-bs-scroll="true" data-bs-backdrop="true">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="reportLabel">🚩 Report listing</h5>
-    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-  </div>
-  <div class="offcanvas-body small">
-    <form method="post" action="/reports" id="reportForm">
-      <input type="hidden" name="item_id" value="{{ item.id }}">
-      <input type="hidden" name="image_index" id="rf_image_index" value="0">
-      <input type="hidden" name="image_url" id="rf_image_url" value="">
-      <div class="mb-3">
-        <label class="form-label">Reason</label>
-        <select class="form-select" name="reason" required>
-          <option value="" selected disabled>Select a report reason</option>
-          <option value="nudity">Inappropriate content/Nudity</option>
-          <option value="violence">Violence/Hate</option>
-          <option value="scam">Scam/Fraud</option>
-          <option value="copyright">Copyright</option>
-          <option value="spam">Spam</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Additional notes</label>
-        <textarea class="form-control" name="note" rows="3" placeholder="Write details that help us review…"></textarea>
-      </div>
-      <button class="btn btn-danger w-100" type="submit">Submit report</button>
-    </form>
-  </div>
-</div>
-{% endif %}
-
-<script>
-/* Gallery pager + parallax + fixed bar */
-(function(){
-  const main  = document.getElementById('mainImg');
-  const thumbs= document.getElementById('thumbs');
-  const pager = document.getElementById('airPager');
-  const heroFade = document.getElementById('heroFade');
-  const airBar = document.getElementById('airBar');
-
-  function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
-  let activeIdx=0;
-  function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
-  setPager(activeIdx,totalImgs());
-
-  if(thumbs && main){
-    thumbs.addEventListener('click', (e)=>{
-      const t=e.target;
-      if(t.tagName==='IMG'){
-        main.src=t.dataset.src||t.src;
-        [...thumbs.querySelectorAll('img')].forEach(i=>i.classList.remove('active'));
-        t.classList.add('active');
-        activeIdx=parseInt(t.getAttribute('data-index')||'0',10)||0;
-        setPager(activeIdx,totalImgs());
-        document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
-        document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
-      }
-    });
-  }
-
-  const gMain = document.getElementById('gMain');
-  function onScroll(){
-    if(!gMain || !main) return;
-    const rect = gMain.getBoundingClientRect();
-    const h = rect.height || 1;
-    const visibleTop = Math.max(0, -rect.top);
-    const p = Math.min(1, visibleTop / (h * .35));
-    const scale = 1 + (visibleTop>0 ? Math.min(visibleTop/1000, .06) : 0);
-    main.style.transform = `scale(${scale}) translateY(${visibleTop* -0.06}px)`;
-    main.style.opacity = String(1 - p*0.85);
-    if(heroFade) heroFade.style.opacity = String(p);
-  }
-  window.addEventListener('scroll', onScroll, {passive:true});
-  onScroll();
-
-  function portalBar(){
-    if(!airBar) return;
-    if (window.matchMedia('(max-width: 768px)').matches) {
-      if(airBar.parentElement !== document.body){ document.body.appendChild(airBar); }
-      const under = document.getElementById('airUnder');
-      if(under && under.parentElement !== document.body){ document.body.appendChild(under); }
-      const pad = (airBar.offsetHeight || 64) + 12;
-      document.body.style.paddingBottom = pad + 'px';
-      document.documentElement.style.setProperty('--airbar-h', pad + 'px');
-    } else {
-      const container = document.querySelector('.air-sheet');
-      if (container && airBar.parentElement !== container) container.appendChild(airBar);
-      document.body.style.paddingBottom = '';
-      document.documentElement.style.removeProperty('--airbar-h');
+  <style>
+    /* Scoped item-detail redesign: no global card, gallery, or navigation selectors. */
+    .item-detail {
+      --detail-ink: #111a3a;
+      --detail-muted: #67718d;
+      --detail-surface: #ffffff;
+      --detail-page: #f6f8ff;
+      --detail-line: #e6eaf4;
+      --detail-purple: #7456ee;
+      --detail-blue: #378cf2;
+      --detail-gradient: linear-gradient(135deg, #7657ef 0%, #378cf2 100%);
+      --detail-shadow: 0 12px 30px rgba(30, 48, 89, .08);
+      --detail-shadow-raised: 0 14px 32px rgba(40, 55, 96, .14);
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 100%;
+      padding: 22px 12px 148px;
+      color: var(--detail-ink);
+      background: var(--detail-page);
     }
-  }
-  portalBar();
-  window.addEventListener('resize', portalBar);
-  window.addEventListener('orientationchange', portalBar);
-
-  if (window.visualViewport) {
-    const onVV = () => {
-      const vh = window.visualViewport.height || window.innerHeight;
-      const kbOpen = vh < window.innerHeight * 0.9;
-      if (kbOpen) document.body.style.paddingBottom = '12px';
-      else portalBar();
-    };
-    window.visualViewport.addEventListener('resize', onVV);
-    window.visualViewport.addEventListener('scroll', onVV);
-  }
-
-  document.body.classList.add('item-page');
-})();
-</script>
-<script>
-/* Share + Favorite (optimistic with POST/DELETE first, toggle as fallback) */
-(function () {
-  const shareBtn = document.querySelector('.js-share');
-  if (shareBtn) {
-    shareBtn.addEventListener('click', async () => {
-      const url = shareBtn.dataset.url || location.href;
-      const title = shareBtn.dataset.title || document.title;
-      try {
-        if (navigator.share) { await navigator.share({ title, url }); }
-        else if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(url); alert('Link copied ✔');
-        } else {
-          const ta=document.createElement('textarea');
-          ta.value=url; document.body.appendChild(ta); ta.select();
-          document.execCommand('copy'); ta.remove(); alert('Link copied ✔');
-        }
-      } catch(_) {}
-    });
-  }
-
-  const favBtn = document.querySelector('.js-fav');
-  if (!favBtn) return;
-  const icon = favBtn.querySelector('i');
-
-  function paint(on){
-    favBtn.dataset.on = on ? '1' : '0';
-    favBtn.classList.toggle('is-on', !!on);
-    icon.classList.toggle('bi-heart-fill', !!on);
-    icon.classList.toggle('bi-heart', !on);
-    favBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    favBtn.classList.remove('fav-anim'); void favBtn.offsetWidth; favBtn.classList.add('fav-anim');
-  }
-
-  async function toggleFavorite(){
-    const id   = favBtn.dataset.itemId;
-    const next = favBtn.dataset.on !== '1';
-    paint(next); // تفاؤلي
-
-    try {
-      // المسار الأساسي الموثوق: /api/favorites/{id} بـ POST/DELETE
-      const method = next ? 'POST' : 'DELETE';
-      let res = await fetch(`/api/favorites/${id}`, { method, credentials: 'same-origin' });
-
-      // في حال 404 (بيئة لا تدعم هذا المسار)، نرجع إلى /toggle
-      if (res.status === 404) {
-        res = await fetch('/api/favorites/toggle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ item_id: id })
-        });
-      }
-
-      if (res.status === 401 || res.type === 'opaqueredirect' || (res.redirected && !res.url.includes('/api/'))) {
-        paint(!next);
-        location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
-        return;
-      }
-
-      if (!res.ok) paint(!next);
-    } catch (e) {
-      paint(!next);
+    .item-detail *, .item-detail *::before, .item-detail *::after { box-sizing: border-box; }
+    .item-detail a { color: inherit; }
+    .item-detail button { font: inherit; }
+    .item-detail__shell { width: min(1180px, 100%); margin: 0 auto; }
+    .item-detail__hero-layout { display: grid; grid-template-columns: minmax(0, 1.23fr) minmax(320px, .77fr); gap: 24px; align-items: start; }
+    .item-detail__card, .item-detail__gallery {
+      min-width: 0;
+      background: var(--detail-surface);
+      border: 1px solid var(--detail-line);
+      border-radius: 22px;
+      box-shadow: var(--detail-shadow);
     }
-  }
 
-  favBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(); });
-  paint(favBtn.dataset.on === '1');
-})();
-</script>
+    .item-detail__gallery { padding: 12px; }
+    .item-detail__stage {
+      position: relative;
+      display: grid;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      max-height: 520px;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 17px;
+      background: linear-gradient(135deg, #eef2fa, #e4e9f4);
+      isolation: isolate;
+    }
+    .item-detail__main-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .item-detail__main-image.is-switching { opacity: .62; transform: scale(1.008); }
+    .item-detail__empty-image {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+      color: var(--detail-muted);
+      font-size: .94rem;
+    }
+    .item-detail__gallery-actions {
+      position: absolute;
+      inset: 12px 12px auto;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+    }
+    .item-detail__gallery-actions-right { display: flex; gap: 8px; pointer-events: auto; }
+    .item-detail__icon-button {
+      display: inline-grid;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border: 1px solid rgba(17, 26, 58, .08);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .96);
+      color: var(--detail-ink);
+      box-shadow: 0 6px 16px rgba(16, 30, 64, .16);
+      cursor: pointer;
+      text-decoration: none;
+      pointer-events: auto;
+      transition: transform 160ms ease, box-shadow 160ms ease, color 160ms ease;
+    }
+    .item-detail__icon-button:hover { transform: translateY(-1px); box-shadow: 0 9px 19px rgba(16, 30, 64, .19); }
+    .item-detail__icon-button:focus-visible,
+    .item-detail__thumb:focus-visible,
+    .item-detail__action:focus-visible,
+    .item-detail__owner-link:focus-visible,
+    .item-detail__link:focus-visible,
+    .item-detail__report-button:focus-visible,
+    .item-detail__description-toggle:focus-visible,
+    .item-detail__booking-cta:focus-visible {
+      outline: 3px solid rgba(55, 140, 242, .38);
+      outline-offset: 3px;
+    }
+    .item-detail__favorite.is-saved { color: #d64776; }
+    .item-detail__favorite.is-popping { animation: item-detail-favorite-pop 230ms ease; }
+    @keyframes item-detail-favorite-pop { 50% { transform: scale(1.14); } }
+    .item-detail__counter {
+      position: absolute;
+      z-index: 2;
+      right: 12px;
+      bottom: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(14, 23, 50, .72);
+      color: #fff;
+      font-size: .78rem;
+      font-weight: 750;
+      letter-spacing: .01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .item-detail__thumbs {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0 0;
+      padding: 0 1px 2px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+    .item-detail__thumb {
+      flex: 0 0 76px;
+      width: 76px;
+      height: 56px;
+      padding: 0;
+      overflow: hidden;
+      border: 2px solid transparent;
+      border-radius: 11px;
+      background: #edf1f8;
+      cursor: pointer;
+      scroll-snap-align: start;
+      transition: border-color 160ms ease, transform 160ms ease, opacity 160ms ease;
+    }
+    .item-detail__thumb:hover { transform: translateY(-1px); }
+    .item-detail__thumb[aria-current="true"] { border-color: var(--detail-purple); box-shadow: 0 0 0 2px rgba(55, 140, 242, .18); }
+    .item-detail__thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
+    .item-detail__summary { padding: clamp(20px, 3vw, 30px); }
+    .item-detail__title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .item-detail__title {
+      min-width: 0;
+      margin: 0;
+      color: var(--detail-ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: clamp(1.65rem, 3.2vw, 2.4rem);
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -.035em;
+      overflow-wrap: anywhere;
+    }
+    .item-detail__rating {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: #fffaf0;
+      color: var(--detail-ink);
+      font-size: .88rem;
+      font-weight: 760;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .item-detail__rating .bi-star-fill { color: #eeae24; }
+    .item-detail__rating-count { color: var(--detail-muted); font-weight: 650; }
+    .item-detail__metadata { display: flex; flex-wrap: wrap; gap: 7px 14px; margin: 16px 0 0; color: var(--detail-muted); font-size: .91rem; line-height: 1.4; }
+    .item-detail__metadata-item { display: inline-flex; align-items: center; min-width: 0; gap: 6px; overflow-wrap: anywhere; }
+    .item-detail__metadata-item + .item-detail__metadata-item::before { width: 1px; height: 15px; margin-right: 8px; background: var(--detail-line); content: ""; }
+    .item-detail__metadata .bi { color: var(--detail-purple); }
+    .item-detail__price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; margin-top: 22px; }
+    .item-detail__price-value { color: var(--detail-purple); font-size: clamp(1.48rem, 3vw, 2.12rem); font-weight: 840; letter-spacing: -.035em; line-height: 1; }
+    .item-detail__price-unit { color: var(--detail-muted); font-size: .92rem; font-weight: 650; }
+    .item-detail__actions { display: flex; gap: 10px; margin-top: 22px; }
+    .item-detail__action {
+      display: inline-flex;
+      min-width: 0;
+      min-height: 48px;
+      flex: 1 1 auto;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 16px;
+      border: 0;
+      border-radius: 13px;
+      background: var(--detail-gradient);
+      color: #fff;
+      box-shadow: 0 9px 18px rgba(92, 90, 225, .2);
+      font-size: .96rem;
+      font-weight: 780;
+      text-align: center;
+      text-decoration: none;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+    .item-detail__action:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 12px 22px rgba(92, 90, 225, .26); }
+    .item-detail__website { display: inline-flex; align-items: center; gap: 7px; margin-top: 17px; color: var(--detail-purple); font-size: .9rem; font-weight: 720; text-decoration: none; }
+    .item-detail__website:hover { color: var(--detail-blue); text-decoration: underline; }
 
-<script>
-/* صفر أي padding-top محقون من القالب */
-document.addEventListener('DOMContentLoaded', function () {
-  document.body.classList.add('item-page');
-  var pw = document.getElementById('page-wrapper');
-  if (pw) pw.style.paddingTop = '0px';
-  document.documentElement.style.setProperty('--appbar-h','0px','important');
-  ['.page','#page-wrapper','main'].forEach(sel=>{
-    document.querySelectorAll(sel).forEach(el=>{
-      el.style.setProperty('padding-top','0px','important');
-      el.style.setProperty('margin-top','0px','important');
-      el.style.setProperty('border-top','0px','important');
-    });
-  });
-});
-</script>
+    .item-detail__below-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .42fr); gap: 20px 24px; margin-top: 24px; align-items: start; }
+    .item-detail__main-column { display: grid; gap: 20px; min-width: 0; }
+    .item-detail__side-column { display: grid; gap: 20px; min-width: 0; }
+    .item-detail__section { padding: clamp(20px, 2.5vw, 26px); }
+    .item-detail__section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
+    .item-detail__section-heading h2 { margin: 0; color: var(--detail-ink); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 1.08rem; font-weight: 800; letter-spacing: -.015em; }
+    .item-detail__link { display: inline-flex; align-items: center; gap: 4px; color: var(--detail-purple); font-size: .89rem; font-weight: 760; text-decoration: none; white-space: nowrap; }
+    .item-detail__link:hover { color: var(--detail-blue); text-decoration: underline; }
 
-<script>
-/* اخفِ الشريط عند فتح الشيت */
-(function(){
-  const oc = document.getElementById('reportSheet');
-  const bar = document.getElementById('airBar');
-  const under = document.getElementById('airUnder');
-  if(!oc) return;
+    .item-detail__owner-link { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; }
+    .item-detail__owner-avatar { flex: 0 0 auto; width: 58px; height: 58px; border: 2px solid #eef1fb; border-radius: 50%; object-fit: cover; background: #eef1f7; }
+    .item-detail__owner-copy { min-width: 0; }
+    .item-detail__owner-name { color: var(--detail-ink); font-size: 1rem; font-weight: 790; overflow-wrap: anywhere; }
+    .item-detail__owner-since { margin-top: 3px; color: var(--detail-muted); font-size: .84rem; overflow-wrap: anywhere; }
+    .item-detail__description { margin: 0; color: #303b59; font-size: .97rem; line-height: 1.72; white-space: pre-line; overflow-wrap: anywhere; }
+    .item-detail__description.is-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+    .item-detail__description-toggle { margin-top: 11px; padding: 0; border: 0; background: transparent; color: var(--detail-purple); font-size: .9rem; font-weight: 780; cursor: pointer; }
+    .item-detail__description-toggle:hover { color: var(--detail-blue); text-decoration: underline; }
+    .item-detail__location-copy { display: flex; align-items: center; gap: 9px; color: #35405f; font-size: .95rem; line-height: 1.5; overflow-wrap: anywhere; }
+    .item-detail__location-copy .bi { color: var(--detail-purple); font-size: 1.12rem; }
 
-  oc.addEventListener('shown.bs.offcanvas', function(){
-    if(bar){ bar.style.display = 'none'; }
-    if(under){ under.style.display = 'none'; }
-    document.body.style.overflow = 'hidden';
-  });
+    .item-detail__reviews { scroll-margin-top: 20px; }
+    .item-detail__review-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    .item-detail__review { min-width: 0; padding: 14px; border: 1px solid var(--detail-line); border-radius: 14px; background: #fbfcff; }
+    .item-detail__review-head { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .item-detail__review-avatar { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #edf1f7; }
+    .item-detail__review-name { min-width: 0; color: var(--detail-ink); font-size: .88rem; font-weight: 770; overflow-wrap: anywhere; }
+    .item-detail__review-date { margin-top: 2px; color: var(--detail-muted); font-size: .76rem; }
+    .item-detail__review-stars { margin-top: 10px; color: #eeae24; font-size: .84rem; letter-spacing: .03em; }
+    .item-detail__review-comment { margin: 8px 0 0; color: #47516d; font-size: .86rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
 
-  oc.addEventListener('hidden.bs.offcanvas', function(){
-    if(bar){ bar.style.display = ''; }
-    if(under){ under.style.display = ''; }
-    document.body.style.overflow = '';
-  });
-})();
-</script>
+    .item-detail__similar { grid-column: 1 / -1; }
+    .item-detail__similar-row { display: grid; grid-auto-columns: minmax(220px, 260px); grid-auto-flow: column; gap: 12px; overflow-x: auto; padding: 1px 1px 8px; overscroll-behavior-x: contain; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+    .item-detail__similar-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid var(--detail-line); border-radius: 15px; background: #fff; scroll-snap-align: start; }
+    .item-detail__similar-image-link { display: block; aspect-ratio: 16 / 10; overflow: hidden; background: #eef1f7; }
+    .item-detail__similar-image { width: 100%; height: 100%; object-fit: cover; transition: transform 180ms ease; }
+    .item-detail__similar-image-link:hover .item-detail__similar-image { transform: scale(1.025); }
+    .item-detail__similar-favorite { position: absolute; top: 10px; right: 10px; z-index: 1; display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid rgba(17, 26, 58, .08); border-radius: 50%; background: rgba(255, 255, 255, .94); color: var(--detail-ink); box-shadow: 0 5px 12px rgba(16, 30, 64, .13); cursor: pointer; }
+    .item-detail__similar-favorite.is-saved { color: #d64776; }
+    .item-detail__similar-body { display: block; padding: 12px; color: inherit; text-decoration: none; }
+    .item-detail__similar-title { display: -webkit-box; overflow: hidden; margin: 0; color: var(--detail-ink); font-size: .95rem; font-weight: 780; line-height: 1.28; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .item-detail__similar-meta { display: flex; flex-wrap: wrap; gap: 5px 9px; margin-top: 7px; color: var(--detail-muted); font-size: .77rem; line-height: 1.3; }
+    .item-detail__similar-meta span { overflow-wrap: anywhere; }
+    .item-detail__similar-price { margin-top: 10px; color: var(--detail-purple); font-size: .95rem; font-weight: 820; }
+    .item-detail__similar-unit { color: var(--detail-muted); font-size: .76rem; font-weight: 650; }
+    .item-detail__view-more { margin-top: 14px; }
 
+    .item-detail__report { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+    .item-detail__report-button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 0; border: 0; background: transparent; color: #b24a5b; font-size: .85rem; font-weight: 700; cursor: pointer; }
+    .item-detail__report-button:hover { color: #8f3040; text-decoration: underline; }
 
-<script>
-/* Favorite in Similar cards — simple, robust on iOS/Android */
-(function () {
-  async function toggleFav(fav){
-    const id   = fav.dataset.itemId;
-    const icon = fav.querySelector('i');
-    const wasFilled = icon.classList.contains('bi-heart-fill');
+    .item-detail__booking-bar {
+      position: fixed;
+      z-index: 1040;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      display: flex;
+      width: min(calc(100% - 24px), 640px);
+      min-height: 72px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 10px 10px 17px;
+      transform: translateX(-50%);
+      border: 1px solid rgba(218, 224, 239, .94);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .98);
+      box-shadow: 0 14px 34px rgba(22, 35, 70, .18);
+    }
+    .item-detail__booking-price { display: grid; min-width: 0; gap: 3px; }
+    .item-detail__booking-price strong { color: var(--detail-ink); font-size: 1.05rem; font-weight: 820; line-height: 1.1; overflow-wrap: anywhere; }
+    .item-detail__booking-price span { color: var(--detail-muted); font-size: .78rem; font-weight: 650; }
+    .item-detail__booking-cta { display: inline-flex; flex: 0 0 auto; min-height: 50px; align-items: center; justify-content: center; gap: 8px; padding: 12px 19px; border: 0; border-radius: 13px; background: var(--detail-gradient); color: #fff; box-shadow: 0 8px 17px rgba(92, 90, 225, .22); font-size: .96rem; font-weight: 800; text-decoration: none; }
+    .item-detail__booking-cta:hover { color: #fff; }
+    .item-detail__booking-cta[aria-disabled="true"] { opacity: .56; cursor: not-allowed; }
+    .item-detail__booking-note { position: absolute; top: calc(100% + 7px); right: 0; color: var(--detail-muted); font-size: .75rem; text-align: right; }
 
-    // تفاؤلي
-    icon.classList.toggle('bi-heart-fill', !wasFilled);
-    icon.classList.toggle('bi-heart', wasFilled);
-    fav.classList.toggle('on', !wasFilled);
+    .item-detail .offcanvas { color: var(--detail-ink); }
+    .item-detail .offcanvas-header { border-bottom: 1px solid var(--detail-line); }
+    .item-detail .offcanvas-title { font-weight: 800; }
 
-    try{
-      let res = await fetch(`/api/favorites/${id}`, {
-        method: wasFilled ? 'DELETE' : 'POST',
-        credentials: 'same-origin'
+    @media (min-width: 1220px) {
+      .item-detail { padding-inline: 24px; }
+      .item-detail__booking-bar { left: auto; right: 24px; width: min(430px, calc(100% - 48px)); transform: none; }
+      .item-detail__side-column { position: sticky; top: 20px; }
+    }
+    @media (max-width: 900px) {
+      .item-detail__hero-layout { grid-template-columns: 1fr; }
+      .item-detail__below-hero { grid-template-columns: 1fr; }
+      .item-detail__side-column { order: -1; }
+      .item-detail__similar { grid-column: auto; }
+      .item-detail__report { grid-column: auto; }
+    }
+    @media (max-width: 620px) {
+      .item-detail { padding: 10px 10px 144px; }
+      .item-detail__gallery { padding: 9px; border-radius: 18px; }
+      .item-detail__stage { aspect-ratio: 4 / 3; max-height: 390px; border-radius: 14px; }
+      .item-detail__gallery-actions { inset: 9px 9px auto; }
+      .item-detail__icon-button { width: 42px; height: 42px; }
+      .item-detail__counter { right: 9px; bottom: 9px; }
+      .item-detail__thumb { flex-basis: 69px; width: 69px; height: 51px; }
+      .item-detail__summary { padding: 20px; }
+      .item-detail__title-row { flex-wrap: wrap; }
+      .item-detail__rating { order: 2; }
+      .item-detail__metadata-item + .item-detail__metadata-item::before { display: none; }
+      .item-detail__actions { flex-direction: column; }
+      .item-detail__action { width: 100%; }
+      .item-detail__below-hero { gap: 14px; margin-top: 14px; }
+      .item-detail__section { padding: 19px; border-radius: 18px; }
+      .item-detail__review-list { grid-template-columns: 1fr; }
+      .item-detail__booking-bar { min-height: 68px; padding: 9px 9px 9px 14px; border-radius: 16px; }
+      .item-detail__booking-cta { min-height: 47px; padding-inline: 15px; }
+      .item-detail__booking-note { left: 0; right: auto; max-width: 100%; text-align: left; }
+    }
+    @media (max-width: 360px) {
+      .item-detail__booking-bar { gap: 8px; }
+      .item-detail__booking-price strong { font-size: .94rem; }
+      .item-detail__booking-cta { padding-inline: 12px; font-size: .88rem; }
+      .item-detail__title { font-size: 1.55rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .item-detail *, .item-detail *::before, .item-detail *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    }
+  </style>
+
+  <main class="item-detail" data-item-detail>
+    <div class="item-detail__shell">
+      <div class="item-detail__hero-layout">
+        <section class="item-detail__gallery" aria-label="{{ item.title }} images">
+          <div class="item-detail__stage" id="itemGalleryStage">
+            {% if image_total %}
+              <img id="itemMainImage"
+                   class="item-detail__main-image"
+                   src="{{ detail_image_src(images[0]) }}"
+                   data-current-src="{{ detail_image_src(images[0]) }}"
+                   alt="{{ item.title }} — image 1"
+                   fetchpriority="high"
+                   decoding="async"
+                   onerror="this.onerror=null;this.src='{{ url_for('static', path='placeholder.png') }}';">
+            {% else %}
+              <div class="item-detail__empty-image" role="img" aria-label="No image available">No image available</div>
+            {% endif %}
+
+            <div class="item-detail__gallery-actions">
+              <button type="button" class="item-detail__icon-button" id="itemBackButton" aria-label="Back">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+              </button>
+              <div class="item-detail__gallery-actions-right">
+                <button type="button"
+                        class="item-detail__icon-button js-share"
+                        aria-label="Share this listing"
+                        data-title="{{ item.title }}"
+                        data-url="{{ request.url }}">
+                  <i class="bi bi-share" aria-hidden="true"></i>
+                </button>
+                <button type="button"
+                        class="item-detail__icon-button item-detail__favorite js-favorite {{ 'is-saved' if is_favorite else '' }}"
+                        aria-label="{{ 'Remove from favorites' if is_favorite else 'Add to favorites' }}"
+                        aria-pressed="{{ 'true' if is_favorite else 'false' }}"
+                        data-item-id="{{ item.id }}"
+                        data-on="{{ '1' if is_favorite else '0' }}">
+                  <i class="bi {{ 'bi-heart-fill' if is_favorite else 'bi-heart' }}" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            {% if image_total %}
+              <div id="itemImageCounter" class="item-detail__counter" aria-live="polite">1 / {{ image_total }}</div>
+            {% endif %}
+          </div>
+
+          {% if image_total > 1 %}
+            <div class="item-detail__thumbs" id="itemGalleryThumbs" aria-label="Select a listing image">
+              {% for image in images %}
+                <button type="button"
+                        class="item-detail__thumb"
+                        data-gallery-index="{{ loop.index0 }}"
+                        data-gallery-src="{{ detail_image_src(image) }}"
+                        aria-label="View image {{ loop.index }} of {{ image_total }}"
+                        aria-current="{{ 'true' if loop.first else 'false' }}">
+                  <img src="{{ detail_image_src(image) }}"
+                       alt="{{ item.title }} thumbnail {{ loop.index }}"
+                       loading="lazy"
+                       decoding="async"
+                       onerror="this.onerror=null;this.src='{{ url_for('static', path='placeholder.png') }}';">
+                </button>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="item-detail__summary item-detail__card" aria-labelledby="itemDetailTitle">
+          <div class="item-detail__title-row">
+            <h1 class="item-detail__title" id="itemDetailTitle">{{ item.title }}</h1>
+            {% if rating_count %}
+              <a class="item-detail__rating" href="#itemReviews" aria-label="Rated {{ '%.1f'|format(rating_average) }} out of 5 from {{ rating_count }} reviews">
+                <i class="bi bi-star-fill" aria-hidden="true"></i>
+                <span>{{ '%.1f'|format(rating_average) }}</span>
+                <span class="item-detail__rating-count">({{ rating_count }})</span>
+              </a>
+            {% else %}
+              <span class="item-detail__rating" aria-label="Rated 0.0 out of 5 from 0 reviews">
+                <i class="bi bi-star-fill" aria-hidden="true"></i>
+                <span>0.0</span>
+                <span class="item-detail__rating-count">(0)</span>
+              </span>
+            {% endif %}
+          </div>
+
+          {% if item_category or item_city %}
+            <div class="item-detail__metadata" aria-label="Listing details">
+              {% if item_category %}
+                <span class="item-detail__metadata-item"><i class="bi bi-tag" aria-hidden="true"></i>{{ item_category }}</span>
+              {% endif %}
+              {% if item_city %}
+                <span class="item-detail__metadata-item"><i class="bi bi-geo-alt" aria-hidden="true"></i>{{ item_city }}</span>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          <div class="item-detail__price" aria-label="Price per day">
+            <span class="item-detail__price-value">{{ display_price | money(display_currency) }}</span>
+            <span class="item-detail__price-unit">per day</span>
+          </div>
+
+          {% if owner %}
+            <div class="item-detail__actions">
+              {% if session_user %}
+                <a class="item-detail__action" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">
+                  <i class="bi bi-chat-dots" aria-hidden="true"></i><span>Contact owner</span>
+                </a>
+              {% else %}
+                <a class="item-detail__action" href="/login?next={{ request.url | urlencode }}">
+                  <i class="bi bi-chat-dots" aria-hidden="true"></i><span>Contact owner</span>
+                </a>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          {% if website_url %}
+            <a class="item-detail__website" href="{{ website_url }}" target="_blank" rel="noopener noreferrer">
+              <i class="bi bi-globe2" aria-hidden="true"></i><span>Visit website</span><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+            </a>
+          {% endif %}
+        </section>
+      </div>
+
+      <div class="item-detail__below-hero">
+        <div class="item-detail__main-column">
+          {% if item.description %}
+            <section class="item-detail__section item-detail__card" aria-labelledby="itemDescriptionHeading">
+              <div class="item-detail__section-heading"><h2 id="itemDescriptionHeading">Description</h2></div>
+              <p class="item-detail__description is-collapsed" id="itemDescription">{{ item.description }}</p>
+              <button type="button" class="item-detail__description-toggle" id="itemDescriptionToggle" aria-expanded="false">Show more</button>
+              <noscript><style>.item-detail__description.is-collapsed{display:block;overflow:visible}.item-detail__description-toggle{display:none}</style></noscript>
+            </section>
+          {% endif %}
+
+          {% if item_city %}
+            <section class="item-detail__section item-detail__card" aria-labelledby="itemLocationHeading">
+              <div class="item-detail__section-heading"><h2 id="itemLocationHeading">Location</h2></div>
+              <div class="item-detail__location-copy"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>{{ item_city }}</span></div>
+            </section>
+          {% endif %}
+
+          {% if item_reviews and item_reviews|length %}
+            <section class="item-detail__section item-detail__card item-detail__reviews" id="itemReviews" aria-labelledby="itemReviewsHeading">
+              <div class="item-detail__section-heading">
+                <h2 id="itemReviewsHeading">Reviews</h2>
+                <a class="item-detail__link" href="/items/{{ item.id }}/reviews">View all {{ rating_count }}<i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+              </div>
+              <div class="item-detail__review-list">
+                {% for review in item_reviews %}
+                  {% set reviewer_avatar = review.rater.avatar_path if review.rater and review.rater.avatar_path else url_for('static', path='placeholder.png') %}
+                  <article class="item-detail__review" id="review-{{ review.id }}">
+                    <div class="item-detail__review-head">
+                      <img class="item-detail__review-avatar" src="{{ detail_image_src(reviewer_avatar) }}" alt="Reviewer avatar" loading="lazy" decoding="async">
+                      <div>
+                        <div class="item-detail__review-name">{{ (review.rater.first_name ~ ' ' ~ review.rater.last_name) if review.rater else 'Renter' }}</div>
+                        {% if review.created_at %}<div class="item-detail__review-date">{{ review.created_at.strftime('%B %Y') }}</div>{% endif %}
+                      </div>
+                    </div>
+                    <div class="item-detail__review-stars" aria-label="{{ review.stars }} out of 5 stars">{% for _ in range(review.stars) %}★{% endfor %}{% for _ in range(5 - review.stars) %}<span style="color:#cbd1df">★</span>{% endfor %}</div>
+                    {% if review.comment %}<p class="item-detail__review-comment">{{ review.comment }}</p>{% endif %}
+                  </article>
+                {% endfor %}
+              </div>
+            </section>
+          {% endif %}
+        </div>
+
+        <aside class="item-detail__side-column" aria-label="Listing owner">
+          {% if owner %}
+            {% set owner_name = ((owner.first_name or '') ~ ' ' ~ (owner.last_name or ''))|trim %}
+            <section class="item-detail__section item-detail__card" aria-labelledby="itemOwnerHeading">
+              <div class="item-detail__section-heading">
+                <h2 id="itemOwnerHeading">Owner</h2>
+                <a class="item-detail__link" href="/users/{{ owner.id }}">View profile<i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+              </div>
+              <a class="item-detail__owner-link" href="/users/{{ owner.id }}">
+                <img class="item-detail__owner-avatar" src="{{ detail_image_src(owner.avatar_path or url_for('static', path='placeholder.png')) }}" alt="{{ owner_name or 'Owner' }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='{{ url_for('static', path='placeholder.png') }}';">
+                <div class="item-detail__owner-copy">
+                  <div class="item-detail__owner-name">{{ owner_name or 'Owner' }}</div>
+                  {% if owner.created_at %}<div class="item-detail__owner-since">Member since {{ owner.created_at.strftime('%B %Y') }}</div>{% endif %}
+                </div>
+              </a>
+            </section>
+          {% endif %}
+        </aside>
+
+        {% if similar_items and similar_items|length %}
+          <section class="item-detail__section item-detail__card item-detail__similar" aria-labelledby="similarItemsHeading">
+            <div class="item-detail__section-heading"><h2 id="similarItemsHeading">Similar near you</h2></div>
+            <div class="item-detail__similar-row">
+              {% for similar in similar_items %}
+                {% set raw_similar_images = similar.image_urls or [] %}
+                {% if raw_similar_images is string %}
+                  {% set similar_images = raw_similar_images.split(',') if ',' in raw_similar_images else [raw_similar_images] %}
+                {% else %}
+                  {% set similar_images = raw_similar_images %}
+                {% endif %}
+                {% set similar_cover = similar_images[0] if similar_images else similar.image_path %}
+                {% set similar_distance = similar.distance_km if similar.distance_km is defined and similar.distance_km is not none else none %}
+                {% set similar_saved = favorite_ids and (similar.id in favorite_ids) %}
+                <article class="item-detail__similar-card">
+                  <a class="item-detail__similar-image-link" href="/items/{{ similar.id }}">
+                    <img class="item-detail__similar-image" src="{{ detail_image_src(similar_cover) if similar_cover else url_for('static', path='placeholder.png') }}" alt="{{ similar.title }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='{{ url_for('static', path='placeholder.png') }}';">
+                  </a>
+                  <button type="button" class="item-detail__similar-favorite js-similar-favorite {{ 'is-saved' if similar_saved else '' }}" data-item-id="{{ similar.id }}" aria-label="{{ 'Remove from favorites' if similar_saved else 'Add to favorites' }}" aria-pressed="{{ 'true' if similar_saved else 'false' }}">
+                    <i class="bi {{ 'bi-heart-fill' if similar_saved else 'bi-heart' }}" aria-hidden="true"></i>
+                  </button>
+                  <a class="item-detail__similar-body" href="/items/{{ similar.id }}">
+                    <h3 class="item-detail__similar-title">{{ similar.title }}</h3>
+                    {% if similar.city or similar_distance is not none %}
+                      <div class="item-detail__similar-meta">
+                        {% if similar.city %}<span>{{ similar.city }}</span>{% endif %}
+                        {% if similar_distance is not none %}<span>{{ '%.1f'|format(similar_distance|float) }} km</span>{% endif %}
+                      </div>
+                    {% endif %}
+                    <div class="item-detail__similar-price">{{ similar.display_price | money(similar.display_currency) }} <span class="item-detail__similar-unit">per day</span></div>
+                  </a>
+                </article>
+              {% endfor %}
+            </div>
+            {% if item_city %}
+              <div class="item-detail__view-more"><a class="item-detail__link" href="/items?category={{ item.category | urlencode }}&city={{ item_city | urlencode }}">View more in {{ item_city }}<i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+            {% endif %}
+          </section>
+        {% endif %}
+
+        <div class="item-detail__report">
+          <button class="item-detail__report-button" type="button" data-bs-toggle="offcanvas" data-bs-target="#itemReportSheet" aria-controls="itemReportSheet">
+            <i class="bi bi-flag" aria-hidden="true"></i><span>Report listing</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="item-detail__booking-bar" id="itemBookingBar" role="region" aria-label="Booking options">
+      <div class="item-detail__booking-price">
+        <strong>{{ display_price | money(display_currency) }}</strong>
+        <span>per day</span>
+      </div>
+      {% if not session_user %}
+        <a class="item-detail__booking-cta" href="/login?next={{ request.url | urlencode }}"><i class="bi bi-calendar2-check" aria-hidden="true"></i><span>Book now</span></a>
+      {% elif (session_user.get('status') or '') != 'approved' %}
+        <span class="item-detail__booking-cta" aria-disabled="true"><i class="bi bi-calendar2-check" aria-hidden="true"></i><span>Book now</span></span>
+        <span class="item-detail__booking-note">Your account must be approved by admin to book.</span>
+      {% else %}
+        <a class="item-detail__booking-cta" href="/bookings/new?item_id={{ item.id }}&disp_cur={{ display_currency }}"><i class="bi bi-calendar2-check" aria-hidden="true"></i><span>Book now</span></a>
+      {% endif %}
+    </div>
+
+    <div class="offcanvas offcanvas-bottom" tabindex="-1" id="itemReportSheet" aria-labelledby="itemReportSheetLabel" data-bs-scroll="true" data-bs-backdrop="true">
+      <div class="offcanvas-header">
+        <h2 class="offcanvas-title h5" id="itemReportSheetLabel">Report listing</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        <form method="post" action="/reports" id="itemReportForm">
+          <input type="hidden" name="item_id" value="{{ item.id }}">
+          <input type="hidden" name="image_index" id="itemReportImageIndex" value="0">
+          <input type="hidden" name="image_url" id="itemReportImageUrl" value="{{ detail_image_src(images[0]) if image_total else '' }}">
+          <div class="mb-3">
+            <label class="form-label" for="itemReportReason">Reason</label>
+            <select class="form-select" id="itemReportReason" name="reason" required>
+              <option value="" selected disabled>Select a report reason</option>
+              <option value="nudity">Inappropriate content/Nudity</option>
+              <option value="violence">Violence/Hate</option>
+              <option value="scam">Scam/Fraud</option>
+              <option value="copyright">Copyright</option>
+              <option value="spam">Spam</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="itemReportNote">Additional notes</label>
+            <textarea class="form-control" id="itemReportNote" name="note" rows="3" placeholder="Write details that help us review…"></textarea>
+          </div>
+          <button class="btn btn-danger w-100" type="submit">Submit report</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const root = document.querySelector('[data-item-detail]');
+      if (!root) return;
+
+      const placeholder = {{ url_for('static', path='placeholder.png')|tojson }};
+      const itemTitle = {{ item.title|tojson }};
+      const mainImage = root.querySelector('#itemMainImage');
+      const stage = root.querySelector('#itemGalleryStage');
+      const thumbs = Array.from(root.querySelectorAll('[data-gallery-index]'));
+      const counter = root.querySelector('#itemImageCounter');
+      const reportImageIndex = root.querySelector('#itemReportImageIndex');
+      const reportImageUrl = root.querySelector('#itemReportImageUrl');
+      let activeIndex = 0;
+
+      const setGalleryImage = (index) => {
+        if (!mainImage || !thumbs.length || index < 0 || index >= thumbs.length) return;
+        const thumb = thumbs[index];
+        const nextSource = thumb.dataset.gallerySrc;
+        if (!nextSource) return;
+        activeIndex = index;
+        mainImage.classList.add('is-switching');
+        mainImage.src = nextSource;
+        mainImage.dataset.currentSrc = nextSource;
+        mainImage.alt = itemTitle + ' — image ' + String(index + 1);
+        window.setTimeout(() => mainImage.classList.remove('is-switching'), 160);
+        thumbs.forEach((button, buttonIndex) => button.setAttribute('aria-current', buttonIndex === index ? 'true' : 'false'));
+        if (counter) counter.textContent = String(index + 1) + ' / ' + String(thumbs.length);
+        if (reportImageIndex) reportImageIndex.value = String(index);
+        if (reportImageUrl) reportImageUrl.value = nextSource;
+      };
+
+      thumbs.forEach((button, index) => button.addEventListener('click', () => setGalleryImage(index)));
+      if (mainImage) mainImage.addEventListener('error', () => { mainImage.src = placeholder; }, { once: true });
+
+      let touchStart = null;
+      if (stage && thumbs.length > 1) {
+        stage.addEventListener('touchstart', (event) => {
+          if (event.target.closest('button, a')) return;
+          const touch = event.changedTouches[0];
+          touchStart = { x: touch.clientX, y: touch.clientY };
+        }, { passive: true });
+        stage.addEventListener('touchend', (event) => {
+          if (!touchStart || event.target.closest('button, a')) return;
+          const touch = event.changedTouches[0];
+          const deltaX = touch.clientX - touchStart.x;
+          const deltaY = touch.clientY - touchStart.y;
+          touchStart = null;
+          if (Math.abs(deltaX) < 44 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+          setGalleryImage((activeIndex + (deltaX < 0 ? 1 : -1) + thumbs.length) % thumbs.length);
+        }, { passive: true });
+      }
+
+      root.querySelector('#itemBackButton')?.addEventListener('click', () => {
+        if (window.history.length > 1) window.history.back();
+        else window.location.assign('/');
       });
 
-      if (res.status === 404){
-        res = await fetch('/api/favorites/toggle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ item_id: id })
+      root.querySelector('.js-share')?.addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        const url = button.dataset.url || window.location.href;
+        const title = button.dataset.title || document.title;
+        try {
+          if (navigator.share) await navigator.share({ title, url });
+          else if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(url);
+            window.alert('Link copied');
+          } else {
+            const area = document.createElement('textarea');
+            area.value = url;
+            area.setAttribute('readonly', '');
+            area.style.position = 'fixed';
+            area.style.opacity = '0';
+            document.body.appendChild(area);
+            area.select();
+            document.execCommand('copy');
+            area.remove();
+            window.alert('Link copied');
+          }
+        } catch (error) {
+          if (error && error.name !== 'AbortError') return;
+        }
+      });
+
+      const paintFavorite = (button, isSaved, animate = false) => {
+        const icon = button.querySelector('i');
+        button.dataset.on = isSaved ? '1' : '0';
+        button.classList.toggle('is-saved', isSaved);
+        button.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+        button.setAttribute('aria-label', isSaved ? 'Remove from favorites' : 'Add to favorites');
+        if (icon) {
+          icon.classList.toggle('bi-heart-fill', isSaved);
+          icon.classList.toggle('bi-heart', !isSaved);
+        }
+        if (animate) {
+          button.classList.remove('is-popping');
+          void button.offsetWidth;
+          button.classList.add('is-popping');
+        }
+      };
+
+      const toggleFavorite = async (button) => {
+        const itemId = button.dataset.itemId;
+        if (!itemId) return;
+        const next = button.dataset.on !== '1';
+        paintFavorite(button, next, true);
+        try {
+          let response = await fetch('/api/favorites/' + itemId, { method: next ? 'POST' : 'DELETE', credentials: 'same-origin' });
+          if (response.status === 404) {
+            response = await fetch('/api/favorites/toggle', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify({ item_id: Number(itemId) })
+            });
+          }
+          if (response.status === 401 || response.type === 'opaqueredirect' || (response.redirected && !response.url.includes('/api/'))) {
+            paintFavorite(button, !next);
+            window.location.assign('/login?next=' + encodeURIComponent(window.location.pathname + window.location.search));
+            return;
+          }
+          if (!response.ok) paintFavorite(button, !next);
+        } catch (_) {
+          paintFavorite(button, !next);
+        }
+      };
+
+      const detailFavorite = root.querySelector('.js-favorite');
+      if (detailFavorite) {
+        paintFavorite(detailFavorite, detailFavorite.dataset.on === '1');
+        detailFavorite.addEventListener('click', (event) => toggleFavorite(event.currentTarget));
+      }
+      root.querySelectorAll('.js-similar-favorite').forEach((button) => {
+        paintFavorite(button, button.classList.contains('is-saved'));
+        button.addEventListener('click', () => toggleFavorite(button));
+      });
+
+      const description = root.querySelector('#itemDescription');
+      const descriptionToggle = root.querySelector('#itemDescriptionToggle');
+      if (description && descriptionToggle) {
+        requestAnimationFrame(() => {
+          const lineHeight = Number.parseFloat(window.getComputedStyle(description).lineHeight);
+          const hasOverflow = Number.isFinite(lineHeight) && description.scrollHeight > (lineHeight * 4) + 2;
+          if (!hasOverflow) {
+            descriptionToggle.hidden = true;
+            return;
+          }
+          description.classList.add('is-collapsed');
+          descriptionToggle.addEventListener('click', () => {
+            const collapsed = description.classList.toggle('is-collapsed');
+            descriptionToggle.textContent = collapsed ? 'Show more' : 'Show less';
+            descriptionToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+          });
         });
       }
 
-      if (res.status === 401){
-        // ارجع الحالة ووجّه لتسجيل الدخول
-        icon.classList.toggle('bi-heart-fill', wasFilled);
-        icon.classList.toggle('bi-heart', !wasFilled);
-        fav.classList.toggle('on', wasFilled);
-        location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
-        return;
+      const reportSheet = root.querySelector('#itemReportSheet');
+      const bookingBar = root.querySelector('#itemBookingBar');
+      if (reportSheet && bookingBar) {
+        reportSheet.addEventListener('show.bs.offcanvas', () => { bookingBar.hidden = true; });
+        reportSheet.addEventListener('hidden.bs.offcanvas', () => { bookingBar.hidden = false; });
       }
-
-      if (!res.ok){
-        // فشل السيرفر: ارجع الحالة
-        icon.classList.toggle('bi-heart-fill', wasFilled);
-        icon.classList.toggle('bi-heart', !wasFilled);
-        fav.classList.toggle('on', wasFilled);
-      }
-    } catch (_) {
-      // خطأ شبكة: ارجع الحالة
-      icon.classList.toggle('bi-heart-fill', wasFilled);
-      icon.classList.toggle('bi-heart', !wasFilled);
-      fav.classList.toggle('on', wasFilled);
-    }
-  }
-
-  // تفويض: امنع تنقّل <a> فقط إذا الهدف هو القلب
-  document.addEventListener('click', function(e){
-    const fav = e.target.closest('.js-sim-fav');
-    if (!fav) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    toggleFav(fav);
-  }, true);
-
-  // دعم لوحة المفاتيح
-  document.addEventListener('keydown', function(e){
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    const fav = e.target.closest('.js-sim-fav');
-    if (!fav) return;
-    e.preventDefault();
-    e.stopPropagation();
-    toggleFav(fav);
-  }, true);
-
-  // فallback للتنقّل على iOS داخل الحاوية القابلة للتمرير
-  document.addEventListener('click', function(e){
-    const card = e.target.closest('a.sim-card');
-    if (!card) return;
-    if (e.target.closest('.js-sim-fav')) return; // لو ضغط قلب، لا ننتقل
-    if (e.defaultPrevented) { window.location.assign(card.href); }
-  }, false);
-})();
-</script>
-
-<script>
-/* Desktop: rotate one review card every 3s in the sidebar */
-(function(){
-  // لا يمس الموبايل
-  const mql = window.matchMedia('(min-width:1024px)');
-  function setup(){
-    // نطبّق الدوران فقط على الدِسكتوب
-    if (!mql.matches) return;
-
-    const rv = document.getElementById('reviews');
-    if (!rv) return;
-    const strip = rv.querySelector('.rv-strip');
-    if (!strip) return;
-
-    const cards = Array.from(strip.querySelectorAll('.rv-card'));
-    if (!cards.length) return;
-
-    // فعّل أول كارت
-    let idx = 0;
-    cards.forEach(c => c.classList.remove('active'));
-    cards[0].classList.add('active');
-
-    // دوّر كل 3 ثواني
-    let timer = rv.__timer__;
-    if (timer) clearInterval(timer);
-    timer = setInterval(()=>{
-      cards[idx].classList.remove('active');
-      idx = (idx + 1) % cards.length;
-      cards[idx].classList.add('active');
-    }, 3000);
-    rv.__timer__ = timer;
-  }
-
-  setup();
-  // لو كبرت/صغّرت النافذة بدّل السلوك
-  window.addEventListener('resize', () => {
-    const rv = document.getElementById('reviews');
-    if (!rv) return;
-    if (!mql.matches && rv.__timer__){ clearInterval(rv.__timer__); rv.__timer__ = null; }
-    if (mql.matches && !rv.__timer__) setup();
-  });
-})();
-</script>
-
-<script>
-(function(){
-  const main = document.getElementById('mainImg');
-  const thumbs = document.querySelectorAll('#thumbs img');
-  const pager  = document.getElementById('airPager');
-
-  if (!main || !thumbs.length) return;
-
-  let index = 0;
-
-  function updatePager(){
-    if(pager) pager.textContent = (index+1) + "/" + thumbs.length;
-  }
-
-  function changeImage(i){
-    if (i < 0) i = thumbs.length - 1;
-    if (i >= thumbs.length) i = 0;
-    index = i;
-
-    thumbs.forEach(t => t.classList.remove('active'));
-    thumbs[i].classList.add('active');
-
-    main.classList.add('fade-out');
-
-    setTimeout(()=>{
-      const newSrc = thumbs[i].dataset.src || thumbs[i].src;
-      main.src = newSrc;
-
-      main.classList.remove('fade-out');
-    },180);
-
-    updatePager();
-  }
-
-  thumbs.forEach((t,i)=>{
-    t.addEventListener("click", ()=> changeImage(i));
-  });
-
-  let startX = 0;
-
-  main.addEventListener("touchstart", e=>{
-    startX = e.touches[0].clientX;
-  }, {passive:true});
-
-  main.addEventListener("touchend", e=>{
-    const diff = e.changedTouches[0].clientX - startX;
-    if(Math.abs(diff) > 40){
-      if(diff < 0) changeImage(index+1);
-      else changeImage(index-1);
-    }
-  });
-
-  updatePager();
-})();
-</script>
-
-
-
-
+    })();
+  </script>
+{% else %}
+  <section class="item-detail"><div class="item-detail__shell"><div class="item-detail__card item-detail__section">Item not found.</div></div></section>
+{% endif %}
 {% endblock %}
