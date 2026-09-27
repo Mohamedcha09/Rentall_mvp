@@ -8,6 +8,7 @@ load_dotenv()
 import os
 import random
 import difflib
+import threading
 from datetime import date
 from typing import Optional
 import requests
@@ -157,7 +158,9 @@ async def fx_autosync_mw(request: Request, call_next):
     # request that performs the daily synchronous FX refresh.
     if _is_public_asset_request(request):
         return await call_next(request)
-    _fx_ensure_daily_sync()
+    # Currency refresh is network-bound.  It must never postpone the first
+    # document byte (and therefore the launch surface) for a visitor.
+    _fx_schedule_daily_sync()
     return await call_next(request)
 # --------------------------------------------------------------------------
 # GEO SESSION MIDDLEWARE (must run AFTER SessionMiddleware)
@@ -458,6 +461,8 @@ def fx_sync_today(db: Session) -> None:
         cache.clear()
 
 app.state.fx_last_sync_at: datetime | None = None
+app.state.fx_sync_lock = threading.Lock()
+app.state.fx_sync_in_progress = False
 
 def _fx_ensure_daily_sync():
     """يشغَّل عند الإقلاع وأول طلب في اليوم فقط."""
@@ -474,6 +479,42 @@ def _fx_ensure_daily_sync():
             db.close()
     except Exception as e:
         print("[WARN] FX sync failed:", e)
+
+
+def _fx_schedule_daily_sync() -> None:
+    """Run the established daily FX refresh off the request/startup path."""
+    try:
+        now = datetime.utcnow()
+        lock = app.state.fx_sync_lock
+        with lock:
+            last_sync = app.state.fx_last_sync_at
+            if (
+                app.state.fx_sync_in_progress
+                or (last_sync and (now - last_sync) < timedelta(hours=20))
+            ):
+                return
+            app.state.fx_sync_in_progress = True
+
+        def worker():
+            try:
+                _fx_ensure_daily_sync()
+            finally:
+                with lock:
+                    app.state.fx_sync_in_progress = False
+
+        thread = threading.Thread(
+            target=worker,
+            name="sevor-fx-daily-sync",
+            daemon=True,
+        )
+        thread.start()
+    except Exception as e:
+        try:
+            with app.state.fx_sync_lock:
+                app.state.fx_sync_in_progress = False
+        except Exception:
+            pass
+        print("[WARN] FX background sync could not start:", e)
 
 def geoip_guess_currency(request: Request) -> str:
     """
@@ -1252,7 +1293,7 @@ def notifications_page(request: Request):
 
 @app.on_event("startup")
 def _startup_fx_seed():
-    _fx_ensure_daily_sync()
+    _fx_schedule_daily_sync()
 
 
 from fastapi.responses import FileResponse
