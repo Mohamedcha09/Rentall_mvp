@@ -460,6 +460,12 @@ a.btn.disabled{
 {% block content %}
 <div class="flow-card card p-3 p-md-4">
 
+{% if booking_decision_error %}
+  <div class="alert alert-danger alert-mini mb-3" role="alert">
+    <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ booking_decision_error }}
+  </div>
+{% endif %}
+
 {% if booking.status == 'paid' and is_renter %}
 <form id="pickupConfirmForm"
       method="post"

@@ -27,29 +27,37 @@ router = APIRouter(tags=["bookings"])
 DISPUTE_WINDOW_HOURS = 48
 RENTER_REPLY_WINDOW_HOURS = 48
 
-# A booking keeps a listing reserved while it is active.  The values below are
-# the terminal states already used by the current booking flow; every other
-# status is intentionally treated as a live reservation.  This makes the
-# availability check safe for both the current states and legacy live records
-# without exposing booking details to another renter.
-BOOKING_RELEASED_STATUSES = frozenset({
-    "rejected",
-    "cancelled",
-    "canceled",
-    "expired",
-    "closed",
-    "completed",
+# A request alone must not reserve a listing.  Dates are held only after the
+# owner accepts it, and they remain held through the paid/rental lifecycle.
+# `approved`, `confirmed`, and `active` are legacy equivalents already found
+# in existing booking records, so they retain the same accepted meaning.
+BOOKING_RESERVING_STATUSES = frozenset({
+    "accepted",
+    "approved",
+    "confirmed",
+    "paid",
+    "pending_payment",
+    "awaiting_pickup",
+    "ready_for_pickup",
+    "picked_up",
+    "active",
+    "in_use",
+    "authorized",
+    "captured",
+    "paid_online",
+    "returned",
+    "in_review",
 })
 
 
 def _availability_bookings_query(db: Session, item_id: int):
-    """Return active bookings which reserve dates for one listing."""
+    """Return accepted bookings which reserve dates for one listing."""
     status_key = func.lower(func.coalesce(Booking.status, ""))
     return (
         db.query(Booking)
         .filter(
             Booking.item_id == item_id,
-            status_key.notin_(BOOKING_RELEASED_STATUSES),
+            status_key.in_(BOOKING_RESERVING_STATUSES),
         )
     )
 
@@ -85,6 +93,14 @@ def _booking_form_redirect(
     if end_date:
         params["end_date"] = end_date.isoformat()
     return RedirectResponse(url=f"/bookings/new?{urlencode(params)}", status_code=303)
+
+
+def _booking_flow_error_redirect(booking_id: int, error: str) -> RedirectResponse:
+    """Return an owner to the same booking with a safe decision error."""
+    return RedirectResponse(
+        url=f"/bookings/flow/{booking_id}?{urlencode({'decision_error': error})}",
+        status_code=303,
+    )
 
 
 def _valid_date_query_value(value: Optional[str]) -> str:
@@ -330,6 +346,10 @@ def booking_flow(
     # ============================
     # 📦 CONTEXT
     # ============================
+    decision_error_messages = {
+        "dates_unavailable": "These dates were just accepted for another renter. This request is still pending.",
+        "not_pending": "This booking has already been decided and can no longer be changed.",
+    }
     ctx = {
         "request": request,
         "booking": bk,
@@ -356,6 +376,10 @@ def booking_flow(
 
         # ⏱️ PASS DEADLINE TO TEMPLATE
         "dispute_deadline_iso": dispute_deadline_iso,
+        "booking_decision_error": decision_error_messages.get(
+            (request.query_params.get("decision_error") or "").strip(),
+            "",
+        ),
     }
 
     return request.app.templates.TemplateResponse(
@@ -368,6 +392,7 @@ def booking_flow(
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision_route(
     booking_id: int,
+    request: Request,
     decision: Literal["accepted", "rejected"] = Form(...),
     deposit_amount: float = Form(0),
     db: Session = Depends(get_db),
@@ -380,16 +405,57 @@ def owner_decision_route(
         raise HTTPException(status_code=403)
 
     renter = db.get(User, bk.renter_id)
-    item = db.get(Item, bk.item_id)
+
+    try:
+        # Both decisions share the Item lock.  This serializes a simultaneous
+        # Accept/Reject or two Accepts for the same listing before its dates
+        # can become reserved.
+        item = (
+            db.query(Item)
+            .filter(Item.id == bk.item_id)
+            .with_for_update()
+            .first()
+        )
+        if not item:
+            db.rollback()
+            raise HTTPException(status_code=404, detail="Item not available")
+
+        # The booking may have changed while this owner waited for the Item
+        # lock, so never act on the previously loaded status.
+        db.refresh(bk)
+        if bk.status != "requested":
+            db.rollback()
+            return _booking_flow_error_redirect(booking_id, "not_pending")
+
+        # A pending request does not reserve dates.  Once the owner accepts,
+        # check again while holding the Item lock so an already accepted range
+        # cannot be accepted a second time.
+        if decision == "accepted" and _booking_conflicts(
+            db, item.id, bk.start_date, bk.end_date
+        ):
+            db.rollback()
+            return _booking_flow_error_redirect(booking_id, "dates_unavailable")
+
+        if decision == "rejected":
+            bk.status = "rejected"
+            bk.rejected_at = datetime.utcnow()
+        else:
+            bk.status = "accepted"
+            bk.accepted_at = datetime.utcnow()
+            bk.security_amount = deposit_amount
+            bk.deposit_amount = int(deposit_amount)
+            bk.hold_deposit_amount = int(deposit_amount)
+
+        db.commit()
+        db.refresh(bk)
+    except Exception:
+        db.rollback()
+        raise
 
     # =========================
     # ❌ REJECTED
     # =========================
     if decision == "rejected":
-        bk.status = "rejected"
-        bk.rejected_at = datetime.utcnow()
-        db.commit()
-
         # 📧 EMAIL — RENTER (REJECTED)
         try:
             from .email_service import send_email
@@ -407,18 +473,6 @@ def owner_decision_route(
             print("EMAIL ERROR (REJECTED):", e)
 
         return redirect_to_flow(bk)
-
-    # =========================
-    # ✅ ACCEPTED
-    # =========================
-    bk.status = "accepted"
-    bk.accepted_at = datetime.utcnow()
-    bk.security_amount = deposit_amount
-    bk.deposit_amount = int(deposit_amount)
-    bk.hold_deposit_amount = int(deposit_amount)
-
-    db.commit()
-    db.refresh(bk)
 
     push_notification(
         db,
