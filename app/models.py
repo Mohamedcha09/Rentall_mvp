@@ -336,6 +336,10 @@ class MessageAttachment(Base):
     storage_key = Column(String(255), nullable=True)
     storage_resource_type = Column(String(16), nullable=True)
     storage_delivery_type = Column(String(16), nullable=True)
+    # Provider-confirmed format (for example ``ogg`` or ``mp4``).  This is
+    # intentionally distinct from the user-facing original filename: private
+    # Cloudinary download URLs must use the resource's actual stored format.
+    storage_format = Column(String(32), nullable=True)
     content_type = Column(String(100), nullable=False)
     size_bytes = Column(Integer, nullable=False)
     # Reserved for future server-side media inspection.  The current UI derives

@@ -14,6 +14,8 @@ from .database import get_db
 from .message_attachments import (
     allowed_attachment_accept_value,
     cleanup_staged_message_attachments,
+    has_explicit_cloudinary_attachment_reference,
+    hydrate_legacy_cloudinary_attachment_metadata,
     max_attachment_bytes,
     max_attachments_per_message,
     max_voice_bytes,
@@ -572,6 +574,7 @@ async def _create_direct_message(
             return existing, False
 
     saved_files: list[MessageAttachment] = []
+    commit_attempted = False
     now = datetime.utcnow()
     try:
         message = Message(
@@ -593,12 +596,20 @@ async def _create_direct_message(
             staged=staged,
         )
         locked_thread.last_message_at = now
+        # Once commit starts, an interrupted DB connection makes the outcome
+        # unknowable.  Preserve remote bytes in that case: an orphan can be
+        # cleaned later, while deleting a possibly committed object's bytes
+        # recreates the attachment-loss bug.
+        commit_attempted = True
         db.commit()
     except IntegrityError:
         # Use the explicit provider metadata while attributes are still loaded;
         # after rollback SQLAlchemy may expire rows and force an unsafe legacy
         # reconstruction from the current environment.
-        remove_saved_message_attachment_files(saved_files)
+        if not commit_attempted:
+            remove_saved_message_attachment_files(saved_files)
+        else:
+            logger.error("dm_attachment_commit_outcome_unknown action=preserve_remote_bytes")
         db.rollback()
         cleanup_staged_message_attachments(staged)
         if message_key:
@@ -616,7 +627,10 @@ async def _create_direct_message(
                 return existing, False
         raise
     except Exception:
-        remove_saved_message_attachment_files(saved_files)
+        if not commit_attempted:
+            remove_saved_message_attachment_files(saved_files)
+        else:
+            logger.error("dm_attachment_commit_outcome_unknown action=preserve_remote_bytes")
         db.rollback()
         cleanup_staged_message_attachments(staged)
         raise
@@ -705,6 +719,40 @@ def message_attachment_download(
     if not attachment:
         # Do not turn attachment ids into an oracle for another conversation.
         raise HTTPException(status_code=404, detail="Attachment not found")
+    # Rows created by the first Cloudinary rollout only contain the compact
+    # ``cld1:`` marker.  Authenticate first, then verify that existing asset
+    # once and persist its exact provider key/type/format.  Future restarts
+    # no longer depend on the current folder setting for that row.
+    if is_cloudinary_message_attachment(attachment) and not has_explicit_cloudinary_attachment_reference(attachment):
+        try:
+            remote_object = hydrate_legacy_cloudinary_attachment_metadata(attachment)
+            attachment.storage_backend = "cloudinary"
+            attachment.storage_key = remote_object.public_id
+            attachment.storage_resource_type = remote_object.resource_type
+            attachment.storage_delivery_type = remote_object.delivery_type
+            attachment.storage_format = remote_object.format
+            db.commit()
+            logger.info(
+                "dm_attachment_legacy_reference_hydrated attachment_id=%s backend=cloudinary resource_type=%s",
+                attachment.id,
+                remote_object.resource_type,
+            )
+        except HTTPException as exc:
+            db.rollback()
+            logger.warning(
+                "dm_attachment_legacy_reference_hydration_failed attachment_id=%s backend=cloudinary http_status=%s",
+                attachment.id,
+                exc.status_code,
+            )
+            raise
+        except Exception as exc:
+            db.rollback()
+            logger.warning(
+                "dm_attachment_legacy_reference_hydration_failed attachment_id=%s backend=cloudinary error=%s",
+                attachment.id,
+                type(exc).__name__,
+            )
+            raise HTTPException(status_code=503, detail="Attachment is temporarily unavailable.") from exc
     safe_name = quote(attachment.original_name or "attachment", safe="")
     inline = str(attachment.content_type or "").startswith(("image/", "audio/"))
     headers = {

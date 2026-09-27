@@ -37,6 +37,7 @@ def upgrade():
         ("storage_key", sa.String(length=255)),
         ("storage_resource_type", sa.String(length=16)),
         ("storage_delivery_type", sa.String(length=16)),
+        ("storage_format", sa.String(length=32)),
     )
     for name, column_type in additions:
         if name not in columns:
@@ -75,6 +76,6 @@ def downgrade():
         return
     op.execute("DROP INDEX IF EXISTS ix_message_attachments_storage_backend")
     columns = _columns("message_attachments")
-    for name in ("storage_delivery_type", "storage_resource_type", "storage_key", "storage_backend"):
+    for name in ("storage_format", "storage_delivery_type", "storage_resource_type", "storage_key", "storage_backend"):
         if name in columns:
             op.drop_column("message_attachments", name)

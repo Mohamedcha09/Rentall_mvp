@@ -90,6 +90,7 @@ def main() -> int:
                     attachment.storage_key = remote_object.public_id
                     attachment.storage_resource_type = remote_object.resource_type
                     attachment.storage_delivery_type = remote_object.delivery_type
+                    attachment.storage_format = remote_object.format
                     db.commit()
                     summary["hydrated"] += 1
                     print(f"attachment {attachment.id}: Cloudinary reference verified and hydrated")
@@ -118,6 +119,7 @@ def main() -> int:
             previous_storage_key = attachment.storage_key
             previous_resource_type = attachment.storage_resource_type
             previous_delivery_type = attachment.storage_delivery_type
+            previous_storage_format = attachment.storage_format
             remote_object = None
             try:
                 source_checksum = _sha256_file(source)
@@ -127,6 +129,7 @@ def main() -> int:
                 attachment.storage_key = remote_object.public_id
                 attachment.storage_resource_type = remote_object.resource_type
                 attachment.storage_delivery_type = remote_object.delivery_type
+                attachment.storage_format = remote_object.format
                 remote_checksum = _sha256_chunks(
                     stream_cloudinary_message_attachment(attachment, as_attachment=False)
                 )
@@ -152,6 +155,7 @@ def main() -> int:
                 attachment.storage_key = previous_storage_key
                 attachment.storage_resource_type = previous_resource_type
                 attachment.storage_delivery_type = previous_delivery_type
+                attachment.storage_format = previous_storage_format
                 print(f"attachment {attachment.id}: failed; local source kept ({exc})")
     finally:
         db.close()

@@ -70,6 +70,7 @@ def _bootstrap_schema(path: Path) -> None:
           storage_key VARCHAR(255),
           storage_resource_type VARCHAR(16),
           storage_delivery_type VARCHAR(16),
+          storage_format VARCHAR(32),
           content_type VARCHAR(100) NOT NULL,
           size_bytes INTEGER NOT NULL,
           duration_ms INTEGER,
@@ -240,7 +241,12 @@ class DirectMessageMediaTests(unittest.TestCase):
 
         with mock.patch.dict(
             os.environ,
-            {"RENDER": "true", "SEVOR_MESSAGE_ATTACHMENT_STORAGE": "local"},
+            {
+                "RENDER": "true",
+                "SEVOR_MESSAGE_ATTACHMENT_STORAGE": "local",
+                # A path alone does not prove a persistent Render disk.
+                "SEVOR_PRIVATE_UPLOADS_DIR": "/possibly-ephemeral/uploads",
+            },
             clear=True,
         ):
             with self.assertRaises(HTTPException) as local_on_ephemeral_render:
@@ -475,7 +481,7 @@ class DirectMessageMediaTests(unittest.TestCase):
         _login(participant, self.participant_id)
         _login(outsider, self.outsider_id)
 
-        objects: dict[tuple[str, str], bytes] = {}
+        objects: dict[tuple[str, str], tuple[bytes, str]] = {}
         signed_urls: dict[str, tuple[str, str]] = {}
         staged_suffixes: list[str] = []
         signed_counter = 0
@@ -494,8 +500,9 @@ class DirectMessageMediaTests(unittest.TestCase):
 
         def fake_upload(source, **options):
             payload = source.read()
-            staged_suffixes.append(Path(str(source.name)).suffix.lower())
-            objects[(options["resource_type"], options["public_id"])] = payload
+            suffix = Path(str(source.name)).suffix.lower()
+            staged_suffixes.append(suffix)
+            objects[(options["resource_type"], options["public_id"])] = (payload, suffix.lstrip("."))
             return {
                 "public_id": options["public_id"],
                 "resource_type": options["resource_type"],
@@ -504,14 +511,16 @@ class DirectMessageMediaTests(unittest.TestCase):
             }
 
         def fake_resource(public_id, **options):
-            payload = objects.get((options["resource_type"], public_id))
-            if payload is None:
+            object_data = objects.get((options["resource_type"], public_id))
+            if object_data is None:
                 raise RuntimeError("not found")
+            payload, provider_format = object_data
             return {
                 "public_id": public_id,
                 "resource_type": options["resource_type"],
                 "type": options["type"],
                 "bytes": len(payload),
+                "format": provider_format,
                 "asset_id": f"asset-{public_id.rsplit('/', 1)[-1]}",
             }
 
@@ -524,7 +533,8 @@ class DirectMessageMediaTests(unittest.TestCase):
 
         def fake_get(url, **_kwargs):
             reference = signed_urls.get(url)
-            data = objects.get(reference) if reference else None
+            object_data = objects.get(reference) if reference else None
+            data = object_data[0] if object_data else None
             return FakeProviderResponse(200, data) if data is not None else FakeProviderResponse(404)
 
         cloudinary_env = {
@@ -558,6 +568,7 @@ class DirectMessageMediaTests(unittest.TestCase):
                 self.assertTrue(all(row.storage_backend == "cloudinary" for row in rows))
                 self.assertTrue(all(row.storage_key and row.storage_key.startswith("sevor_private/") for row in rows))
                 self.assertEqual([row.storage_resource_type for row in rows], ["image", "image", "image", "video"])
+                self.assertEqual([row.storage_format for row in rows], ["jpg", "png", "pdf", "ogg"])
                 self.assertTrue(all(row.storage_delivery_type == "private" for row in rows))
                 for row in rows:
                     with self.assertRaises(HTTPException):
@@ -604,6 +615,110 @@ class DirectMessageMediaTests(unittest.TestCase):
                 self.assertEqual(missing.status_code, 410, missing.text)
             finally:
                 (attachment_service.MESSAGE_ATTACHMENT_ROOT, attachment_service.MESSAGE_ATTACHMENT_STAGING_ROOT) = old_roots
+
+    def test_legacy_cloudinary_row_hydrates_to_an_exact_reference_before_folder_changes(self):
+        """A prior ``cld1:`` row becomes restart-safe on its first authorized read."""
+        thread_id = self._thread()
+        token = "a" * 32
+        stored_name = f"cld1:v:{token}.m4a"
+        expected_public_id = f"legacy-direct-messages/{token}"
+        voice_bytes = OGG_BYTES
+
+        db = SessionLocal()
+        try:
+            message = Message(
+                thread_id=thread_id,
+                sender_id=self.owner_id,
+                body="",
+                is_read=False,
+                created_at=datetime.utcnow(),
+            )
+            db.add(message)
+            db.flush()
+            attachment = MessageAttachment(
+                thread_id=thread_id,
+                message_id=message.id,
+                uploader_id=self.owner_id,
+                kind="voice",
+                original_name="recording.m4a",
+                stored_name=stored_name,
+                storage_backend="cloudinary",
+                content_type="audio/mp4",
+                size_bytes=len(voice_bytes),
+                created_at=datetime.utcnow(),
+            )
+            db.add(attachment)
+            db.commit()
+            attachment_id = attachment.id
+        finally:
+            db.close()
+
+        class FakeProviderResponse:
+            status_code = 200
+
+            def iter_content(self, chunk_size=None):
+                yield voice_bytes
+
+            def close(self):
+                return None
+
+        def fake_resource(public_id, **options):
+            self.assertEqual(public_id, expected_public_id)
+            self.assertEqual(options["resource_type"], "video")
+            self.assertEqual(options["type"], "private")
+            return {
+                "public_id": public_id,
+                "resource_type": "video",
+                "type": "private",
+                "bytes": len(voice_bytes),
+                # Verify the persisted provider format wins over the original
+                # m4a display filename if a provider canonicalizes it.
+                "format": "mp4",
+            }
+
+        def fake_private_download_url(public_id, provider_format, **options):
+            self.assertEqual(public_id, expected_public_id)
+            self.assertEqual(provider_format, "mp4")
+            self.assertEqual(options["resource_type"], "video")
+            return "https://private-provider.test/legacy-voice"
+
+        cloudinary_env = {
+            "SEVOR_MESSAGE_ATTACHMENT_STORAGE": "cloudinary",
+            "SEVOR_MESSAGE_CLOUDINARY_FOLDER": "legacy-direct-messages",
+            "CLOUDINARY_CLOUD_NAME": "test-cloud",
+            "CLOUDINARY_API_KEY": "test-key",
+            "CLOUDINARY_API_SECRET": "test-secret",
+        }
+        participant = TestClient(main_module.app)
+        _login(participant, self.participant_id)
+        with (
+            mock.patch.dict(os.environ, cloudinary_env, clear=False),
+            mock.patch.object(attachment_service.cloudinary.api, "resource", side_effect=fake_resource) as resource,
+            mock.patch.object(attachment_service.cloudinary.utils, "private_download_url", side_effect=fake_private_download_url),
+            mock.patch.object(attachment_service.requests, "get", return_value=FakeProviderResponse()),
+        ):
+            url = f"/messages/{thread_id}/attachments/{attachment_id}"
+            first = participant.get(url)
+            self.assertEqual(first.status_code, 200, first.text)
+            self.assertEqual(first.content, voice_bytes)
+
+            db = SessionLocal()
+            try:
+                hydrated = db.get(MessageAttachment, attachment_id)
+                self.assertEqual(hydrated.storage_key, expected_public_id)
+                self.assertEqual(hydrated.storage_resource_type, "video")
+                self.assertEqual(hydrated.storage_delivery_type, "private")
+                self.assertEqual(hydrated.storage_format, "mp4")
+            finally:
+                db.close()
+
+            # A new release can change its default folder after this one-time
+            # hydration without breaking the existing provider record.
+            os.environ["SEVOR_MESSAGE_CLOUDINARY_FOLDER"] = "wrong-folder-after-restart"
+            second = participant.get(url)
+            self.assertEqual(second.status_code, 200, second.text)
+            self.assertEqual(second.content, voice_bytes)
+            self.assertEqual(resource.call_count, 1)
 
     def test_rejects_dangerous_content_and_blocks_nonmembers_from_private_routes(self):
         thread_id = self._thread()

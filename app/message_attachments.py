@@ -43,9 +43,9 @@ MESSAGE_ATTACHMENT_ROOT = PRIVATE_UPLOAD_ROOT / "message_attachments"
 MESSAGE_ATTACHMENT_STAGING_ROOT = MESSAGE_ATTACHMENT_ROOT / ".staging"
 
 # ``stored_name`` is an opaque database key, not a user-controlled filename.
-# Legacy rows contain a local UUID filename.  New Cloudinary-backed rows keep
-# the provider + resource class in the same opaque field, so no schema change
-# is needed and legacy files remain readable while they still exist locally.
+# Legacy rows contain a local UUID filename.  New Cloudinary-backed rows also
+# persist their exact provider metadata in dedicated columns; the compact
+# prefix remains solely for backwards-compatible identification of old rows.
 CLOUDINARY_STORED_NAME_PREFIX = "cld1:"
 CLOUDINARY_PRIVATE_FOLDER_DEFAULT = "sevor_private/direct_messages"
 CLOUDINARY_PRIVATE_URL_TTL_SECONDS = 5 * 60
@@ -101,7 +101,15 @@ def _is_render_runtime() -> bool:
     """Recognize Render without making local/test environments remote-backed."""
     return any(
         (os.getenv(name) or "").strip()
-        for name in ("RENDER", "RENDER_SERVICE_ID", "RENDER_EXTERNAL_URL")
+        for name in (
+            "RENDER",
+            "RENDER_SERVICE_ID",
+            "RENDER_SERVICE_NAME",
+            "RENDER_INSTANCE_ID",
+            "RENDER_EXTERNAL_URL",
+            "RENDER_EXTERNAL_HOSTNAME",
+            "RENDER_GIT_COMMIT",
+        )
     )
 
 
@@ -116,12 +124,12 @@ def message_attachment_storage_backend() -> str:
     """
     configured = (os.getenv("SEVOR_MESSAGE_ATTACHMENT_STORAGE") or "").strip().lower()
     if configured in {"local", "filesystem"}:
-        # An explicit filesystem choice is valid for a deliberately mounted
-        # persistent disk.  On Render, reject the project-default release path
-        # rather than recreating the original restart-loss bug.
-        if _is_render_runtime() and not (os.getenv("SEVOR_PRIVATE_UPLOADS_DIR") or "").strip():
+        # Direct-message media must never fall back to a Render filesystem.
+        # An environment path alone does not prove that it is a mounted,
+        # persistent volume; accepting it would recreate the restart-loss bug.
+        if _is_render_runtime():
             logger.error(
-                "dm_attachment_storage_rejected backend=local reason=missing_persistent_upload_directory"
+                "dm_attachment_storage_rejected backend=local reason=render_requires_durable_provider"
             )
             raise HTTPException(status_code=503, detail="Private attachment storage is not configured.")
         logger.warning(
@@ -254,6 +262,7 @@ def _cloudinary_attachment_reference(attachment: MessageAttachment) -> Cloudinar
             resource_type=resource_type,
             delivery_type=delivery_type,
             size_bytes=int(attachment.size_bytes or 0),
+            format=str(getattr(attachment, "storage_format", "") or "") or None,
         )
 
     # Compatibility for rows created by the prior Cloudinary implementation.
@@ -280,6 +289,7 @@ def has_explicit_cloudinary_attachment_reference(attachment: MessageAttachment) 
         and str(getattr(attachment, "storage_resource_type", "") or "").strip().lower()
         in _CLOUDINARY_RESOURCE_BY_CODE.values()
         and str(getattr(attachment, "storage_delivery_type", "") or "").strip().lower() == "private"
+        and str(getattr(attachment, "storage_format", "") or "").strip()
     )
 
 
@@ -377,9 +387,9 @@ def _cloudinary_private_download_url(attachment: MessageAttachment, *, as_attach
     reference = _cloudinary_attachment_reference(attachment)
     _configure_cloudinary()
     extension = (
-        Path(str(attachment.original_name or "")).suffix.lower()
+        (f".{reference.format}" if reference.format else "")
+        or Path(str(attachment.original_name or "")).suffix.lower()
         or Path(str(attachment.stored_name or "")).suffix.lower()
-        or (f".{reference.format}" if reference.format else "")
     )
     if not extension:
         raise HTTPException(status_code=404, detail="Attachment not found")
@@ -520,7 +530,15 @@ def stream_cloudinary_message_attachment(attachment: MessageAttachment, *, as_at
     The browser never receives a permanent provider URL.  The caller has
     already verified conversation membership before this function is reached.
     """
-    url = _cloudinary_private_download_url(attachment, as_attachment=as_attachment)
+    try:
+        url = _cloudinary_private_download_url(attachment, as_attachment=as_attachment)
+    except HTTPException as exc:
+        logger.warning(
+            "dm_attachment_download_failed attachment_id=%s backend=cloudinary provider_status=%s reason=signing_or_runtime_config",
+            getattr(attachment, "id", None),
+            exc.status_code,
+        )
+        raise
     try:
         response = requests.get(url, stream=True, timeout=(5, CLOUDINARY_DOWNLOAD_TIMEOUT_SECONDS))
     except requests.RequestException as exc:
@@ -847,6 +865,7 @@ def persist_staged_message_attachments(
                 storage_key=remote_object.public_id if remote_object else stored_name,
                 storage_resource_type=remote_object.resource_type if remote_object else None,
                 storage_delivery_type=remote_object.delivery_type if remote_object else None,
+                storage_format=remote_object.format if remote_object else None,
                 content_type=item.content_type,
                 size_bytes=item.size_bytes,
                 duration_ms=item.duration_ms,

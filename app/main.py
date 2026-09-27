@@ -710,6 +710,7 @@ def ensure_direct_message_media_columns():
                     ("storage_key", "VARCHAR(255)"),
                     ("storage_resource_type", "VARCHAR(16)"),
                     ("storage_delivery_type", "VARCHAR(16)"),
+                    ("storage_format", "VARCHAR(32)"),
                 ):
                     if attachment_cols and column not in attachment_cols:
                         conn.exec_driver_sql(f"ALTER TABLE message_attachments ADD COLUMN {column} {sql_type};")
@@ -750,6 +751,9 @@ def ensure_direct_message_media_columns():
                 )
                 conn.exec_driver_sql(
                     "ALTER TABLE message_attachments ADD COLUMN IF NOT EXISTS storage_delivery_type VARCHAR(16) NULL;"
+                )
+                conn.exec_driver_sql(
+                    "ALTER TABLE message_attachments ADD COLUMN IF NOT EXISTS storage_format VARCHAR(32) NULL;"
                 )
                 conn.exec_driver_sql(
                     "UPDATE message_attachments SET storage_backend = CASE "
