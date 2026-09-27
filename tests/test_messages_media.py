@@ -191,8 +191,8 @@ class DirectMessageMediaTests(unittest.TestCase):
         shutil.rmtree(self.private_root, ignore_errors=True)
         self.private_root.mkdir(parents=True, exist_ok=True)
 
-    def test_message_template_keeps_real_waveform_and_compact_mobile_hooks(self):
-        """Guard the UI-only direct-message refinements without touching storage."""
+    def test_message_template_keeps_media_ui_responsive_hooks(self):
+        """Guard UI-only direct-message refinements without touching storage."""
         template = (Path(__file__).resolve().parents[1] / "app" / "templates" / "thread.html").read_text(encoding="utf-8")
         for required in (
             'id="conversationRecordingWave"',
@@ -204,8 +204,38 @@ class DirectMessageMediaTests(unittest.TestCase):
             "conversation-message--me{ padding-left:8%; margin-right:4px; }",
             "aspect-ratio:1 / 1",
             "grid-template-columns:56px minmax(0,1fr) auto",
+            "grid-template-columns:minmax(0,1fr)",
+            "conversation-composer__preview-track",
+            "-webkit-overflow-scrolling:touch",
+            "conversation-composer-preview--image",
+            "conversation-message__images",
+            "nonImageAttachments",
         ):
             self.assertIn(required, template)
+
+    def test_image_only_message_renders_without_a_colored_bubble(self):
+        thread_id = self._thread()
+        owner = TestClient(main_module.app)
+        _login(owner, self.owner_id)
+        sent = self._send(
+            owner,
+            thread_id,
+            key="direct-image-only-render-001",
+            files=[("attachments", ("proof.png", PNG_BYTES, "image/png"))],
+        )
+        self.assertEqual(sent.status_code, 201, sent.text)
+        message_id = sent.json()["message"]["id"]
+        page = owner.get(f"/messages/{thread_id}")
+        self.assertEqual(page.status_code, 200, page.text)
+        marker = f'data-message-id="{message_id}"'
+        start = page.text.find(marker)
+        self.assertNotEqual(start, -1, page.text)
+        next_message = page.text.find('data-message-id="', start + len(marker))
+        typing_mount = page.text.find('<div id="typingMount"', start)
+        ends = [position for position in (next_message, typing_mount) if position != -1]
+        row = page.text[start:min(ends)] if ends else page.text[start:]
+        self.assertIn('conversation-message__images', row)
+        self.assertNotIn('conversation-bubble ', row)
 
     def _thread(self) -> int:
         db = SessionLocal()
