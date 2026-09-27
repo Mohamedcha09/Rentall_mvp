@@ -238,6 +238,84 @@ class DirectMessageMediaTests(unittest.TestCase):
                 attachment_service.message_attachment_storage_backend()
         self.assertEqual(unavailable.exception.status_code, 503)
 
+        with mock.patch.dict(
+            os.environ,
+            {"RENDER": "true", "SEVOR_MESSAGE_ATTACHMENT_STORAGE": "local"},
+            clear=True,
+        ):
+            with self.assertRaises(HTTPException) as local_on_ephemeral_render:
+                attachment_service.message_attachment_storage_backend()
+        self.assertEqual(local_on_ephemeral_render.exception.status_code, 503)
+
+    def test_cloudinary_url_configures_the_private_attachment_adapter(self):
+        """Render may provide CLOUDINARY_URL instead of separate variables."""
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"CLOUDINARY_URL": "cloudinary://url-key:url-secret@url-cloud"},
+                clear=True,
+            ),
+            mock.patch.object(attachment_service.cloudinary, "config") as configure,
+        ):
+            attachment_service._configure_cloudinary()
+        configure.assert_called_once_with(
+            cloud_name="url-cloud",
+            api_key="url-key",
+            api_secret="url-secret",
+            secure=True,
+        )
+
+    def test_cloudinary_verification_failure_rolls_back_message_and_attachment(self):
+        """Provider upload is not a success until Admin metadata matches it."""
+        thread_id = self._thread()
+        owner = TestClient(main_module.app)
+        _login(owner, self.owner_id)
+        destroyed = []
+
+        def fake_upload(_source, **options):
+            return {"public_id": options["public_id"]}
+
+        def fake_resource(public_id, **options):
+            return {
+                "public_id": public_id,
+                "resource_type": options["resource_type"],
+                "type": options["type"],
+                # Intentionally differs from the staged file size.
+                "bytes": len(PNG_BYTES) + 1,
+            }
+
+        def fake_destroy(public_id, **_options):
+            destroyed.append(public_id)
+            return {"result": "ok"}
+
+        cloudinary_env = {
+            "SEVOR_MESSAGE_ATTACHMENT_STORAGE": "cloudinary",
+            "CLOUDINARY_CLOUD_NAME": "test-cloud",
+            "CLOUDINARY_API_KEY": "test-key",
+            "CLOUDINARY_API_SECRET": "test-secret",
+        }
+        with (
+            mock.patch.dict(os.environ, cloudinary_env, clear=False),
+            mock.patch.object(attachment_service.cloudinary.uploader, "upload", side_effect=fake_upload),
+            mock.patch.object(attachment_service.cloudinary.api, "resource", side_effect=fake_resource),
+            mock.patch.object(attachment_service.cloudinary.uploader, "destroy", side_effect=fake_destroy),
+        ):
+            response = self._send(
+                owner,
+                thread_id,
+                key="cloud-verification-mismatch-001",
+                files=[("attachments", ("proof.png", PNG_BYTES, "image/png"))],
+            )
+
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertTrue(destroyed)
+        db = SessionLocal()
+        try:
+            self.assertEqual(db.query(Message).filter(Message.thread_id == thread_id).count(), 0)
+            self.assertEqual(db.query(MessageAttachment).filter(MessageAttachment.thread_id == thread_id).count(), 0)
+        finally:
+            db.close()
+
     def test_image_only_message_renders_without_a_colored_bubble(self):
         thread_id = self._thread()
         owner = TestClient(main_module.app)
@@ -486,6 +564,10 @@ class DirectMessageMediaTests(unittest.TestCase):
                         attachment_service.message_attachment_path(row)
             finally:
                 db.close()
+
+            # A deployment config change must not make existing provider
+            # references depend on rebuilding the original folder from env.
+            os.environ["SEVOR_MESSAGE_CLOUDINARY_FOLDER"] = "different-folder-after-upload"
 
             # Simulate a redeploy: the new worker has no previous local root.
             old_roots = (

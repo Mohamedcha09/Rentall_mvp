@@ -116,6 +116,18 @@ def message_attachment_storage_backend() -> str:
     """
     configured = (os.getenv("SEVOR_MESSAGE_ATTACHMENT_STORAGE") or "").strip().lower()
     if configured in {"local", "filesystem"}:
+        # An explicit filesystem choice is valid for a deliberately mounted
+        # persistent disk.  On Render, reject the project-default release path
+        # rather than recreating the original restart-loss bug.
+        if _is_render_runtime() and not (os.getenv("SEVOR_PRIVATE_UPLOADS_DIR") or "").strip():
+            logger.error(
+                "dm_attachment_storage_rejected backend=local reason=missing_persistent_upload_directory"
+            )
+            raise HTTPException(status_code=503, detail="Private attachment storage is not configured.")
+        logger.warning(
+            "dm_attachment_storage_selected backend=local explicit=true render_runtime=%s",
+            _is_render_runtime(),
+        )
         return "local"
     if configured in {"cloudinary", "cloud"}:
         if not _cloudinary_credentials_present():
@@ -258,6 +270,26 @@ def _cloudinary_attachment_reference(attachment: MessageAttachment) -> Cloudinar
         size_bytes=int(attachment.size_bytes or 0),
         format=extension.lstrip(".") or None,
     )
+
+
+def has_explicit_cloudinary_attachment_reference(attachment: MessageAttachment) -> bool:
+    """Whether a row has the immutable provider metadata used by new uploads."""
+    return bool(
+        is_cloudinary_message_attachment(attachment)
+        and str(getattr(attachment, "storage_key", "") or "").strip()
+        and str(getattr(attachment, "storage_resource_type", "") or "").strip().lower()
+        in _CLOUDINARY_RESOURCE_BY_CODE.values()
+        and str(getattr(attachment, "storage_delivery_type", "") or "").strip().lower() == "private"
+    )
+
+
+def message_attachment_cleanup_reference(
+    attachment: MessageAttachment,
+) -> CloudinaryStoredObject | str:
+    """Snapshot cleanup data before a caller commits/deletes ORM rows."""
+    if is_cloudinary_message_attachment(attachment):
+        return _cloudinary_attachment_reference(attachment)
+    return str(attachment.storage_key or attachment.stored_name or "")
 
 
 def _cloudinary_destroy_object(reference: CloudinaryStoredObject) -> None:
@@ -458,6 +490,27 @@ def migrate_local_message_attachment_to_cloudinary(attachment: MessageAttachment
         source_path,
         stored_name,
         expected_size_bytes=int(attachment.size_bytes or source_path.stat().st_size),
+    )
+
+
+def hydrate_legacy_cloudinary_attachment_metadata(
+    attachment: MessageAttachment,
+) -> CloudinaryStoredObject:
+    """Verify and make a prior ``cld1:`` row independent of future env changes.
+
+    This does not copy, delete, or recreate an object.  It only asks
+    Cloudinary for the already-existing private asset and returns the exact
+    provider reference for a caller to persist after explicit approval.
+    """
+    if not is_cloudinary_message_attachment(attachment):
+        raise HTTPException(status_code=422, detail="Attachment is not Cloudinary-backed.")
+    reference = _cloudinary_attachment_reference(attachment)
+    return _cloudinary_verify_object(
+        stored_name=str(attachment.stored_name or ""),
+        public_id=reference.public_id,
+        resource_type=reference.resource_type,
+        delivery_type=reference.delivery_type,
+        expected_size_bytes=int(attachment.size_bytes or 0),
     )
 
 

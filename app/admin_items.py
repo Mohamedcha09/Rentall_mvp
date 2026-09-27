@@ -6,7 +6,10 @@ from datetime import datetime
 
 from .database import get_db
 from .models import Item, MessageAttachment, MessageThread
-from .message_attachments import remove_saved_message_attachment_files
+from .message_attachments import (
+    message_attachment_cleanup_reference,
+    remove_saved_message_attachment_files,
+)
 from .notifications_api import push_notification
 
 router = APIRouter(tags=["admin-items"], prefix="/admin/items")
@@ -161,10 +164,10 @@ def delete_item(item_id: int, request: Request, db: Session = Depends(get_db)):
         .filter(MessageThread.item_id == it.id)
         .all()
     ]
-    attachment_names = (
+    attachment_cleanup = (
         [
-            row[0]
-            for row in db.query(MessageAttachment.stored_name)
+            message_attachment_cleanup_reference(attachment)
+            for attachment in db.query(MessageAttachment)
             .filter(MessageAttachment.thread_id.in_(thread_ids))
             .all()
         ]
@@ -174,7 +177,7 @@ def delete_item(item_id: int, request: Request, db: Session = Depends(get_db)):
 
     db.delete(it)
     db.commit()
-    remove_saved_message_attachment_files(attachment_names)
+    remove_saved_message_attachment_files(attachment_cleanup)
 
     return RedirectResponse(
         url="/admin/items/pending",

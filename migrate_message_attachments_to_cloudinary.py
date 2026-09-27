@@ -22,6 +22,8 @@ load_dotenv()
 
 from app.database import SessionLocal
 from app.message_attachments import (
+    has_explicit_cloudinary_attachment_reference,
+    hydrate_legacy_cloudinary_attachment_metadata,
     is_cloudinary_message_attachment,
     message_attachment_path,
     migrate_local_message_attachment_to_cloudinary,
@@ -60,14 +62,44 @@ def main() -> int:
         parser.error("--delete-local-after-commit requires --apply")
 
     db = SessionLocal()
-    summary = {"already_remote": 0, "recoverable": 0, "migrated": 0, "missing": 0, "failed": 0}
+    summary = {
+        "already_remote": 0,
+        "legacy_cloud": 0,
+        "recoverable": 0,
+        "migrated": 0,
+        "hydrated": 0,
+        "missing": 0,
+        "failed": 0,
+    }
     try:
         query = db.query(MessageAttachment).order_by(MessageAttachment.id.asc())
         if args.limit > 0:
             query = query.limit(args.limit)
         for attachment in query.all():
             if is_cloudinary_message_attachment(attachment):
-                summary["already_remote"] += 1
+                if has_explicit_cloudinary_attachment_reference(attachment):
+                    summary["already_remote"] += 1
+                    continue
+                summary["legacy_cloud"] += 1
+                if not args.apply:
+                    print(f"attachment {attachment.id}: legacy Cloudinary reference can be verified and hydrated")
+                    continue
+                try:
+                    remote_object = hydrate_legacy_cloudinary_attachment_metadata(attachment)
+                    attachment.storage_backend = "cloudinary"
+                    attachment.storage_key = remote_object.public_id
+                    attachment.storage_resource_type = remote_object.resource_type
+                    attachment.storage_delivery_type = remote_object.delivery_type
+                    db.commit()
+                    summary["hydrated"] += 1
+                    print(f"attachment {attachment.id}: Cloudinary reference verified and hydrated")
+                except Exception as exc:
+                    db.rollback()
+                    summary["failed"] += 1
+                    # Never delete an existing remote object when metadata
+                    # hydration fails; it may still be reachable by the
+                    # legacy compatibility path or another active process.
+                    print(f"attachment {attachment.id}: Cloudinary reference could not be hydrated ({exc})")
                 continue
             try:
                 source = message_attachment_path(attachment)

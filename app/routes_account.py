@@ -14,7 +14,10 @@ from .models import (
     SupportMessageReceipt, UserReview
 )
 from .support_attachments import remove_saved_attachment_files
-from .message_attachments import remove_saved_message_attachment_files
+from .message_attachments import (
+    message_attachment_cleanup_reference,
+    remove_saved_message_attachment_files,
+)
 from .models_metrics import OnlineSession
 
 # نستخدم الـ templates مباشرة (بدون استيراد من main)
@@ -70,7 +73,10 @@ def account_delete_confirm(request: Request, db: Session = Depends(get_db)):
         else (MessageAttachment.uploader_id == uid)
     )
     direct_attachments = db.query(MessageAttachment).filter(direct_attachment_scope).all()
-    direct_attachment_names = [attachment.stored_name for attachment in direct_attachments]
+    direct_attachment_cleanup = [
+        message_attachment_cleanup_reference(attachment)
+        for attachment in direct_attachments
+    ]
     db.query(MessageAttachment).filter(direct_attachment_scope).delete(synchronize_session=False)
     if direct_thread_ids:
         db.query(Message).filter(Message.thread_id.in_(direct_thread_ids)).delete(synchronize_session=False)
@@ -175,7 +181,7 @@ def account_delete_confirm(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
     remove_saved_attachment_files(private_attachment_names)
-    remove_saved_message_attachment_files(direct_attachment_names)
+    remove_saved_message_attachment_files(direct_attachment_cleanup)
 
     # حذف الجلسة + الكوكي
     request.session.clear()
