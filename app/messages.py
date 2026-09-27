@@ -12,7 +12,6 @@ from sqlalchemy import func
 from .database import get_db
 from .message_attachments import (
     allowed_attachment_accept_value,
-    allowed_voice_accept_value,
     cleanup_staged_message_attachments,
     max_attachment_bytes,
     max_attachments_per_message,
@@ -82,7 +81,10 @@ def _thread_for_member(
     if not session_user:
         raise HTTPException(status_code=401, detail="Login required")
     thread = db.get(MessageThread, thread_id)
-    user_id = session_user.get("id") if isinstance(session_user, dict) else None
+    try:
+        user_id = int(session_user.get("id")) if isinstance(session_user, dict) else None
+    except (TypeError, ValueError):
+        user_id = None
     if not thread or user_id not in (thread.user_a_id, thread.user_b_id):
         # Keep absent and unauthorized direct threads indistinguishable.
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -460,7 +462,6 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             "csrf_token": get_or_create_csrf_token(request),
             "client_message_id": uuid.uuid4().hex,
             "attachment_accept": allowed_attachment_accept_value(),
-            "voice_accept": allowed_voice_accept_value(),
             "max_attachment_bytes": max_attachment_bytes(),
             "max_voice_bytes": max_voice_bytes(),
             "max_attachments": max_attachments_per_message(),

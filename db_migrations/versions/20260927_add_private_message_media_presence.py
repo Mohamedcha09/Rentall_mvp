@@ -59,10 +59,16 @@ def upgrade():
         "ON messages(thread_id, sender_id, client_message_id) "
         "WHERE client_message_id IS NOT NULL"
     )
+    if _has_table("online_sessions"):
+        op.execute(
+            "CREATE INDEX IF NOT EXISTS ix_online_sessions_user_last_seen "
+            "ON online_sessions(user_id, last_seen)"
+        )
 
 
 def downgrade():
     op.execute("DROP INDEX IF EXISTS ux_messages_thread_sender_client_message")
+    op.execute("DROP INDEX IF EXISTS ix_online_sessions_user_last_seen")
     if _has_table("message_attachments"):
         op.drop_table("message_attachments")
     if "client_message_id" in _columns("messages"):

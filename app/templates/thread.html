@@ -1436,7 +1436,10 @@
       }
       fetch(`/messages/${threadId}`, { method: 'POST', headers: { Accept: 'application/json' }, body: requestData })
         .then(async (response) => {
-          if (!response.ok) throw new Error('Message request failed');
+          if (!response.ok) {
+            const failure = await response.json().catch(() => null);
+            throw new Error((failure && failure.detail) || (hasPendingMedia() ? 'Upload failed. Please try again.' : 'Message could not be sent. Please try again.'));
+          }
           // Preserve the server's existing permission/session redirects instead of
           // treating a followed redirect as a successful in-place send.
           if (response.redirected) {
@@ -1472,8 +1475,8 @@
           stopTyping();
           if (followLatest || true) scrollToLatest();
         })
-        .catch(async (error) => {
-          setError(error && error.message === 'Message request failed' ? 'Message could not be sent. Please try again.' : 'Message could not be sent. Please try again.');
+        .catch((error) => {
+          setError((error && error.message) || (hasPendingMedia() ? 'Upload failed. Please try again.' : 'Message could not be sent. Please try again.'));
           input.focus();
         })
         .finally(() => {

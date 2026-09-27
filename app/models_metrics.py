@@ -26,3 +26,6 @@ class OnlineSession(Base):
     user_agent = Column(String(255), nullable=True)
     first_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_seen = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+Index("ix_online_sessions_user_last_seen", OnlineSession.user_id, OnlineSession.last_seen)

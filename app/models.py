@@ -297,9 +297,10 @@ class Message(Base):
     is_read = col_or_literal("messages", "is_read", Boolean, default=False, nullable=False)
     read_at  = col_or_literal("messages", "read_at",  DateTime, nullable=True)
     # A client-generated id makes a retry/double tap idempotent without
-    # changing the existing text-message lifecycle.  Older databases keep the
-    # compatibility literal until the accompanying migration is applied.
-    client_message_id = col_or_literal("messages", "client_message_id", String(72), nullable=True)
+    # changing the existing text-message lifecycle.  ``main`` has the same
+    # additive legacy-schema bridge used by the support-message fields, while
+    # Alembic owns the production migration.
+    client_message_id = Column(String(72), nullable=True, index=True)
 
     thread = relationship("MessageThread", back_populates="messages")
     sender  = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")

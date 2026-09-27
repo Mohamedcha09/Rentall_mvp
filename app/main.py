@@ -651,6 +651,49 @@ app.state.supported_currencies = SUPPORTED_CURRENCIES
 # -----------------------------------------------------------------------------
 Base.metadata.create_all(bind=engine)
 
+
+def ensure_direct_message_media_columns():
+    """Keep legacy direct-message tables compatible with private media sends.
+
+    Alembic is the authoritative production migration.  This small additive
+    bridge matches the application's existing support-message compatibility
+    path so an older local/legacy database does not start returning 500s
+    between a code rollout and migration execution.
+    """
+    try:
+        try:
+            backend = engine.url.get_backend_name()
+        except Exception:
+            backend = getattr(getattr(engine, "dialect", None), "name", "")
+        with engine.begin() as conn:
+            if backend == "sqlite":
+                message_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('messages')").all()}
+                if "client_message_id" not in message_cols:
+                    conn.exec_driver_sql("ALTER TABLE messages ADD COLUMN client_message_id VARCHAR(72);")
+                conn.exec_driver_sql(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_messages_thread_sender_client_message "
+                    "ON messages(thread_id, sender_id, client_message_id) "
+                    "WHERE client_message_id IS NOT NULL;"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_online_sessions_user_last_seen "
+                    "ON online_sessions(user_id, last_seen);"
+                )
+            elif str(backend).startswith("postgres"):
+                conn.exec_driver_sql("ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_message_id VARCHAR(72) NULL;")
+                conn.exec_driver_sql(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_messages_thread_sender_client_message "
+                    "ON messages(thread_id, sender_id, client_message_id) "
+                    "WHERE client_message_id IS NOT NULL;"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_online_sessions_user_last_seen "
+                    "ON online_sessions(user_id, last_seen);"
+                )
+        print("[OK] ensure_direct_message_media_columns(): direct-message media ready")
+    except Exception as e:
+        print(f"[WARN] ensure_direct_message_media_columns failed: {e}")
+
 def ensure_sqlite_columns():
     """
     Hot-fix missing columns when using SQLite only (ignored on Postgres):
@@ -840,6 +883,7 @@ ensure_sqlite_columns()
 ensure_users_columns()
 ensure_item_website_url_column()
 ensure_support_ticket_columns()   # ⬅️ Now defined
+ensure_direct_message_media_columns()
 
 def seed_admin():
     db = SessionLocal()
