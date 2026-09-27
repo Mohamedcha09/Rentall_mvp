@@ -191,6 +191,22 @@ class DirectMessageMediaTests(unittest.TestCase):
         shutil.rmtree(self.private_root, ignore_errors=True)
         self.private_root.mkdir(parents=True, exist_ok=True)
 
+    def test_message_template_keeps_real_waveform_and_compact_mobile_hooks(self):
+        """Guard the UI-only direct-message refinements without touching storage."""
+        template = (Path(__file__).resolve().parents[1] / "app" / "templates" / "thread.html").read_text(encoding="utf-8")
+        for required in (
+            'id="conversationRecordingWave"',
+            "window.AudioContext || window.webkitAudioContext",
+            "context.createMediaStreamSource(stream)",
+            "context.createAnalyser()",
+            "recordingAnalyser.getByteFrequencyData(recordingWaveData)",
+            'form.dataset.recording = \'true\'',
+            "conversation-message--me{ padding-left:8%; margin-right:4px; }",
+            "aspect-ratio:1 / 1",
+            "grid-template-columns:56px minmax(0,1fr) auto",
+        ):
+            self.assertIn(required, template)
+
     def _thread(self) -> int:
         db = SessionLocal()
         try:

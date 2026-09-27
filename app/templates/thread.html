@@ -384,6 +384,7 @@
   }
   .conversation-voice__toggle:focus-visible{ outline:3px solid rgba(91,141,244,.33); outline-offset:2px; }
   .conversation-voice__wave-wrap{ position:relative; flex:1 1 auto; min-width:58px; height:28px; }
+  .conversation-voice__wave-wrap.is-focused{ outline:3px solid rgba(91,141,244,.33); outline-offset:2px; border-radius:8px; }
   .conversation-voice__wave{
     position:absolute;
     inset:0;
@@ -1194,6 +1195,8 @@
         audio.currentTime = Math.min(Math.max(Number(seek.value) || 0, 0), duration);
         update();
       });
+      seek.addEventListener('focus', () => waveWrap.classList.add('is-focused'));
+      seek.addEventListener('blur', () => waveWrap.classList.remove('is-focused'));
       ['loadedmetadata', 'durationchange', 'timeupdate', 'play', 'pause', 'ended'].forEach((eventName) => audio.addEventListener(eventName, update));
       bindVoiceDuration(audio, durationLabel);
       audio.addEventListener('error', () => {
@@ -1584,7 +1587,8 @@
     };
     const updateRecordingTimer = () => {
       if (!recordingTimer) return;
-      recordingTimer.textContent = formatDuration(Date.now() - recordingStartedAt);
+      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - recordingStartedAt) / 1000));
+      recordingTimer.textContent = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, '0')}`;
     };
     const resetRecording = () => {
       if (recordingInterval) window.clearInterval(recordingInterval);
