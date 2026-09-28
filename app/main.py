@@ -260,7 +260,15 @@ async def geo_session_middleware(request: Request, call_next):
         return await call_next(request)
 
     # لو عندنا cookie تقول أنه اختارها سابقاً على هذا الجهاز
-    geo_done = request.cookies.get("geo_manual_done") == "1"
+    try:
+        session_geo_done = bool(request.session.get("geo_manual_done"))
+    except Exception:
+        # Decorator middleware can run outside SessionMiddleware depending on
+        # Starlette's wrapping order.  The durable cookie remains sufficient
+        # in that phase; the session fallback is used when it is available.
+        session_geo_done = False
+
+    geo_done = request.cookies.get("geo_manual_done") == "1" or session_geo_done
     if geo_done:
         # نترك الصفحة تعمل بدون overlay
         return await call_next(request)

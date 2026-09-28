@@ -3132,7 +3132,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
  {# ===== Country Picker Overlay (first visit) ===== #}
   {# Do not show it again after an explicit manual choice or an explicit defer. #}
-  {% if not request.cookies.get('disp_cur') and not (request.session and request.session.get('geo')) and request.cookies.get('geo_manual_done') != '1' %}
+  {% if not request.cookies.get('disp_cur') and not (request.session and request.session.get('geo')) and request.cookies.get('geo_manual_done') != '1' and not (request.session and request.session.get('geo_manual_done')) %}
     {% include "geo_pick.html" %}
   {% endif %}
 

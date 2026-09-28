@@ -117,8 +117,15 @@ def geo_set(request: Request, loc: str = "US"):
 
 
 @router.post("/geo/dismiss")
-def geo_dismiss():
-    """Persist a visitor's explicit 'Not now' choice without changing currency."""
+def geo_dismiss(request: Request):
+    """Persist an explicit defer without assigning a country or currency.
+
+    The durable preference cookie is the normal cross-page signal.  We also
+    write a small session marker so Capacitor's WebView persists an actual
+    session update on the same response.  Some Android WebViews defer a lone
+    cookie flush when the app process is closed shortly after the tap.
+    """
+    request.session["geo_manual_done"] = True
     resp = JSONResponse({"ok": True})
     _set_geo_preference_cookie(resp, "geo_manual_done", "1")
     return resp
@@ -138,6 +145,7 @@ def geo_debug(request: Request):
 @router.get("/geo/clear")
 def geo_clear(request: Request):
     request.session.pop("geo", None)
+    request.session.pop("geo_manual_done", None)
     resp = JSONResponse({"ok": True})
     # These cookies were set with an explicit domain, so clear them with that
     # same scope.  A reset should allow the picker to be shown again.

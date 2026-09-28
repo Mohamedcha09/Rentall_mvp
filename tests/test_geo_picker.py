@@ -67,8 +67,21 @@ class GeoPickerTests(unittest.TestCase):
             self.assertEqual(dismissed.json(), {"ok": True})
             self.assertIn("geo_manual_done=1", dismissed.headers.get("set-cookie", ""))
             self.assertEqual(client.cookies.get("geo_manual_done"), "1")
+            self.assertIn("ra_session=", dismissed.headers.get("set-cookie", ""))
 
             self.assertNotIn('id="geo-overlay"', client.get("/welcome?after=dismiss").text)
+
+            # The server-side session marker is deliberately a second durable
+            # source of truth.  This covers Android WebView cases where a
+            # process closes before it flushes the standalone preference
+            # cookie from the dismiss response.
+            for cookie in list(client.cookies.jar):
+                if cookie.name == "geo_manual_done":
+                    client.cookies.delete(cookie.name, domain=cookie.domain, path=cookie.path)
+            self.assertNotIn(
+                'id="geo-overlay"',
+                client.get("/welcome?after=session-only-dismiss").text,
+            )
 
             cleared = client.get("/geo/clear")
             self.assertEqual(cleared.status_code, 200)
