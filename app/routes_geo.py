@@ -1,12 +1,18 @@
 # app/routes_geo.py
+import os
+
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from .utils_geo import EU_COUNTRIES, detect_location
 
 router = APIRouter(tags=["geo"])
 
-COOKIE_DOMAIN = "sevor.net"
+# Keep the geo cookies on the same configured site domain as the session
+# middleware.  Production uses ``sevor.net``; making this configurable keeps
+# the two sources of cookie scope from drifting apart in other environments.
+COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "sevor.net")
 HTTPS_ONLY_COOKIES = True
+GEO_PREFERENCE_MAX_AGE = 60 * 60 * 24 * 180
 
 EURO_COUNTRIES = EU_COUNTRIES
 
@@ -30,6 +36,19 @@ def guess_currency_for(code: str):
     if c == REST_OF_WORLD:
         return "USD"
     return "USD"
+
+
+def _set_geo_preference_cookie(response: JSONResponse, name: str, value: str) -> None:
+    """Persist a visitor-level geo preference with the app's configured scope."""
+    response.set_cookie(
+        name,
+        value,
+        max_age=GEO_PREFERENCE_MAX_AGE,
+        domain=COOKIE_DOMAIN,
+        secure=HTTPS_ONLY_COOKIES,
+        httponly=False,
+        samesite="lax",
+    )
 
 
 @router.get("/geo/pick", response_class=HTMLResponse)
@@ -90,15 +109,18 @@ def geo_set(request: Request, loc: str = "US"):
     resp = JSONResponse(
         {"ok": True, "country": country_for_session, "currency": cur}
     )
-    resp.set_cookie(
-        "disp_cur",
-        cur,
-        max_age=60 * 60 * 24 * 180,
-        domain=COOKIE_DOMAIN,
-        secure=HTTPS_ONLY_COOKIES,
-        httponly=False,
-        samesite="lax",
-    )
+    _set_geo_preference_cookie(resp, "disp_cur", cur)
+    # A durable acknowledgement is deliberately separate from the currency:
+    # it also protects a manual choice if a transient session is recreated.
+    _set_geo_preference_cookie(resp, "geo_manual_done", "1")
+    return resp
+
+
+@router.post("/geo/dismiss")
+def geo_dismiss():
+    """Persist a visitor's explicit 'Not now' choice without changing currency."""
+    resp = JSONResponse({"ok": True})
+    _set_geo_preference_cookie(resp, "geo_manual_done", "1")
     return resp
 
 
@@ -117,5 +139,8 @@ def geo_debug(request: Request):
 def geo_clear(request: Request):
     request.session.pop("geo", None)
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie("disp_cur")
+    # These cookies were set with an explicit domain, so clear them with that
+    # same scope.  A reset should allow the picker to be shown again.
+    resp.delete_cookie("disp_cur", domain=COOKIE_DOMAIN, secure=HTTPS_ONLY_COOKIES, samesite="lax")
+    resp.delete_cookie("geo_manual_done", domain=COOKIE_DOMAIN, secure=HTTPS_ONLY_COOKIES, samesite="lax")
     return resp

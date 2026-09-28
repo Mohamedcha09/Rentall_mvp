@@ -205,41 +205,78 @@
 (function(){
   const root = document.getElementById("geo-overlay");
   if (!root) return;
+  const choices = Array.from(root.querySelectorAll("[data-loc]"));
+  const cancel = root.querySelector("[data-geo-cancel]");
+  const controls = cancel ? choices.concat(cancel) : choices;
+  let pending = false;
 
-  async function goto(loc){
+  function setControlsDisabled(disabled) {
+    controls.forEach((control) => { control.disabled = disabled; });
+  }
+
+  function hideImmediately() {
+    // The old flow kept the blocking overlay visible until a network response
+    // arrived.  This is especially confusing in a mobile WebView on a slow or
+    // failed request.  Hide it synchronously, then restore it only on failure.
+    root.style.display = "none";
+  }
+
+  function restoreAfterFailure() {
+    root.style.display = "";
+    setControlsDisabled(false);
+    pending = false;
+  }
+
+  async function saveChoice(url, options, reloadAfterSuccess){
+    if (pending) return;
+    pending = true;
+    setControlsDisabled(true);
+    hideImmediately();
+
     try {
-      const res = await fetch("/geo/set?loc=" + encodeURIComponent(loc), {
-        method: "GET",
-        credentials: "include"
-      });
+      const res = await fetch(url, Object.assign({
+        credentials: "include",
+        cache: "no-store"
+      }, options));
 
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.ok) {
-        // 1) نخفي المودال من الـ DOM
-        root.remove();
-        // 2) نعمل reload للصفحة حتى تتحدث الأسعار والضرائب
-        window.location.reload();
-      } else {
-        // في حالة mismatch مثلاً
-        alert("We couldn't confirm your country. Please try again.");
+        if (reloadAfterSuccess) {
+          // Refresh only after the server has persisted the currency choice.
+          window.location.reload();
+        } else {
+          root.remove();
+        }
+        return;
       }
+      console.error("The geo preference endpoint did not confirm the action.");
+      restoreAfterFailure();
+      alert("We couldn't confirm your country. Please try again.");
     } catch (e) {
-      console.error(e);
+      console.error("Could not persist the country preference.", e);
+      restoreAfterFailure();
       alert("Network error, please try again.");
     }
   }
 
+  function goto(loc){
+    return saveChoice(
+      "/geo/set?loc=" + encodeURIComponent(loc),
+      { method: "GET" },
+      true
+    );
+  }
+
   // ربط الأزرار
-  root.querySelectorAll("[data-loc]").forEach(btn => {
+  choices.forEach(btn => {
     btn.addEventListener("click", () => goto(btn.dataset.loc));
   });
 
   // زر "Not now"
-  const cancel = root.querySelector("[data-geo-cancel]");
   if (cancel) {
     cancel.addEventListener("click", () => {
-      root.remove();
+      saveChoice("/geo/dismiss", { method: "POST" }, false);
     });
   }
 })();
