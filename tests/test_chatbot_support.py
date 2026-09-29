@@ -1553,6 +1553,11 @@ class ChatbotSupportTests(unittest.TestCase):
         normal_reset_phrase, normal_reset_changed = redact_sensitive_user_content("my password reset link does not work")
         self.assertFalse(normal_reset_changed)
         self.assertEqual(normal_reset_phrase, "my password reset link does not work")
+        arabic_support_phrase, arabic_support_changed = redact_sensitive_user_content(
+            "لا أستطيع تسجيل الدخول رغم أن كلمة المرور صحيحة"
+        )
+        self.assertFalse(arabic_support_changed)
+        self.assertEqual(arabic_support_phrase, "لا أستطيع تسجيل الدخول رغم أن كلمة المرور صحيحة")
         self.assertNotIn("hunter2", _safe_provider_summary("Issue: my password hunter2"))
 
     def test_provider_prose_grounding_guard_rejects_ungrounded_policy_claims(self):

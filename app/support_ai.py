@@ -1368,7 +1368,13 @@ _SENSITIVE_MESSAGE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"((?:كلمة\s+(?:السر|المرور)|رمز\s+المرور)\s*(?:هي|هو|:|=)\s*)([^\s،؛,;]{3,})"),
     re.compile(
         r"((?:كلمة\s+(?:السر|المرور)|رمز\s+المرور)\s+)"
-        r"(?!(?:تغيير|اعادة|إعادة|مشكلة|مشكل|لا|الرابط|نسيت|يعمل|تعمل|التحقق)\b)"
+        r"(?!(?:تغيير|اعادة|إعادة|مشكلة|مشكل|لا|الرابط|نسيت|يعمل|تعمل|التحقق|"
+        r"صحيحة|صحيح|خاطئة|خاطئ|منسية|منسي)\b)"
+        # Without an explicit Arabic assignment marker, treat a following
+        # token as a credential only when it has an ASCII/digit/symbol signal.
+        # This preserves normal support wording such as “كلمة المرور صحيحة”
+        # instead of redacting the descriptive Arabic adjective as a secret.
+        r"(?=[^\s،؛,;]*[A-Za-z0-9!@#$%^&*+=_\-])"
         r"([^\s،؛,;]{4,})"
     ),
     re.compile(r"(?i)(\b(?:verification|one[ -]?time|otp)\s*(?:code)?\s*(?:is|=|:)?\s*)(\d{4,10})\b"),
