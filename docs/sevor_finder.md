@@ -70,7 +70,12 @@ fallback instead of fabricating results.
   does not maintain a hard-coded list of rentable product categories.
 - Price limits and target-price ordering use current `FxRate` data only. A
   cross-currency listing is not treated as within a hard ceiling when no valid
-  conversion exists.
+conversion exists.
+
+The read API reports the truthful parser state as one of
+`deterministic_fallback`, `llm_configured_disabled`, or
+`llm_parser_enabled`. A configured Support provider alone does not mean Finder
+is using it; the separate Finder flag is required.
 - Availability is checked only for a valid supplied ISO date range. Without
   dates, cards correctly say confirmation is required rather than claiming
   availability.

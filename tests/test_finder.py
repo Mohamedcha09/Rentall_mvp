@@ -626,6 +626,16 @@ class FinderTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 422)
 
+    def test_repeated_new_conversation_reuses_an_empty_durable_session(self) -> None:
+        """Repeated New-search clicks cannot create an empty-history flood."""
+        client = TestClient(main_module.app, base_url="http://testserver.local")
+        token = _login(client, 702)
+        first = client.post("/api/finder/conversation", json={"csrf_token": token})
+        self.assertEqual(first.status_code, 200, first.text)
+        second = client.post("/api/finder/conversation", json={"csrf_token": token})
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual(first.json()["conversation"]["id"], second.json()["conversation"]["id"])
+
     def test_stale_search_revision_is_rejected_instead_of_overwriting_newer_state(self) -> None:
         client = TestClient(main_module.app, base_url="http://testserver.local")
         token = _login(client, 701)

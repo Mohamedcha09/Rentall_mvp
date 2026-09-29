@@ -42,6 +42,14 @@ from .utils import display_currency
 router = APIRouter(tags=["finder"])
 
 
+# A Finder history is intentionally durable, but opening empty conversations
+# must not become an unbounded authenticated-write endpoint.  These limits are
+# deliberately generous for normal use; a user can keep substantial search
+# history while repeated clicks or an abused session cannot fill the database.
+MAX_FINDER_CONVERSATIONS_PER_USER = 100
+MAX_EMPTY_FINDER_CONVERSATIONS_PER_USER = 3
+
+
 class FinderMessagePayload(BaseModel):
     body: str
     conversation_id: Optional[int] = None
@@ -61,9 +69,9 @@ class _FinderRateLimiter:
         self._lock = threading.Lock()
         self._buckets: dict[str, deque[float]] = defaultdict(deque)
 
-    def check(self, user_id: int, *, limit: int = 15, window_seconds: int = 60) -> None:
+    def check(self, user_id: int, *, scope: str = "message", limit: int = 15, window_seconds: int = 60) -> None:
         now = time.monotonic()
-        key = f"finder:user:{int(user_id)}"
+        key = f"finder:{scope}:user:{int(user_id)}"
         with self._lock:
             bucket = self._buckets[key]
             while bucket and bucket[0] <= now - window_seconds:
@@ -99,6 +107,38 @@ def _owned_conversation(db: Session, user: User, conversation_id: int) -> Finder
 
 
 def _create_conversation(db: Session, user: User, request: Request) -> FinderConversation:
+    # Serialize the durable quota check per user on databases that support row
+    # locks. SQLite ignores this in the isolated tests, while PostgreSQL avoids
+    # concurrent tabs exceeding the conversation quota.
+    db.query(User.id).filter(User.id == user.id).with_for_update().one()
+    empty = (
+        db.query(FinderConversation)
+        .filter(
+            FinderConversation.user_id == user.id,
+            FinderConversation.status == "active",
+            ~FinderConversation.messages.any(),
+        )
+        .order_by(FinderConversation.updated_at.desc(), FinderConversation.id.desc())
+        .first()
+    )
+    if empty:
+        return empty
+    total = db.query(FinderConversation).filter(FinderConversation.user_id == user.id).count()
+    if total >= MAX_FINDER_CONVERSATIONS_PER_USER:
+        raise HTTPException(status_code=429, detail="Finder conversation limit reached. Continue an existing search.")
+    # The query above normally makes this zero; retain an explicit durable
+    # ceiling should legacy data contain several empty sessions already.
+    empty_count = (
+        db.query(FinderConversation)
+        .filter(
+            FinderConversation.user_id == user.id,
+            FinderConversation.status == "active",
+            ~FinderConversation.messages.any(),
+        )
+        .count()
+    )
+    if empty_count >= MAX_EMPTY_FINDER_CONVERSATIONS_PER_USER:
+        raise HTTPException(status_code=429, detail="Finish or continue the open Finder search before starting another.")
     language = str((request.headers.get("accept-language") or "en").split(",", 1)[0]).lower()[:8]
     if language.startswith("ar"):
         language = "ar"
@@ -278,6 +318,7 @@ def finder_new_conversation(
 ):
     current_user = _require_user(user)
     require_csrf(request, payload.csrf_token)
+    _RATE_LIMITER.check(current_user.id, scope="conversation", limit=6, window_seconds=60)
     conversation = _create_conversation(db, current_user, request)
     db.commit()
     return JSONResponse(_conversation_payload(db, current_user, conversation), headers={"Cache-Control": "no-store"})
@@ -292,7 +333,7 @@ def finder_message(
 ):
     current_user = _require_user(user)
     require_csrf(request, payload.csrf_token)
-    _RATE_LIMITER.check(current_user.id)
+    _RATE_LIMITER.check(current_user.id, scope="message")
     body = str(payload.body or "").strip()
     if not body:
         raise HTTPException(status_code=422, detail="Describe what you want to rent.")

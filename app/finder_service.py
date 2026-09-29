@@ -1672,7 +1672,7 @@ def looks_like_support_request(text: str) -> bool:
     direct = (
         "support", "agent", "human", "ticket", "account", "my account",
         "password", "log in", "login", "sign in", "cannot sign", "can't sign",
-        "payment", "charged", "refund", "payout", "deposit", "booking status",
+        "payment", "charged", "refund", "payout", "deposit refund", "my deposit", "booking status",
         "booking is", "booking pending", "reservation", "my reservation",
         "support", "compte", "connexion", "connecter", "mot de passe", "paiement",
         "remboursement", "reservation", "réservation", "en attente", "versement",
@@ -1694,19 +1694,22 @@ def parse_compare_positions(text: str) -> list[int]:
 
 
 def finder_provider_mode() -> str:
-    """Truthful readiness, without exposing provider configuration values."""
+    """Return the actual Finder parser mode without exposing configuration."""
     try:
         from .support_ai import provider_available
-        return "llm_configured" if provider_available() else "deterministic_fallback"
+        if not provider_available():
+            return "deterministic_fallback"
+        if str(os.getenv("SEVOR_FINDER_PROVIDER_PARSE", "0")).strip().lower() in {"1", "true", "yes"}:
+            return "llm_parser_enabled"
+        # Support may have a configured provider while Finder remains safely
+        # deterministic until its own staged evaluation is approved.
+        return "llm_configured_disabled"
     except Exception:
         return "deterministic_fallback"
 
 
 def _provider_parser_enabled() -> bool:
-    return (
-        finder_provider_mode() == "llm_configured"
-        and str(os.getenv("SEVOR_FINDER_PROVIDER_PARSE", "0")).strip().lower() in {"1", "true", "yes"}
-    )
+    return finder_provider_mode() == "llm_parser_enabled"
 
 
 def _provider_timeout() -> float:
