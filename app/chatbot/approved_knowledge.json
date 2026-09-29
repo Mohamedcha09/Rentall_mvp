@@ -9,6 +9,14 @@
       "title": "Reset a password",
       "keywords": ["forgot password", "password reset", "reset password", "mot de passe", "mot de passe oublié", "كلمة السر", "كلمة المرور", "reset"],
       "source": "app/auth.py:/forgot,/reset-password",
+      "user_goal": "Regain access without disclosing a password or revealing whether an email has an account.",
+      "symptoms": ["Forgot password", "Needs a reset link", "Reset email did not arrive", "Reset link is invalid or expired"],
+      "troubleshooting_steps": ["Request a fresh link from Forgot Password using the account email", "Use the newest link", "Enter the new password and confirmation identically"],
+      "clarifying_questions": ["Did the reset email arrive?", "If it arrived, does the link say expired or invalid?"],
+      "related_topics": ["account.password.reset_email", "account.password.reset_link", "account.password.change"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
       "content": {
         "en": "Use the Forgot Password page and enter the email for the account. SEVOR shows the same confirmation whether or not a matching account exists. If the email arrives, open its reset link and enter the new password twice. The reset link expires after two hours. Are you not receiving the email, or does the link fail when you open it?",
         "fr": "Utilisez la page « Forgot Password » et saisissez l’adresse e-mail du compte. SEVOR affiche la même confirmation qu’un compte corresponde ou non. Si l’e-mail arrive, ouvrez son lien puis saisissez deux fois le nouveau mot de passe. Le lien expire après deux heures. Ne recevez-vous pas l’e-mail, ou le lien échoue-t-il à l’ouverture ?",
@@ -54,6 +62,14 @@
       "title": "Change a signed-in password",
       "keywords": ["change password", "current password", "modifier mot de passe", "changer mot de passe", "تغيير كلمة السر", "تغيير كلمة المرور"],
       "source": "app/auth.py:/settings/password",
+      "user_goal": "Change a password while already signed in.",
+      "symptoms": ["Current password rejected", "New passwords do not match", "Cannot sign in to change password"],
+      "troubleshooting_steps": ["Confirm the current password", "Enter the same new password twice", "Use Forgot Password instead when the current password is unavailable"],
+      "clarifying_questions": ["Are you signed in and changing it from Settings, or do you need to regain access first?"],
+      "related_topics": ["account.password.reset", "account.login"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
       "content": {
         "en": "When you are signed in, the password change flow requires your current password plus a new password entered twice. If you do not know the current password, use Forgot Password instead. Never put a password in this chat.",
         "fr": "Lorsque vous êtes connecté, le changement de mot de passe demande le mot de passe actuel puis le nouveau mot de passe saisi deux fois. Si vous ne connaissez pas le mot de passe actuel, utilisez « Forgot Password ». Ne mettez jamais un mot de passe dans ce chat.",
@@ -114,6 +130,13 @@
       "title": "Create or edit a listing",
       "keywords": ["create listing", "add item", "edit listing", "publish listing", "créer annonce", "modifier annonce", "publier annonce", "إضافة منتج", "إنشاء إعلان", "تعديل المنتج", "نشر المنتج"],
       "source": "app/items.py:/owner/items/new,/owner/items/{item_id}/edit",
+      "user_goal": "Create or update an owner listing and understand when it is editable or public.",
+      "symptoms": ["Cannot create a listing", "Cannot edit an approved listing", "Listing remains pending", "Listing is not public"],
+      "clarifying_questions": ["Is this a new listing, an edit, or a visibility/status issue?", "Which of your listings is affected?"],
+      "related_topics": ["listing.status", "listing.general"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
       "content": {
         "en": "Approved owners can create listings from the owner listing flow. A non-admin owner may edit a listing unless its status is approved; approved listings are locked for non-admin owner edits. New and resubmitted listings are stored as pending, and public item queries show them only when they are both approved and active. I can check the status of one of your own listings after you choose it.",
         "fr": "Les propriétaires approved peuvent créer des annonces depuis le flux propriétaire. Un propriétaire non administrateur peut modifier une annonce tant que son statut n’est pas approved ; les annonces approved sont verrouillées pour les modifications du propriétaire non administrateur. Les nouvelles annonces et les annonces soumises à nouveau sont enregistrées comme pending ; les requêtes publiques ne les affichent que si elles sont approved et actives. Je peux vérifier le statut d’une de vos annonces après votre choix.",
@@ -144,6 +167,14 @@
       "title": "Create a booking and choose dates",
       "keywords": ["book item", "booking dates", "dates unavailable", "create booking", "réserver", "dates indisponibles", "حجز", "تواريخ غير متاحة", "إنشاء حجز"],
       "source": "app/routes_bookings.py:/bookings,/bookings/new",
+      "user_goal": "Request a rental for valid available dates.",
+      "symptoms": ["Dates are unavailable", "Start date is in the past", "End date is rejected", "Booking request cannot be created"],
+      "troubleshooting_steps": ["Choose a start date that is not in the past", "Choose an end date after the start date", "Try other dates if server availability changed"],
+      "clarifying_questions": ["Which item and dates are you trying to book?"],
+      "related_topics": ["booking.status", "booking.owner_not_responding", "payment.booking_status"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
       "content": {
         "en": "Creating a booking requires a signed-in approved account, an active item, a start date that is not in the past, and an end date after the start date. SEVOR checks availability again on the server before creating the request, so dates can become unavailable even if a calendar was open earlier.",
         "fr": "La création d’une réservation demande un compte connecté et approved, un article actif, une date de début qui n’est pas dans le passé et une date de fin après le début. SEVOR revérifie la disponibilité côté serveur avant de créer la demande ; les dates peuvent donc devenir indisponibles même si le calendrier était déjà ouvert.",
@@ -163,6 +194,50 @@
         "en": "A new booking request starts with the requested status. The owner can accept or reject it. A rejected request does not reserve the item’s dates; accepting rechecks availability while the item is locked. I can check the current status of your own booking, but the current code does not publish a guaranteed owner-response time.",
         "fr": "Une nouvelle demande de réservation commence avec le statut requested. Le propriétaire peut l’accepter ou la refuser. Une demande refusée ne réserve pas les dates ; l’acceptation revérifie la disponibilité pendant que l’article est verrouillé. Je peux vérifier le statut actuel de votre propre réservation, mais le code actuel ne publie aucun délai garanti de réponse du propriétaire.",
         "ar": "يبدأ طلب الحجز الجديد بحالة requested. يستطيع المالك قبوله أو رفضه. الطلب المرفوض لا يحجز تواريخ العنصر؛ وعند القبول يُعاد التحقق من التوفر أثناء قفل العنصر. يمكنني فحص الحالة الحالية لحجزك، لكن النظام لا ينشر مدة مضمونة لرد المالك."
+      }
+    },
+    {
+      "id": "core:bookings:pickup-proof",
+      "status": "published",
+      "priority": 95,
+      "category": "Bookings & Evidence",
+      "intent": "booking.pickup_photos",
+      "title": "Submit pickup photos",
+      "keywords": ["pickup photos", "pickup proof", "before photos", "before pickup", "photos before taking item", "photos retrait", "preuve retrait", "photos avant", "صور الاستلام", "صور قبل الاستلام", "صور قبل أخذ المنتج"],
+      "source": "app/routes_deposits.py:/bookings/{booking_id}/pickup-proof-upload",
+      "user_goal": "Record the item's condition at pickup for the current booking.",
+      "symptoms": ["Pickup photo upload redirects back to the booking", "Cannot submit pickup proof", "Booking has not reached the pickup step"],
+      "clarifying_questions": ["Is the booking already marked paid?", "Are you the renter for this booking?"],
+      "related_topics": ["booking.return_photos", "deposit.status", "booking.status"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
+      "content": {
+        "en": "After a booking is paid, the renter can submit pickup proof from its booking flow. The server records the submitted evidence for that booking and changes its status to picked_up. This upload is renter-only; if the booking is not paid, the route returns to the booking instead of accepting pickup proof.",
+        "fr": "Après le paiement d’une réservation, le locataire peut soumettre les preuves de retrait depuis le flux de cette réservation. Le serveur enregistre les preuves pour cette réservation et passe son statut à picked_up. Cet envoi est réservé au locataire ; si la réservation n’est pas paid, la route revient à la réservation au lieu d’accepter les preuves de retrait.",
+        "ar": "بعد أن يصبح الحجز بحالة paid، يستطيع المستأجر إرسال إثباتات/صور الاستلام من مسار الحجز. يسجل الخادم الأدلة لهذا الحجز ويغير حالته إلى picked_up. هذا الرفع مخصص للمستأجر فقط؛ وإذا لم يكن الحجز paid يعود المسار إلى الحجز بدل قبول إثباتات الاستلام."
+      }
+    },
+    {
+      "id": "core:bookings:return-proof",
+      "status": "published",
+      "priority": 95,
+      "category": "Bookings & Evidence",
+      "intent": "booking.return_photos",
+      "title": "Submit return photos",
+      "keywords": ["return photos", "return proof", "photos when returning", "return item photos", "photos retour", "preuve retour", "photos restitution", "صور الإرجاع", "صور عند إرجاع المنتج", "إثبات الإرجاع"],
+      "source": "app/routes_deposits.py:/bookings/{booking_id}/return-proof-upload",
+      "user_goal": "Record the item's condition when it is returned.",
+      "symptoms": ["Return photo upload redirects back to the booking", "Cannot submit return proof", "Booking has not reached the return step"],
+      "clarifying_questions": ["Is the booking already marked picked_up?", "Are you the renter for this booking?"],
+      "related_topics": ["booking.pickup_photos", "deposit.status", "refund.status"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
+      "content": {
+        "en": "After a booking is marked picked_up, the renter can submit return proof from its booking flow. The server records it as return evidence and changes the booking status to returned. This upload is renter-only; if the booking has not reached picked_up, the route returns to the booking instead of accepting return proof.",
+        "fr": "Après qu’une réservation est marquée picked_up, le locataire peut soumettre les preuves de retour depuis son flux de réservation. Le serveur les enregistre comme preuves de retour et passe la réservation à returned. Cet envoi est réservé au locataire ; si la réservation n’a pas atteint picked_up, la route revient à la réservation au lieu d’accepter les preuves de retour.",
+        "ar": "بعد أن تصبح حالة الحجز picked_up، يستطيع المستأجر إرسال إثباتات/صور الإرجاع من مسار الحجز. يسجلها الخادم كأدلة إرجاع ويغير حالة الحجز إلى returned. هذا الرفع مخصص للمستأجر فقط؛ وإذا لم يصل الحجز إلى picked_up يعود المسار إلى الحجز بدل قبول إثباتات الإرجاع."
       }
     },
     {
@@ -193,6 +268,28 @@
         "en": "A booking keeps separate booking and payment-status fields. I can check the safe current values for one of your bookings; I will not infer that payment succeeded from a bank message alone. If the recorded payment status is paid while the booking is still requested, the current status is the source of truth and a support agent can investigate anything not explained by the booking flow.",
         "fr": "Une réservation conserve des champs distincts pour son statut et son statut de paiement. Je peux vérifier les valeurs actuelles sûres d’une de vos réservations ; je ne vais pas déduire qu’un paiement a réussi à partir d’un seul message bancaire. Si le statut de paiement enregistré est paid alors que la réservation reste requested, le statut actuel est la source de vérité et un agent peut examiner ce que le flux de réservation n’explique pas.",
         "ar": "يحتفظ الحجز بحقلين منفصلين لحالة الحجز وحالة الدفع. يمكنني التحقق من القيم الآمنة الحالية لأحد حجوزاتك؛ ولن أستنتج نجاح الدفع من رسالة بنك فقط. إذا كانت حالة الدفع المسجلة paid بينما الحجز ما زال requested، فالحالة الحالية هي مصدر الحقيقة ويمكن للموظف فحص ما لا يفسره مسار الحجز."
+      }
+    },
+    {
+      "id": "core:payments:paypal-sequence",
+      "status": "published",
+      "priority": 100,
+      "category": "Payments & Booking",
+      "intent": "payment.paypal_flow",
+      "title": "Pay for rent or a security amount with PayPal",
+      "keywords": ["paypal booking", "pay rent paypal", "pay deposit paypal", "security fund", "paypal payment", "paiement paypal réservation", "payer loyer paypal", "dépôt paypal", "دفع بايبال للحجز", "دفع الإيجار بايبال", "دفع التأمين بايبال"],
+      "source": "app/pay_api.py:/paypal/start/{booking_id},/paypal/return",
+      "user_goal": "Complete the existing PayPal flow for the renter's own booking.",
+      "symptoms": ["PayPal approval opens", "Rent payment is complete but security payment remains", "Booking is not marked paid after a payment"],
+      "clarifying_questions": ["Is this the rent payment or the security amount?", "Which of your bookings is affected?"],
+      "related_topics": ["payment.booking_status", "deposit.status", "refund.status"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
+      "content": {
+        "en": "PayPal rent and security payments use separate flows for the renter’s own booking. SEVOR sends the renter to PayPal for approval, then captures the returned order. A successful rent capture marks rent as paid; a successful security capture marks the security amount as held. The booking is marked paid only when rent is paid and either the security amount is paid or its amount is zero. I can check the recorded status, but I will not confirm a capture from a bank notification alone.",
+        "fr": "Les paiements PayPal du loyer et du montant de garantie suivent deux flux distincts pour la réservation du locataire. SEVOR envoie le locataire vers PayPal pour approbation, puis capture la commande retournée. Une capture de loyer réussie marque le loyer comme payé ; une capture de garantie réussie marque le montant de garantie comme retenu. La réservation devient paid seulement lorsque le loyer est payé et que la garantie est payée ou que son montant est nul. Je peux vérifier le statut enregistré, mais je ne confirmerai pas une capture à partir d’une seule notification bancaire.",
+        "ar": "لدفع الإيجار ومبلغ التأمين عبر PayPal مساران منفصلان لحجز المستأجر نفسه. يوجّه SEVOR المستأجر إلى PayPal للموافقة ثم يلتقط الطلب عند العودة. التقاط الإيجار الناجح يعلّم الإيجار كمدفوع، والتقاط التأمين الناجح يعلّم مبلغ التأمين كمحتجز. لا يصبح الحجز paid إلا عند دفع الإيجار ودفع التأمين أو عندما يكون مبلغ التأمين صفرًا. يمكنني فحص الحالة المسجلة، لكن لا أؤكد التقاط الدفع من إشعار بنك وحده."
       }
     },
     {
@@ -234,6 +331,14 @@
       "title": "Set up a payout method or PayPal",
       "keywords": ["paypal", "interac", "wise", "payout settings", "connect paypal", "payment method owner", "paiement paypal", "versement paypal", "ربط بايبال", "إعدادات السحب", "دفعات المالك"],
       "source": "app/payout_settings.py:/payout/settings",
+      "user_goal": "Save or replace the active payout destination for an owner account.",
+      "symptoms": ["Payout settings form is shown", "Payout destination is missing", "Need to change payout method"],
+      "troubleshooting_steps": ["Open /payout/settings while signed in", "Choose a supported method and supply its destination", "Save the setting; the prior active method is deactivated"],
+      "clarifying_questions": ["Are you setting up Interac, PayPal, or Wise?"],
+      "related_topics": ["payout.status"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
       "content": {
         "en": "Signed-in users can manage payout settings at /payout/settings. The current settings flow accepts an Interac destination, a PayPal email, or a Wise IBAN; after a supported method with a nonempty destination is saved, it marks payouts as enabled. It does not make a payment or transfer money from chat.",
         "fr": "Les utilisateurs connectés peuvent gérer leurs réglages de versement sur /payout/settings. Le flux actuel accepte une destination Interac, un e-mail PayPal ou un IBAN Wise ; après l’enregistrement d’une méthode prise en charge avec une destination non vide, il active les versements. Il n’effectue aucun paiement ni transfert d’argent depuis le chat.",
@@ -256,6 +361,28 @@
       }
     },
     {
+      "id": "core:region:currency-preference",
+      "status": "published",
+      "priority": 85,
+      "category": "Region & Currency",
+      "intent": "region.currency",
+      "title": "Choose a region and display currency",
+      "keywords": ["change currency", "country picker", "region", "canada currency", "united states currency", "europe currency", "rest of world", "changer devise", "choisir pays", "région", "تغيير العملة", "اختيار البلد", "المنطقة", "كندا", "أوروبا"],
+      "source": "app/routes_geo.py:/geo/set,/geo/dismiss",
+      "user_goal": "Set a manual display-currency preference or defer the country picker.",
+      "symptoms": ["Needs to change region", "Wants to know the selected display currency", "Chooses Not now"],
+      "clarifying_questions": ["Which region do you want to select: Canada, United States, Europe, or Rest of the world?"],
+      "related_topics": ["general.sevor"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
+      "content": {
+        "en": "The manual region selector maps Canada to CAD, the United States to USD, an eligible European country to EUR, and Rest of the world to USD as a display-currency preference. Choosing Not now only saves that the picker was deferred; it does not choose a country or currency for you. This setting is not a promise about taxes or a payment-settlement currency.",
+        "fr": "Le sélecteur manuel de région associe le Canada au CAD, les États-Unis à l’USD, un pays européen éligible à l’EUR et le reste du monde à l’USD comme préférence de devise d’affichage. Le choix « Not now » enregistre seulement le report du sélecteur ; il ne choisit ni pays ni devise à votre place. Ce réglage ne constitue pas une promesse concernant les taxes ni la devise de règlement d’un paiement.",
+        "ar": "يربط اختيار المنطقة اليدوي كندا بـ CAD والولايات المتحدة بـ USD والبلد الأوروبي المؤهل بـ EUR وبقية العالم بـ USD كتفضيل لعملة العرض. اختيار «Not now» يحفظ فقط تأجيل نافذة الاختيار؛ ولا يختار بلدًا أو عملة نيابة عنك. هذا الإعداد ليس وعدًا بشأن الضرائب أو عملة تسوية الدفع."
+      }
+    },
+    {
       "id": "core:messaging:contact",
       "status": "published",
       "priority": 80,
@@ -268,6 +395,29 @@
         "en": "SEVOR has a separate user-to-user Messages area for contacting another user. Support tickets are separate from those conversations. If a booking or item context is needed, use the existing message flow; Sevor AI does not send messages or change a booking for you.",
         "fr": "SEVOR possède une zone Messages distincte pour contacter un autre utilisateur. Les tickets d’assistance sont séparés de ces conversations. Si un contexte de réservation ou d’article est nécessaire, utilisez le flux de messages existant ; Sevor AI n’envoie pas de message et ne modifie pas une réservation à votre place.",
         "ar": "لدى SEVOR مساحة Messages منفصلة للتواصل بين المستخدمين. تذاكر الدعم منفصلة عن هذه المحادثات. إذا احتجت سياق حجز أو عنصر فاستخدم مسار الرسائل الموجود؛ لا ترسل Sevor AI رسائل ولا تغيّر الحجز نيابة عنك."
+      }
+    },
+    {
+      "id": "core:messaging:media",
+      "status": "published",
+      "priority": 85,
+      "category": "Messaging",
+      "intent": "messaging.media",
+      "title": "Send images, files, or a voice message",
+      "keywords": ["send image message", "send photo message", "attach pdf", "send file", "voice message", "vocal message", "audio message", "envoyer photo message", "joindre pdf", "message vocal", "إرسال صورة", "إرسال ملف", "إرسال PDF", "رسالة صوتية", "فوكال"],
+      "source": "app/messages.py:/messages/{thread_id}; app/message_attachments.py",
+      "user_goal": "Share supported media in a direct-message conversation.",
+      "symptoms": ["Attachment is rejected", "Cannot send a voice message", "Needs to know whether a file type is supported"],
+      "troubleshooting_steps": ["Use a supported image, PDF, or voice format", "Send a voice recording separately from ordinary file attachments", "Confirm that you are a member of the conversation"],
+      "clarifying_questions": ["Are you trying to send an image, a PDF, or a voice recording?"],
+      "related_topics": ["messaging.contact"],
+      "source_version": "source-inspected-2026-09-29",
+      "review_status": "source-verified",
+      "updated_at": "2026-09-29",
+      "content": {
+        "en": "In a direct-message conversation, SEVOR supports JPEG, PNG, WebP, and PDF attachments, plus voice recordings in supported WebM, Ogg, or MP4 formats. A message can contain text with ordinary attachments, or text with one voice recording; voice recordings are sent separately from ordinary file attachments. The server validates the type and conversation membership before storing the upload, and the configured size and count limits still apply.",
+        "fr": "Dans une conversation de Messages, SEVOR prend en charge les pièces jointes JPEG, PNG, WebP et PDF, ainsi que les messages vocaux aux formats WebM, Ogg ou MP4 pris en charge. Un message peut contenir du texte avec des pièces jointes ordinaires, ou du texte avec un enregistrement vocal ; les vocaux sont envoyés séparément des pièces jointes ordinaires. Le serveur valide le type et l’appartenance à la conversation avant de stocker l’envoi, et les limites configurées de taille et de quantité restent applicables.",
+        "ar": "في محادثة Messages بين المستخدمين، تدعم SEVOR مرفقات JPEG وPNG وWebP وPDF، وكذلك الرسائل الصوتية بصيغ WebM أو Ogg أو MP4 المدعومة. يمكن أن تحتوي الرسالة على نص مع مرفقات عادية، أو نص مع تسجيل صوتي واحد؛ ويُرسل التسجيل الصوتي منفصلًا عن مرفقات الملفات العادية. يتحقق الخادم من النوع ومن عضوية المحادثة قبل تخزين الرفع، وتبقى حدود الحجم والعدد المضبوطة مطبقة."
       }
     },
     {

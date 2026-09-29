@@ -21,7 +21,6 @@ from .notifications_api import push_notification
 from .support_ai import (
     AGENT_ACTIVE,
     AI_ACTIVE,
-    MAX_AI_ATTEMPTS,
     RESOLVED,
     WAITING_FOR_AGENT,
     append_message,
@@ -51,6 +50,7 @@ from .support_ai import (
     serialize_message,
     serialize_ticket,
     set_ticket_state,
+    should_handoff_for_ai_attempt_limit,
     ticket_state,
     update_ticket_summary,
     validate_client_message_id,
@@ -255,14 +255,6 @@ def _provider_answer_for_message(db: Session, ticket: SupportTicket, user: User,
     locked_ticket.unread_for_agent = False
     update_ticket_summary(db, locked_ticket)
     return assistant
-
-
-def _assistant_attempt_count(db: Session, ticket: SupportTicket) -> int:
-    return (
-        db.query(SupportMessage)
-        .filter(SupportMessage.ticket_id == ticket.id, SupportMessage.sender_role == "assistant")
-        .count()
-    )
 
 
 def _handoff_after_user_message(
@@ -565,7 +557,7 @@ def chatbot_send_ai_message(
             notify_waiting_agents(db, ticket)
         return _conversation_payload(db, ticket)
 
-    if _assistant_attempt_count(db, ticket) >= MAX_AI_ATTEMPTS:
+    if should_handoff_for_ai_attempt_limit(db, ticket, current_message=body):
         ticket, handoff_created = _handoff_after_user_message(db, ticket, user, body, "ai_attempt_limit")
         duplicate_payload = _commit_user_message_or_duplicate(db, ticket, client_message_id)
         if duplicate_payload:

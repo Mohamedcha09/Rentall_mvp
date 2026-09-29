@@ -5,42 +5,88 @@
       "domain": "LISTINGS",
       "topic": "Public listing-review SLA",
       "reason": "Current listing routes expose states but no approved review-time promise.",
+      "owner_question": "What review-time range, if any, may Sevor AI state publicly for a new or resubmitted listing, and does it vary by account or category?",
+      "sources_reviewed": ["app/items.py", "app/admin_items.py"],
       "status": "missing"
     },
     {
       "domain": "REFUNDS",
       "topic": "Eligibility and bank-processing timeline",
       "reason": "Booking data exposes limited refund flags, but no single approved customer policy defines eligibility or timing.",
+      "owner_question": "Which events make a renter eligible for a refund, which amount(s) can be refunded, and from which event should any customer-facing processing timeline start?",
+      "sources_reviewed": ["app/models.py:Booking", "app/routes_deposits.py", "app/pay_api.py"],
       "status": "missing"
     },
     {
       "domain": "DEPOSITS",
       "topic": "Amount formula and universal release policy",
       "reason": "Booking fields expose status but not a published universal formula or release SLA.",
+      "owner_question": "Is the suggested 20× one-day-price deposit guidance a public rule, an enforced limit, or neither; and what approved rule governs deposit release?",
+      "sources_reviewed": ["app/routes_bookings.py", "app/routes_deposits.py", "app/templates/how_it_works.html"],
       "status": "missing"
     },
     {
       "domain": "PAYOUTS",
       "topic": "Universal payout timing, fees, and guarantee",
       "reason": "Payout settings and safe booking fields exist, but no approved universal timing/fee policy is present.",
+      "owner_question": "What payout timing, fees, eligibility conditions, and exceptions may be stated publicly for each payout method?",
+      "sources_reviewed": ["app/payout_settings.py", "app/models.py:Booking"],
       "status": "missing"
     },
     {
       "domain": "BOOKINGS",
       "topic": "Owner response-time guarantee and cancellation policy",
       "reason": "The booking flow has request/accept/reject state logic but no approved public SLA or complete cancellation policy.",
+      "owner_question": "Is there a public owner-response expectation or cancellation policy; if so, what event starts it and which booking states are covered?",
+      "sources_reviewed": ["app/routes_bookings.py"],
       "status": "missing"
     },
     {
       "domain": "VERIFICATION",
       "topic": "Complete public document requirements and rejection-reason catalog",
       "reason": "Account and document status are available, but the scanned code does not define a complete approved public list.",
+      "owner_question": "Which identity documents, countries, review steps, and rejection reasons may Sevor AI describe publicly, and what should it say when a document review is pending?",
+      "sources_reviewed": ["app/models.py:User,Document", "app/auth.py", "app/admin.py"],
       "status": "missing"
     },
     {
       "domain": "PAYMENTS",
       "topic": "Universal fees and supported-payment-method policy",
       "reason": "Safe booking payment status exists, but no approved customer-facing universal fee/method policy was found.",
+      "owner_question": "Which payment methods, currencies, fees, and taxes are customer-facing policy versus implementation detail, and may Sevor AI quote any amount before checking a booking?",
+      "sources_reviewed": ["app/pay_api.py", "app/routes_bookings.py", "app/routes_geo.py"],
+      "status": "missing"
+    },
+    {
+      "domain": "REPORTS_AND_DEPOSITS",
+      "topic": "Report window, eligible reporter, and deposit-release conflict",
+      "reason": "The How It Works copy says a 24-hour report window and automatic release afterward. Current booking/deposit code uses different paths: return proof records a return, owner deposit-dispute timing is separate, and automatic release conditions are not established as one public rule.",
+      "owner_question": "Who may report a post-return problem, when does the report window begin, how long is it, and exactly when—if ever—is a deposit released automatically?",
+      "sources_reviewed": ["app/templates/how_it_works.html", "app/routes_deposits.py", "app/routes_bookings.py"],
+      "status": "conflict_needs_approval"
+    },
+    {
+      "domain": "PAYMENTS",
+      "topic": "Cash-payment flow conflict",
+      "reason": "How It Works describes a cash option, but the inspected booking route initializes PayPal payment state and the previously referenced cash endpoint is not a supported operational path in the inspected code.",
+      "owner_question": "Is cash currently supported for bookings in production; if so, which exact booking states, deposit rules, safety wording, and routes should Sevor AI describe?",
+      "sources_reviewed": ["app/templates/how_it_works.html", "app/routes_bookings.py", "app/pay_api.py"],
+      "status": "conflict_needs_approval"
+    },
+    {
+      "domain": "REVIEWS",
+      "topic": "When a booking review is allowed",
+      "reason": "The walkthrough says reviews follow return, while the inspected review routes verify booking participation but do not establish a single return-status gate as public policy.",
+      "owner_question": "At which booking status should renter and owner reviews become available, and is this a public rule that Sevor AI may state?",
+      "sources_reviewed": ["app/templates/how_it_works.html", "app/reviews.py"],
+      "status": "conflict_needs_approval"
+    },
+    {
+      "domain": "TAXES_AND_CURRENCY",
+      "topic": "Tax policy versus display-currency selection",
+      "reason": "The region route stores a display-currency preference; the inspected booking flow currently supplies empty tax lines. Neither source establishes a public tax policy or a promise that display currency equals settlement currency.",
+      "owner_question": "What tax rules, if any, should users see by region, and when may Sevor AI explain a difference between display currency and the currency charged or paid out?",
+      "sources_reviewed": ["app/routes_geo.py", "app/routes_bookings.py", "app/pay_api.py"],
       "status": "missing"
     }
   ]
