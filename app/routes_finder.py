@@ -21,6 +21,7 @@ from .finder_service import (
     SearchSpec,
     apply_user_turn,
     comparison_for_seen_listings,
+    detect_finder_language,
     enrich_spec_with_provider,
     finder_copy,
     finder_provider_mode,
@@ -355,14 +356,22 @@ def finder_message(
     db.flush()
 
     previous_spec = _spec_for(state, conversation.language)
-    display = display_currency(request)
-    next_spec, action = apply_user_turn(db, previous_spec, body, display_currency=display)
     support_requested = looks_like_support_request(body)
     provider_used = False
+    if support_requested:
+        # Do not let a Support turn alter the rental search specification,
+        # pagination cursor, or Finder revision. Its only Finder-side effect is
+        # the preserved chat message and a safe link to Support.
+        next_spec = SearchSpec.from_dict(previous_spec.to_dict())
+        next_spec.language = detect_finder_language(body)
+        action = "support"
+    else:
+        display = display_currency(request)
+        next_spec, action = apply_user_turn(db, previous_spec, body, display_currency=display)
     # Finder prompts/results must stay separate from account, booking, or
-    # payment support text. An explicit Support request never reaches the
-    # optional Finder provider parser.
-    if not support_requested:
+    # payment support text. Provider enrichment also cannot reinterpret a
+    # paging/comparison control turn as a new search.
+    if not support_requested and action == "search":
         categories = [row[0] for row in public_listings_query(db).with_entities(Item.category).distinct().all()]
         locations = [row[0] for row in public_listings_query(db).with_entities(Item.city).filter(Item.city.isnot(None), Item.city != "").distinct().all()]
         next_spec, provider_used = enrich_spec_with_provider(
@@ -415,11 +424,12 @@ def finder_message(
             old_seen = _seen_ids(state) if action == "more" else []
             state.last_result_ids_json = json.dumps(old_seen + [card["id"] for card in result.cards if card.get("id") not in old_seen], separators=(",", ":"))
         metadata["provider_parser_used"] = provider_used
-    state.spec_json = json.dumps(next_spec.to_dict(), ensure_ascii=False, separators=(",", ":"))
-    state.updated_at = datetime.utcnow()
+    if not support_requested:
+        state.spec_json = json.dumps(next_spec.to_dict(), ensure_ascii=False, separators=(",", ":"))
+        state.updated_at = datetime.utcnow()
+        conversation.context_json = json.dumps({"language": next_spec.language, "summary": spec_summary(next_spec)}, ensure_ascii=False, separators=(",", ":"))
     conversation.language = next_spec.language
     conversation.updated_at = datetime.utcnow()
-    conversation.context_json = json.dumps({"language": next_spec.language, "summary": spec_summary(next_spec)}, ensure_ascii=False, separators=(",", ":"))
     assistant_message = FinderMessage(
         conversation_id=conversation.id,
         sender_role="assistant",

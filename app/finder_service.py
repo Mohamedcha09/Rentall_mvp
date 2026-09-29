@@ -533,6 +533,11 @@ def _detect_language(text: str) -> str:
     return "fr" if any(marker in normalized for marker in french) or re.search(r"[àâçéèêëîïôûùüÿœ]", text or "", re.I) else "en"
 
 
+def detect_finder_language(text: str) -> str:
+    """Public, side-effect-free language detector for Finder route copy."""
+    return _detect_language(text)
+
+
 def _currency_from_text(text: str, default_currency: str) -> tuple[str, bool]:
     normalized = normalize_text(text)
     token_set = tokens(text)
