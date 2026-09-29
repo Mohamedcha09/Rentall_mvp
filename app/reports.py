@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_db, engine
 from .models import User, Item
+from .finder_service import sync_listing_index
 
 # =========================
 # Optional imports to keep runtime safe if tables/services are unavailable
@@ -114,6 +115,9 @@ def _set_item_state(db: Session, item_id: int, *, state: str):
             setattr(it, "is_active", "yes")
 
     db.add(it)
+    # A moderated state change must not leave an old approved Finder document
+    # discoverable. The derived index shares this transaction with the item.
+    sync_listing_index(db, it)
     db.commit()
     return it
 

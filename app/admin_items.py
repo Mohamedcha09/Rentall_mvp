@@ -11,6 +11,7 @@ from .message_attachments import (
     remove_saved_message_attachment_files,
 )
 from .notifications_api import push_notification
+from .finder_service import remove_listing_index, sync_listing_index
 
 router = APIRouter(tags=["admin-items"], prefix="/admin/items")
 
@@ -72,6 +73,8 @@ def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     it.status = "approved"
     it.reviewed_at = datetime.utcnow()
     it.admin_feedback = None
+    # Write the public derived search document atomically with approval.
+    sync_listing_index(db, it)
     db.commit()
 
     # إرسال إشعار قبول
@@ -99,6 +102,7 @@ def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), f
     it.status = "rejected"
     it.admin_feedback = feedback
     it.reviewed_at = datetime.utcnow()
+    sync_listing_index(db, it)
     db.commit()
 
     # 🌟 إنشاء الإشعار بدون رابط
@@ -135,6 +139,7 @@ def reset_to_pending(item_id: int, request: Request, db: Session = Depends(get_d
     it.status = "pending"
     it.admin_feedback = None
     it.reviewed_at = None
+    sync_listing_index(db, it)
     db.commit()
 
     return RedirectResponse(
@@ -175,6 +180,7 @@ def delete_item(item_id: int, request: Request, db: Session = Depends(get_db)):
         else []
     )
 
+    remove_listing_index(db, it.id)
     db.delete(it)
     db.commit()
     remove_saved_message_attachment_files(attachment_cleanup)

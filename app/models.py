@@ -249,6 +249,108 @@ class Subcategory(Base):
 
 
 # =========================
+# Sevor Finder (catalog search conversations)
+# =========================
+#
+# Finder deliberately has its own small relational history.  It must never
+# share SupportTicket/SupportMessage because Finder is a rental-search tool,
+# not a support queue or a human handoff workflow.  The JSON fields below are
+# bounded, server-produced snapshots (search specification, result ids, and
+# matching metadata); they never contain an Item ORM object or private owner
+# data.
+class FinderConversation(Base):
+    __tablename__ = "finder_conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="active", index=True)
+    language = Column(String(8), nullable=False, default="en")
+    active_revision = Column(Integer, nullable=False, default=0)
+    context_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    messages = relationship(
+        "FinderMessage",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="FinderMessage.created_at",
+    )
+    search_state = relationship(
+        "FinderSearchState",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class FinderMessage(Base):
+    __tablename__ = "finder_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("finder_conversations.id"), nullable=False, index=True)
+    sender_role = Column(String(12), nullable=False, default="user")  # user | assistant
+    body = Column(Text, nullable=False)
+    client_message_id = Column(String(72), nullable=True, index=True)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    conversation = relationship("FinderConversation", back_populates="messages")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "conversation_id",
+            "client_message_id",
+            name="ux_finder_messages_conversation_client_message",
+        ),
+    )
+
+
+class FinderSearchState(Base):
+    __tablename__ = "finder_search_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(
+        Integer,
+        ForeignKey("finder_conversations.id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    revision = Column(Integer, nullable=False, default=0)
+    spec_json = Column(Text, nullable=True)
+    # Store only ids that the user has already seen, never cached listing
+    # values.  Cards are rehydrated from the live public catalog on read.
+    last_result_ids_json = Column(Text, nullable=True)
+    next_offset = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False, index=True)
+
+    conversation = relationship("FinderConversation", back_populates="search_state")
+
+
+class FinderListingIndex(Base):
+    """A derived, public-only search document for one live Item.
+
+    This is not a source of truth.  The Finder service rechecks the Item's
+    public eligibility, price, city and image each time a card is returned.
+    ``attributes_json`` contains only text explicitly supplied in a listing's
+    structured fields/title/description, tagged with its source.
+    """
+
+    __tablename__ = "finder_listing_indexes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=False, unique=True, index=True)
+    source_fingerprint = Column(String(64), nullable=False, index=True)
+    searchable_text = Column(Text, nullable=False)
+    attributes_json = Column(Text, nullable=True)
+    indexed_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    item = relationship("Item", foreign_keys=[item_id])
+
+
+# =========================
 # Favorites
 # =========================
 class Favorite(Base):

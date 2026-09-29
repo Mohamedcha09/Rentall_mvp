@@ -11,7 +11,8 @@ from .models import (
     User, Item, Booking, ItemReview, Favorite, SupportTicket, MessageThread,
     Message, MessageAttachment, Rating, Report, ReportActionLog, Notification, FreezeDeposit,
     DepositAuditLog, DepositEvidence, Order, SupportMessage, SupportAttachment,
-    SupportMessageReceipt, UserReview
+    SupportMessageReceipt, UserReview, FinderConversation, FinderMessage,
+    FinderSearchState, FinderListingIndex
 )
 from .support_attachments import remove_saved_attachment_files
 from .message_attachments import (
@@ -158,6 +159,35 @@ def account_delete_confirm(request: Request, db: Session = Depends(get_db)):
     db.query(SupportAttachment).filter(attachment_ticket_or_uploader).delete(synchronize_session=False)
     db.query(SupportMessage).filter(ticket_or_sender).delete(synchronize_session=False)
     db.query(SupportTicket).filter(SupportTicket.user_id == uid).delete(synchronize_session=False)
+
+    # Finder is deliberately independent from Support/direct messages, so its
+    # small conversation tree must be removed explicitly before the account.
+    # The listing index is derived data and must also be removed before bulk
+    # deleting owned Items on databases that enforce foreign keys.
+    finder_conversation_ids = [
+        row[0]
+        for row in db.query(FinderConversation.id)
+        .filter(FinderConversation.user_id == uid)
+        .all()
+    ]
+    if finder_conversation_ids:
+        db.query(FinderMessage).filter(
+            FinderMessage.conversation_id.in_(finder_conversation_ids)
+        ).delete(synchronize_session=False)
+        db.query(FinderSearchState).filter(
+            FinderSearchState.conversation_id.in_(finder_conversation_ids)
+        ).delete(synchronize_session=False)
+        db.query(FinderConversation).filter(
+            FinderConversation.id.in_(finder_conversation_ids)
+        ).delete(synchronize_session=False)
+    owned_item_ids = [
+        row[0]
+        for row in db.query(Item.id).filter(Item.owner_id == uid).all()
+    ]
+    if owned_item_ids:
+        db.query(FinderListingIndex).filter(
+            FinderListingIndex.item_id.in_(owned_item_ids)
+        ).delete(synchronize_session=False)
 
     # الإشعارات
     db.query(Notification).filter(Notification.user_id == uid).delete()

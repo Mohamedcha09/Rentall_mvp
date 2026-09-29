@@ -29,6 +29,7 @@ from .models import (
 from .utils import CATEGORIES, category_label
 from .utils_badges import get_user_badges
 from .models import Category, Subcategory
+from .finder_service import remove_listing_index, sync_listing_index
 
 router = APIRouter()
 
@@ -866,6 +867,11 @@ def item_edit_post(
     it.admin_feedback = None
     it.reviewed_at = None
 
+    # Finder's document is derived only from public approved listings.  Keep
+    # its removal in this same transaction, so a freshly edited pending item
+    # cannot remain discoverable through an old search document.
+    sync_listing_index(db, it)
+
     db.commit()
 
     return RedirectResponse(url="/owner/items", status_code=303)
@@ -904,6 +910,7 @@ def owner_item_delete(request: Request, item_id: int, db: Session = Depends(get_
         return RedirectResponse(url="/owner/items", status_code=303)
 
     try:
+        remove_listing_index(db, item.id)
         db.delete(item)
         db.commit()
     except SQLAlchemyError:
@@ -1093,6 +1100,10 @@ def item_new_post(
     )
 
     db.add(it)
+    # New owner listings start pending, so this is a no-op today; keeping the
+    # lifecycle hook here makes any future status change explicit and avoids a
+    # hidden Finder-only creation path.
+    sync_listing_index(db, it)
     db.commit()
     db.refresh(it)
 
@@ -1167,6 +1178,7 @@ def item_resubmit(request: Request, item_id: int, db: Session = Depends(get_db))
     it.status = "pending"
     it.admin_feedback = None
     it.reviewed_at = None
+    sync_listing_index(db, it)
 
     db.commit()
 

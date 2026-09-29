@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8f9ff">
+  <title>Sevor Finder</title>
+  <style>
+    :root{
+      color-scheme:light;
+      --sf-navy:#0d183d;
+      --sf-muted:#68738f;
+      --sf-line:rgba(85,91,160,.15);
+      --sf-surface:#fff;
+      --sf-background:#f7f8ff;
+      --sf-lavender:#f0edff;
+      --sf-purple:#7548f7;
+      --sf-blue:#3589f5;
+      --sf-cyan:#16c7e8;
+      --sf-shadow:0 12px 36px rgba(45,63,126,.09);
+    }
+    *{box-sizing:border-box}
+    html,body{min-height:100%;margin:0}
+    body{
+      min-height:100dvh;
+      color:var(--sf-navy);
+      background:
+        radial-gradient(46rem 20rem at 86% -8%,rgba(116,72,247,.13),transparent 61%),
+        radial-gradient(29rem 20rem at -8% 22%,rgba(22,199,232,.09),transparent 65%),
+        var(--sf-background);
+      font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
+    }
+    button,textarea{font:inherit}
+    button,a{-webkit-tap-highlight-color:transparent}
+    .sf-shell{
+      width:min(100%,940px);
+      min-height:100dvh;
+      height:100dvh;
+      margin:0 auto;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      background:rgba(248,249,255,.83);
+    }
+    .sf-header{
+      z-index:2;
+      flex:0 0 auto;
+      display:grid;
+      grid-template-columns:44px minmax(0,1fr) auto;
+      align-items:center;
+      gap:12px;
+      padding:max(16px,env(safe-area-inset-top)) 20px 15px;
+      border-bottom:1px solid rgba(85,91,160,.1);
+      background:rgba(250,251,255,.88);
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+    }
+    .sf-icon-button,.sf-new-search,.sf-example,.sf-result__more{
+      border:1px solid var(--sf-line);
+      color:var(--sf-navy);
+      background:rgba(255,255,255,.87);
+      cursor:pointer;
+      transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease;
+    }
+    .sf-icon-button{
+      width:44px;height:44px;padding:0;border-radius:50%;display:inline-grid;place-items:center;
+      box-shadow:0 5px 16px rgba(45,63,126,.08);
+    }
+    .sf-icon-button:hover,.sf-new-search:hover,.sf-example:hover,.sf-result__more:hover{transform:translateY(-1px);border-color:rgba(95,103,218,.34);box-shadow:0 6px 15px rgba(47,63,130,.09)}
+    .sf-icon-button:focus-visible,.sf-new-search:focus-visible,.sf-example:focus-visible,.sf-send:focus-visible,.sf-result__link:focus-visible,.sf-result__more:focus-visible{outline:3px solid rgba(53,137,245,.34);outline-offset:2px}
+    .sf-identity{display:flex;align-items:center;gap:11px;min-width:0}
+    .sf-avatar{
+      width:43px;height:43px;flex:0 0 43px;display:grid;place-items:center;padding:3px;border-radius:50%;
+      background:linear-gradient(135deg,var(--sf-purple),var(--sf-blue) 58%,var(--sf-cyan));
+      box-shadow:0 0 0 5px rgba(117,72,247,.07),0 6px 18px rgba(69,107,238,.22);
+    }
+    .sf-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;background:#fff}
+    .sf-header-copy{min-width:0;line-height:1.2}
+    .sf-header-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:800;letter-spacing:-.02em}
+    .sf-header-status{margin-top:3px;color:var(--sf-muted);font-size:12px;font-weight:650}
+    .sf-status-dot{display:inline-block;width:7px;height:7px;margin-inline-end:5px;border-radius:50%;background:#2cc983;box-shadow:0 0 0 3px rgba(44,201,131,.13)}
+    .sf-new-search{min-height:36px;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+    .sf-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-behavior:smooth;padding:23px clamp(15px,3.4vw,34px) 28px}
+    .sf-column{width:min(100%,760px);margin:0 auto}
+    .sf-welcome{margin:4px 0 20px}
+    .sf-welcome-intro{display:flex;align-items:flex-start;gap:11px}
+    .sf-welcome .sf-avatar{width:42px;height:42px;flex-basis:42px;margin-top:1px}
+    .sf-welcome-copy{min-width:0}
+    .sf-welcome h1{margin:0;font-size:clamp(24px,5.6vw,31px);letter-spacing:-.045em;line-height:1.1}
+    .sf-welcome p{max-width:560px;margin:8px 0 0;color:var(--sf-muted);font-size:14px;line-height:1.5}
+    .sf-messages{display:flex;flex-direction:column;gap:10px}
+    .sf-message-row{display:flex;align-items:flex-end;gap:8px;max-width:100%}
+    .sf-message-row.user{justify-content:flex-end}
+    .sf-message-avatar{width:28px;height:28px;flex:0 0 28px;overflow:hidden;border:1px solid rgba(117,72,247,.15);border-radius:50%;background:#fff}
+    .sf-message-avatar img{display:block;width:100%;height:100%;object-fit:cover}
+    .sf-bubble-wrap{min-width:0;max-width:min(82%,560px)}
+    .sf-message-label{margin:0 0 4px 0;margin-inline-start:3px;color:#64708e;font-size:11px;font-weight:750}
+    .sf-bubble{padding:12px 14px;overflow-wrap:anywhere;white-space:pre-wrap;border:1px solid var(--sf-line);border-radius:18px 18px 18px 6px;background:rgba(255,255,255,.94);box-shadow:0 5px 15px rgba(45,63,126,.05);font-size:14px;line-height:1.48}
+    .sf-message-row.user .sf-bubble{border:0;border-radius:18px 18px 6px 18px;background:linear-gradient(135deg,var(--sf-purple),var(--sf-blue) 60%,var(--sf-cyan));color:#fff;box-shadow:0 8px 20px rgba(73,102,238,.22)}
+    .sf-message-row.assistant .sf-bubble{border-color:rgba(52,137,245,.18);background:linear-gradient(135deg,#eef8ff,#f7f4ff)}
+    .sf-message-time{margin:4px 0 0;color:#8991a8;font-size:10px;font-weight:600}.sf-message-row.user .sf-message-time{text-align:end}
+    .sf-search-summary{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 3px; margin-inline-start:37px;min-width:0}
+    .sf-search-summary[hidden]{display:none}
+    .sf-search-summary__chip{max-width:100%;padding:6px 9px;overflow:hidden;color:#514580;text-overflow:ellipsis;white-space:nowrap;border:1px solid rgba(117,72,247,.16);border-radius:999px;background:rgba(243,240,255,.8);font-size:11px;font-weight:780}
+    .sf-results{display:grid;gap:9px;margin:0 0 10px;margin-inline-start:37px;min-width:0}.sf-results[hidden]{display:none}
+    .sf-result{
+      display:grid;grid-template-columns:76px minmax(0,1fr);gap:11px;min-width:0;padding:9px;
+      border:1px solid rgba(85,91,160,.13);border-radius:18px;background:rgba(255,255,255,.92);box-shadow:0 7px 19px rgba(45,63,126,.055);
+    }
+    .sf-result__image{display:block;width:76px;height:76px;overflow:hidden;border-radius:14px;background:#eef0f8}.sf-result__image img{display:block;width:100%;height:100%;object-fit:cover}
+    .sf-result__copy{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
+    .sf-result__title{width:100%;overflow:hidden;color:var(--sf-navy);text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:850;letter-spacing:-.015em}
+    .sf-result__price{margin-top:4px;color:#6245d6;font-size:12px;font-weight:830}.sf-result__location{max-width:100%;margin-top:3px;overflow:hidden;color:#717b96;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:650}
+    .sf-result__facts{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.sf-result__fact{max-width:100%;overflow:hidden;padding:3px 6px;color:#50627d;text-overflow:ellipsis;white-space:nowrap;border-radius:7px;background:#f1f5ff;font-size:10px;font-weight:700}
+    .sf-result__notice{margin-top:5px;color:#837b94;font-size:10px;font-weight:650;line-height:1.3}
+    .sf-result__link{margin-top:auto;padding-top:7px;color:#5840cd;text-decoration:none;font-size:11px;font-weight:820}.sf-result__link:hover{text-decoration:underline}
+    .sf-result__more{justify-self:start;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800}
+    .sf-examples{margin:21px 0 0}.sf-section-title{margin:0 0 10px;color:#1a2751;font-size:13px;font-weight:850;letter-spacing:.01em}.sf-example-list{display:flex;gap:8px;overflow-x:auto;padding:0 1px 4px;scrollbar-width:none}.sf-example-list::-webkit-scrollbar{display:none}.sf-example{flex:0 0 auto;min-height:36px;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:730;white-space:nowrap}.sf-example svg{width:14px;height:14px;margin-inline-end:5px;vertical-align:-2px;color:#7452ef}
+    .sf-loading{display:none;align-items:flex-end;gap:8px;margin:10px 0 0}.sf-loading.is-visible{display:flex}.sf-loading-bubble{display:inline-flex;align-items:center;min-height:37px;padding:0 14px;border:1px solid var(--sf-line);border-radius:17px 17px 17px 6px;background:#fff;color:#64708e;font-size:12px;font-weight:750}.sf-loading-dot{display:inline-block;width:6px;height:6px;margin-inline-end:7px;border-radius:50%;background:#5d69e8;box-shadow:0 0 0 4px rgba(93,105,232,.12)}
+    .sf-composer-wrap{z-index:2;flex:0 0 auto;padding:10px clamp(13px,3vw,28px) max(12px,env(safe-area-inset-bottom));border-top:1px solid rgba(85,91,160,.12);background:rgba(250,251,255,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    .sf-composer{width:min(100%,760px);margin:0 auto}.sf-compose-row{display:flex;align-items:flex-end;gap:9px;padding:6px 7px 6px 14px;border:1px solid rgba(85,91,160,.18);border-radius:23px;background:#fff;box-shadow:0 7px 20px rgba(45,63,126,.08)}.sf-compose-row:focus-within{border-color:rgba(99,91,232,.46);box-shadow:0 0 0 3px rgba(100,103,235,.1),0 7px 20px rgba(45,63,126,.08)}
+    .sf-input{width:100%;min-width:0;max-height:112px;min-height:25px;padding:7px 0;resize:none;color:var(--sf-navy);background:transparent;border:0;outline:0;font-size:16px;line-height:1.38}.sf-input::placeholder{color:#929bb2}.sf-send{width:39px;height:39px;flex:0 0 39px;display:grid;place-items:center;border:0;border-radius:50%;color:#fff;background:linear-gradient(135deg,var(--sf-purple),var(--sf-blue) 60%,var(--sf-cyan));box-shadow:0 7px 15px rgba(73,102,238,.25);cursor:pointer}.sf-send:disabled,.sf-input:disabled{cursor:not-allowed;opacity:.48}
+    .sf-composer-meta{display:flex;justify-content:space-between;gap:10px;padding:7px 4px 0;color:#7f88a3;font-size:11px;font-weight:650}.sf-status-note{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sf-error{display:none;margin:9px 2px 0;color:#ad3750;font-size:12px;font-weight:670}.sf-error.is-visible{display:block}
+    @media (min-width:768px){.sf-shell{border-inline:1px solid rgba(85,91,160,.08);box-shadow:0 0 60px rgba(68,85,157,.05)}.sf-result{grid-template-columns:86px minmax(0,1fr)}.sf-result__image{width:86px;height:86px}}
+    @media (max-width:360px){.sf-header{padding-inline:13px;gap:8px}.sf-scroll{padding-inline:12px}.sf-header-name{font-size:15px}.sf-new-search{padding-inline:8px;font-size:11px}.sf-bubble-wrap{max-width:86%}.sf-results,.sf-search-summary{margin-inline-start:0}.sf-result{grid-template-columns:66px minmax(0,1fr);gap:9px}.sf-result__image{width:66px;height:66px}.sf-result__title{font-size:13px}}
+    @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+  <main class="sf-shell" aria-label="Sevor Finder">
+    <header class="sf-header">
+      <button class="sf-icon-button" id="sf-back" type="button" aria-label="Back to Messages">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="sf-identity">
+        <span class="sf-avatar"><img src="/static/images/ui/sevor-logo-180.png" alt="Sevor"></span>
+        <div class="sf-header-copy">
+          <div class="sf-header-name">Sevor Finder</div>
+          <div class="sf-header-status"><span class="sf-status-dot"></span><span id="sf-header-status-text">Search real SEVOR rentals</span></div>
+        </div>
+      </div>
+      <button class="sf-new-search" id="sf-new-search" type="button">New search</button>
+    </header>
+
+    <section class="sf-scroll" id="sf-scroll" aria-label="Sevor Finder conversation">
+      <div class="sf-column">
+        <div class="sf-welcome" id="sf-welcome">
+          <div class="sf-welcome-intro">
+            <span class="sf-avatar" aria-hidden="true"><img src="/static/images/ui/sevor-logo-96.png" alt=""></span>
+            <div class="sf-welcome-copy">
+              <h1 id="sf-welcome-title">Find what you want to rent.</h1>
+              <p id="sf-welcome-copy">Describe what you want to rent and I’ll search SEVOR.</p>
+            </div>
+          </div>
+        </div>
+        <div class="sf-messages" id="sf-messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
+        <div class="sf-loading" id="sf-loading" aria-live="polite" aria-label="Searching SEVOR">
+          <span class="sf-message-avatar"><img src="/static/images/ui/sevor-logo-96.png" alt=""></span>
+          <span class="sf-loading-bubble"><i class="sf-loading-dot" aria-hidden="true"></i><span id="sf-loading-text">Searching SEVOR…</span></span>
+        </div>
+        <section class="sf-examples" id="sf-examples" aria-label="Finder examples">
+          <h2 class="sf-section-title" id="sf-example-title">Try a search</h2>
+          <div class="sf-example-list">
+            <button class="sf-example" type="button" data-prompt="I need a camera in Montréal under 30 CAD per day.">Camera in Montréal</button>
+            <button class="sf-example" type="button" data-prompt="Je cherche une robe noire pour un mariage.">Une robe noire</button>
+            <button class="sf-example" type="button" data-prompt="أبحث عن طاولات وكراسي لحفلة في تورونتو.">طاولات وكراسي</button>
+            <button class="sf-example" type="button" data-prompt="I need a red Honda in Paris for around 10 USD per day.">Red Honda</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <footer class="sf-composer-wrap">
+      <form class="sf-composer" id="sf-composer" novalidate>
+        <div class="sf-compose-row">
+          <textarea class="sf-input" id="sf-input" rows="1" maxlength="2400" dir="auto" aria-label="Describe what you want to rent" placeholder="Describe what you want to rent…"></textarea>
+          <button class="sf-send" id="sf-send" type="submit" aria-label="Search">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 14-7-4 14-3.5-5.5L5 12Z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="m11.5 13.5 3-3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="sf-composer-meta"><span class="sf-status-note" id="sf-status-note">Searches use current public SEVOR listings.</span></div>
+        <div class="sf-error" id="sf-error" role="alert"></div>
+      </form>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+      const csrfToken = {{ csrf_token|default('')|tojson }};
+      const loggedIn = {{ (user is defined and user is not none)|tojson }};
+      const params = new URLSearchParams(window.location.search);
+      const initialConversationId = params.get("conversation") || params.get("conversation_id");
+      const messagesEl = document.getElementById("sf-messages");
+      const scrollEl = document.getElementById("sf-scroll");
+      const welcomeEl = document.getElementById("sf-welcome");
+      const examplesEl = document.getElementById("sf-examples");
+      const inputEl = document.getElementById("sf-input");
+      const composerEl = document.getElementById("sf-composer");
+      const sendEl = document.getElementById("sf-send");
+      const loadingEl = document.getElementById("sf-loading");
+      const errorEl = document.getElementById("sf-error");
+      const rendered = new Set();
+      const pending = new Map();
+      let conversation = null;
+      let hasPersistedMessages = false;
+      let sending = false;
+      let lastMessageId = 0;
+      let pollTimer = null;
+
+      const locale = (navigator.language || "en").toLowerCase();
+      const texts = locale.startsWith("ar") ? {
+        title:"اعثر على ما تريد كراءه.", copy:"صف ما تريد كراءه وسأبحث في SEVOR.", placeholder:"صف ما تريد كراءه…", searching:"أبحث في SEVOR…", newSearch:"بحث جديد", examples:"جرّب بحثًا", note:"تستخدم عمليات البحث إعلانات SEVOR العامة الحالية.", finder:"Sevor Finder", results:"فتح الإعلان", more:"عرض المزيد", error:"تعذر إتمام البحث. حاول مرة أخرى.", signIn:"سجّل الدخول لحفظ بحثك في Sevor Finder.", assistant:"Sevor Finder", support:"دعم SEVOR", unconfirmed:"غير مؤكد في الإعلان: ", availability:"التوفر يحتاج تأكيدًا", available:"متاح للتواريخ المطلوبة", converted:"سعر المقارنة: "
+      } : locale.startsWith("fr") ? {
+        title:"Trouvez ce que vous voulez louer.", copy:"Décrivez ce que vous voulez louer et je chercherai dans SEVOR.", placeholder:"Décrivez ce que vous voulez louer…", searching:"Recherche dans SEVOR…", newSearch:"Nouvelle recherche", examples:"Essayer une recherche", note:"Les recherches utilisent les annonces publiques SEVOR actuelles.", finder:"Sevor Finder", results:"Ouvrir l’annonce", more:"Afficher plus", error:"La recherche n’a pas pu être effectuée. Réessayez.", signIn:"Connectez-vous pour enregistrer votre recherche dans Sevor Finder.", assistant:"Sevor Finder", support:"Support SEVOR", unconfirmed:"Non confirmé dans l’annonce : ", availability:"Disponibilité à confirmer", available:"Disponible pour les dates demandées", converted:"Base de comparaison : "
+      } : {
+        title:"Find what you want to rent.", copy:"Describe what you want to rent and I’ll search SEVOR.", placeholder:"Describe what you want to rent…", searching:"Searching SEVOR…", newSearch:"New search", examples:"Try a search", note:"Searches use current public SEVOR listings.", finder:"Sevor Finder", results:"Open listing", more:"Show more", error:"The search could not be completed. Please try again.", signIn:"Please sign in to save a Sevor Finder search.", assistant:"Sevor Finder", support:"SEVOR Support", unconfirmed:"Not confirmed in the listing: ", availability:"Availability needs confirmation", available:"Available for the requested dates", converted:"Comparison basis: "
+      };
+
+      function create(tag, className, text) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (text !== undefined && text !== null) el.textContent = text;
+        return el;
+      }
+      function formatTime(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat(undefined, {hour:"numeric", minute:"2-digit"}).format(date);
+      }
+      function setError(message) { errorEl.textContent = message || ""; errorEl.classList.toggle("is-visible", Boolean(message)); }
+      function autoResize() { inputEl.style.height = "auto"; inputEl.style.height = `${Math.min(inputEl.scrollHeight, 112)}px`; }
+      function scrollLatest(force = false) { if (force || scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 120) scrollEl.scrollTop = scrollEl.scrollHeight; }
+      function setSending(value) { sending = value; inputEl.disabled = value; sendEl.disabled = value; loadingEl.classList.toggle("is-visible", value); }
+      function logoAvatar() { const avatar = create("span", "sf-message-avatar"); const image = create("img"); image.src = "/static/images/ui/sevor-logo-96.png"; image.alt = ""; avatar.append(image); return avatar; }
+      function clientId() { return crypto.randomUUID ? crypto.randomUUID() : `finder_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`; }
+      function safeListingUrl(value) {
+        if (typeof value !== "string" || !value) return "";
+        try {
+          const url = new URL(value, window.location.origin);
+          return url.origin === window.location.origin && /^\/items?\//.test(url.pathname) ? `${url.pathname}${url.search}${url.hash}` : "";
+        } catch (_) { return ""; }
+      }
+      function safeImageUrl(value) {
+        if (typeof value !== "string" || !value) return "/static/placeholder.svg";
+        try { const url = new URL(value, window.location.origin); return ["http:", "https:"].includes(url.protocol) ? url.href : "/static/placeholder.svg"; }
+        catch (_) { return "/static/placeholder.svg"; }
+      }
+      function normaliseCards(value) { return Array.isArray(value) ? value.filter((card) => card && typeof card === "object") : []; }
+      function normaliseLabels(value) { return Array.isArray(value) ? value.filter((label) => typeof label === "string" && label.trim()) : []; }
+      function renderSummary(value) {
+        const labels = Array.isArray(value) ? normaliseLabels(value) : normaliseLabels(value && (value.labels || value.chips));
+        if (!labels.length) return;
+        const wrap = create("div", "sf-search-summary");
+        labels.slice(0, 12).forEach((label) => wrap.append(create("span", "sf-search-summary__chip", label)));
+        messagesEl.append(wrap);
+      }
+      function resultFacts(card) {
+        const facts = Array.isArray(card.matched_attributes) ? card.matched_attributes : (Array.isArray(card.facts) ? card.facts : []);
+        return facts.map((fact) => {
+          if (typeof fact === "string") return fact.trim();
+          if (!fact || typeof fact !== "object") return "";
+          const value = typeof fact.label === "string" ? fact.label : typeof fact.value === "string" ? fact.value : "";
+          if (!value) return "";
+          const key = typeof fact.key === "string" && fact.key !== "text" ? fact.key.replace(/_/g, " ") : "";
+          const unit = typeof fact.unit === "string" && fact.unit ? ` ${fact.unit}` : "";
+          return key ? `${key}: ${value}${unit}` : `${value}${unit}`;
+        }).filter(Boolean).slice(0, 5);
+      }
+      function priceLabel(card) {
+        if (typeof card.price_label === "string" && card.price_label.trim()) return card.price_label;
+        if (card.price === null || card.price === undefined || card.price === "") return "";
+        const currency = typeof card.currency === "string" ? card.currency.trim() : "";
+        const unit = typeof card.unit === "string" ? card.unit.trim() : "";
+        return `${card.price}${currency ? ` ${currency}` : ""}${unit ? `/${unit}` : ""}`;
+      }
+      function convertedPriceLabel(card) {
+        const amount = Number(card && card.price_in_search_currency);
+        const currency = typeof card.search_currency === "string" ? card.search_currency.trim() : "";
+        const nativeCurrency = typeof card.currency === "string" ? card.currency.trim() : "";
+        if (!Number.isFinite(amount) || !currency || currency === nativeCurrency) return "";
+        return `${texts.converted}≈ ${amount} ${currency}/day`;
+      }
+      function availabilityNotice(card) {
+        if (!card || typeof card.availability !== "string") return "";
+        if (card.availability === "confirmation_required" || card.availability === "needs_confirmation") return texts.availability;
+        if (card.availability === "available_for_dates") return texts.available;
+        return "";
+      }
+      function unconfirmedLabels(card) {
+        const values = Array.isArray(card.unconfirmed_attributes) ? card.unconfirmed_attributes : [];
+        return values.map((value) => {
+          if (typeof value === "string") return value.trim();
+          if (!value || typeof value !== "object") return "";
+          return typeof value.label === "string" ? value.label : typeof value.key === "string" ? value.key.replace(/_/g, " ") : "";
+        }).filter(Boolean).slice(0, 3);
+      }
+      function renderCards(value, canLoadMore = false) {
+        const cards = normaliseCards(value);
+        if (!cards.length) return;
+        const wrap = create("div", "sf-results");
+        cards.forEach((card) => {
+          const item = create("article", "sf-result");
+          item.dir = "auto";
+          const imageWrap = create("span", "sf-result__image");
+          const image = create("img");
+          image.src = safeImageUrl(card.image_url || card.image || card.thumbnail_url);
+          image.alt = typeof card.title === "string" ? card.title : "SEVOR listing";
+          image.loading = "lazy";
+          image.decoding = "async";
+          image.addEventListener("error", () => { image.onerror = null; image.src = "/static/placeholder.svg"; });
+          imageWrap.append(image);
+          const copy = create("div", "sf-result__copy");
+          copy.append(create("div", "sf-result__title", card.title || "SEVOR listing"));
+          const price = priceLabel(card);
+          if (price) copy.append(create("div", "sf-result__price", price));
+          const convertedPrice = convertedPriceLabel(card);
+          if (convertedPrice) copy.append(create("div", "sf-result__notice", convertedPrice));
+          if (card.location_label || card.location || card.city) copy.append(create("div", "sf-result__location", card.location_label || card.location || card.city));
+          const facts = resultFacts(card);
+          if (facts.length) {
+            const factsWrap = create("div", "sf-result__facts");
+            facts.forEach((fact) => factsWrap.append(create("span", "sf-result__fact", fact)));
+            copy.append(factsWrap);
+          }
+          const unknown = unconfirmedLabels(card);
+          const notice = card.uncertainty_note || card.availability_note || card.match_note || (unknown.length ? `${texts.unconfirmed}${unknown.join(", ")}` : availabilityNotice(card));
+          if (typeof notice === "string" && notice.trim()) copy.append(create("div", "sf-result__notice", notice));
+          const href = safeListingUrl(card.url || card.listing_url);
+          if (href) { const link = create("a", "sf-result__link", texts.results); link.href = href; copy.append(link); }
+          item.append(imageWrap, copy); wrap.append(item);
+        });
+        if (canLoadMore) {
+          const more = create("button", "sf-result__more", texts.more);
+          more.type = "button";
+          more.addEventListener("click", () => sendMessage("Show me more results."));
+          wrap.append(more);
+        }
+        messagesEl.append(wrap);
+      }
+      function renderMessage(message, optimistic = false) {
+        if (!message || (message.id && rendered.has(message.id))) return;
+        if (message.client_message_id && pending.has(message.client_message_id)) { pending.get(message.client_message_id).remove(); pending.delete(message.client_message_id); }
+        const role = message.sender_role === "user" ? "user" : "assistant";
+        const row = create("div", `sf-message-row ${role}`);
+        row.dir = "auto";
+        if (role === "assistant") row.append(logoAvatar());
+        const bubbleWrap = create("div", "sf-bubble-wrap");
+        if (role === "assistant") bubbleWrap.append(create("div", "sf-message-label", texts.assistant));
+        bubbleWrap.append(create("div", "sf-bubble", message.body || ""));
+        const time = formatTime(message.created_at);
+        if (time) bubbleWrap.append(create("div", "sf-message-time", time));
+        row.append(bubbleWrap); messagesEl.append(row);
+        if (message.search_summary) renderSummary(message.search_summary);
+        renderCards(message.result_cards || message.results, Boolean(message.has_more || message.next_page));
+        renderCards(message.near_cards, false);
+        if (typeof message.support_url === "string" && message.support_url === "/chatbot") {
+          const support = create("a", "sf-result__link", texts.support);
+          support.href = "/chatbot";
+          bubbleWrap.append(support);
+        }
+        if (optimistic && message.client_message_id) pending.set(message.client_message_id, row);
+        if (message.id) { rendered.add(message.id); lastMessageId = Math.max(lastMessageId, Number(message.id) || 0); }
+      }
+      function setConversationUrl(id) { if (!id) return; const url = new URL(window.location.href); url.searchParams.set("conversation", id); window.history.replaceState({}, "", url); }
+      function hydrate(payload, reset = false) {
+        if (reset) { rendered.clear(); pending.clear(); messagesEl.replaceChildren(); lastMessageId = 0; hasPersistedMessages = false; }
+        conversation = payload && payload.conversation ? payload.conversation : conversation;
+        const incoming = payload && Array.isArray(payload.messages) ? payload.messages : [];
+        if (incoming.length) hasPersistedMessages = true;
+        incoming.forEach((message) => renderMessage(message));
+        if (payload && payload.search_summary && !incoming.some((message) => message && message.search_summary)) renderSummary(payload.search_summary);
+        if (payload && Array.isArray(payload.result_cards) && !incoming.some((message) => message && (message.result_cards || message.results))) renderCards(payload.result_cards, Boolean(payload.has_more || payload.next_page));
+        if (conversation && conversation.id) setConversationUrl(conversation.id);
+        welcomeEl.hidden = hasPersistedMessages;
+        examplesEl.hidden = hasPersistedMessages;
+        scrollLatest(reset);
+      }
+      async function api(url, options = {}) {
+        const response = await fetch(url, {headers:{"Content-Type":"application/json", "Accept":"application/json", ...(options.headers || {})}, ...options});
+        let data = null; try { data = await response.json(); } catch (_) {}
+        if (!response.ok) {
+          const error = new Error((data && data.detail) || (response.status === 401 ? texts.signIn : texts.error));
+          error.status = response.status;
+          throw error;
+        }
+        return data;
+      }
+      async function createConversation() {
+        const payload = await api("/api/finder/conversation", {method:"POST", body:JSON.stringify({csrf_token:csrfToken})});
+        hydrate(payload, true);
+        return payload;
+      }
+      async function sendMessage(raw, retryId = null) {
+        const body = (raw || "").trim();
+        if (!body || sending) return;
+        if (body.length > 2400) { setError(texts.error); return; }
+        if (!loggedIn) { setError(texts.signIn); return; }
+        const id = retryId || clientId();
+        setError(""); setSending(true);
+        renderMessage({sender_role:"user", body, client_message_id:id, created_at:new Date().toISOString()}, true);
+        inputEl.value = ""; autoResize(); scrollLatest(true);
+        try {
+          const payload = await api("/api/finder/message", {method:"POST", body:JSON.stringify({
+            body,
+            conversation_id:conversation && conversation.id,
+            client_message_id:id,
+            csrf_token:csrfToken,
+            // The server rejects an out-of-date tab instead of allowing a
+            // delayed request to overwrite a newer search revision.
+            search_revision:conversation && Number.isFinite(Number(conversation.revision)) ? Number(conversation.revision) : null
+          })});
+          hydrate(payload);
+        } catch (error) {
+          // A different tab/search revision won first. Rehydrate before a
+          // retry so the next request carries the current server revision.
+          if (error && error.status === 409 && conversation && conversation.id) {
+            try { hydrate(await api(`/api/finder/conversation?conversation_id=${encodeURIComponent(conversation.id)}`)); }
+            catch (_) { /* The visible retry remains available on a transient fetch failure. */ }
+          }
+          const pendingRow = pending.get(id);
+          if (pendingRow) {
+            const retry = create("button", "sf-result__more", "Retry"); retry.type = "button";
+            retry.addEventListener("click", () => { pendingRow.remove(); pending.delete(id); sendMessage(body, id); });
+            pendingRow.append(retry); pending.delete(id);
+          }
+          setError(error.message || texts.error);
+        } finally { setSending(false); inputEl.focus(); }
+      }
+      async function startNew() {
+        if (!loggedIn || sending) { if (!loggedIn) setError(texts.signIn); return; }
+        setError(""); setSending(true);
+        try { await createConversation(); inputEl.focus(); }
+        catch (error) { setError(error.message || texts.error); }
+        finally { setSending(false); }
+      }
+      async function poll() {
+        if (!conversation || !conversation.id || document.hidden || sending) return;
+        try { hydrate(await api(`/api/finder/conversation?conversation_id=${encodeURIComponent(conversation.id)}&after_id=${lastMessageId}`)); }
+        catch (_) { /* Keep the existing search visible through transient network errors. */ }
+      }
+      async function initialise() {
+        document.getElementById("sf-back").addEventListener("click", () => { if (history.length > 1) history.back(); else location.href = "/messages"; });
+        document.getElementById("sf-new-search").addEventListener("click", startNew);
+        document.querySelectorAll("[data-prompt]").forEach((button) => button.addEventListener("click", () => sendMessage(button.dataset.prompt || "")));
+        inputEl.addEventListener("input", autoResize);
+        inputEl.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); composerEl.requestSubmit(); } });
+        composerEl.addEventListener("submit", (event) => { event.preventDefault(); sendMessage(inputEl.value); });
+        document.documentElement.lang = locale.startsWith("ar") ? "ar" : locale.startsWith("fr") ? "fr" : "en";
+        document.documentElement.dir = locale.startsWith("ar") ? "rtl" : "ltr";
+        document.getElementById("sf-welcome-title").textContent = texts.title;
+        document.getElementById("sf-welcome-copy").textContent = texts.copy;
+        document.getElementById("sf-input").placeholder = texts.placeholder;
+        document.getElementById("sf-loading-text").textContent = texts.searching;
+        document.getElementById("sf-new-search").textContent = texts.newSearch;
+        document.getElementById("sf-example-title").textContent = texts.examples;
+        document.getElementById("sf-status-note").textContent = texts.note;
+        document.getElementById("sf-header-status-text").textContent = locale.startsWith("ar") ? "ابحث في إعلانات SEVOR الحقيقية" : locale.startsWith("fr") ? "Recherchez des locations SEVOR réelles" : "Search real SEVOR rentals";
+        if (!loggedIn) { setError(texts.signIn); return; }
+        try {
+          const query = initialConversationId ? `?conversation_id=${encodeURIComponent(initialConversationId)}` : "";
+          const payload = await api(`/api/finder/conversation${query}`);
+          hydrate(payload, true);
+        } catch (error) { setError(error.message || texts.error); }
+        pollTimer = window.setInterval(poll, 12000);
+      }
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+      initialise();
+    })();
+  </script>
+</body>
+</html>
