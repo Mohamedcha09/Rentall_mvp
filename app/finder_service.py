@@ -96,9 +96,9 @@ _CITY_ALIASES: dict[str, frozenset[str]] = {
 }
 
 _STOP_TOKENS = {
-    "i", "need", "want", "looking", "for", "a", "an", "the", "to", "rent", "rental", "please", "with", "and", "or", "in", "at", "near", "per", "day", "daily", "hour", "hourly", "week", "weekly", "month", "monthly", "is", "start", "search", "keep", "same", "city", "location", "budget", "no", "not", "without", "deposit", "security",
-    "je", "cherche", "voudrais", "louer", "une", "un", "des", "de", "du", "pour", "avec", "et", "ou", "suis", "dans", "a", "à", "par", "jour", "journaliere", "journalière", "heure", "heures", "semaine", "semaines", "mois", "nouvelle", "recherche", "garder", "meme", "même", "ville", "localisation", "budget", "sans", "pas", "caution",
-    "اريد", "أريد", "ابحث", "أبحث", "عن", "كراء", "استئجار", "للايجار", "للإيجار", "في", "مع", "و", "او", "أو", "من", "ب", "يوم", "يوميا", "يومياً", "لليوم", "ساعه", "ساعة", "اسبوع", "أسبوع", "شهريا", "شهري", "بحث", "جديد", "ابدأ", "نفس", "المدينه", "المدينة", "الموقع", "الميزانيه", "الميزانية", "لا", "بدون", "وديعه", "وديعة",
+    "i", "need", "want", "looking", "find", "show", "me", "results", "result", "from", "for", "a", "an", "the", "to", "rent", "rental", "please", "can", "could", "would", "should", "may", "with", "and", "or", "only", "in", "at", "near", "per", "day", "daily", "hour", "hourly", "week", "weekly", "month", "monthly", "is", "start", "search", "keep", "same", "city", "location", "budget", "no", "not", "without", "deposit", "security",
+    "je", "cherche", "voudrais", "louer", "une", "un", "des", "de", "du", "pour", "avec", "et", "ou", "seulement", "suis", "dans", "a", "à", "par", "jour", "journaliere", "journalière", "heure", "heures", "semaine", "semaines", "mois", "nouvelle", "recherche", "garder", "meme", "même", "ville", "localisation", "budget", "sans", "pas", "caution",
+    "اريد", "أريد", "ابحث", "أبحث", "عن", "كراء", "استئجار", "للايجار", "للإيجار", "في", "مع", "و", "او", "أو", "فقط", "من", "ب", "يوم", "يوميا", "يومياً", "لليوم", "ساعه", "ساعة", "اسبوع", "أسبوع", "شهريا", "شهري", "بحث", "جديد", "ابدأ", "نفس", "المدينه", "المدينة", "الموقع", "الميزانيه", "الميزانية", "لا", "بدون", "وديعه", "وديعة",
     "around", "about", "approximately", "environ", "vers", "حوالي", "تقريبا", "تقريباً", "حدود", "usd", "cad", "eur", "dollar", "dollars", "euro", "euros", "دولار", "يورو",
 }
 
@@ -714,14 +714,16 @@ def _parse_attributes(text: str) -> tuple[list[FinderAttribute], list[FinderAttr
     # A true negation is carried separately. Unknown color is not treated as
     # a confirmed non-match later.
     negative_patterns = (
-        # Capture the immediate colour term only. A greedy phrase such as
-        # “not red but blue” must not turn both colours into exclusions.
-        r"(?:no|not|without|sans|pas\s+de|لا\s*اريد|لا\s*أريد|بدون)\s+([^\s,.;]+)",
+        # Capture the coordinated colour phrase, but stop at a contrast such
+        # as “but blue”.  Thus “not red or blue” excludes both colours while
+        # “not red but blue” excludes only red.
+        r"(?:no|not|without|sans|pas\s+de|لا\s*اريد|لا\s*أريد|بدون)\s+([^,.;]+)",
     )
     excluded_colors: set[str] = set()
     for pattern in negative_patterns:
         for match in re.finditer(pattern, normalized, re.I):
-            values = color_values(match.group(1))
+            scope = re.split(r"\b(?:but|mais|لكن)\b", match.group(1), maxsplit=1, flags=re.I)[0]
+            values = color_values(scope)
             if values:
                 excluded.append(FinderAttribute("color", "equals", values, source_text=match.group(0)))
                 excluded_colors.update(values)
@@ -731,13 +733,23 @@ def _parse_attributes(text: str) -> tuple[list[FinderAttribute], list[FinderAttr
     if colors:
         target = preferred if prefers_color else required
         target.append(FinderAttribute("color", "equals", colors, required=not prefers_color, source_text=text))
-        # Colours are now structured constraints, not product-name terms.  If
-        # they remain in the free-text remainder a request such as "red Honda"
-        # would require the document to match the colour twice and would make
-        # multilingual matching needlessly brittle.
-        for labels in _COLOR_GROUPS.values():
-            for label in labels:
-                remainder = re.sub(re.escape(label), " ", remainder, flags=re.I)
+    # Colours are structured constraints whether they are required *or*
+    # excluded.  Leaving an excluded label in the free-text terms makes
+    # "no red car" require both a red mention and a non-red match.
+    for labels in _COLOR_GROUPS.values():
+        for label in labels:
+            remainder = re.sub(re.escape(label), " ", remainder, flags=re.I)
+
+    def is_negated_attribute(match_start: int) -> bool:
+        """Whether the current attribute sits in an unambiguous negation.
+
+        This deliberately limits the scope to the current clause, split by a
+        contrast word.  It avoids accidentally interpreting the “32 GB” in
+        “not 16 GB RAM, but 32 GB RAM” as excluded too.
+        """
+        prefix = normalized[:match_start]
+        prefix = re.split(r"[,.;!?]|\b(?:but|mais|لكن)\b", prefix, flags=re.I)[-1]
+        return bool(re.search(r"(?:\bno\b|\bnot\b|\bwithout\b|\bsans\b|\bpas\s+de\b|لا\s*اريد|لا\s*أريد|بدون)", prefix, flags=re.I))
 
     numeric_patterns: tuple[tuple[str, str, str], ...] = (
         ("door_count", r"\b(\d{1,2})\s*(?:door|doors|porte|portes|باب|ابواب|أبواب)\b", "count"),
@@ -754,13 +766,14 @@ def _parse_attributes(text: str) -> tuple[list[FinderAttribute], list[FinderAttr
             groups = [group for group in match.groups() if group]
             if not groups:
                 continue
+            target = excluded if is_negated_attribute(match.start()) else required
             if key == "shoe_size":
-                required.append(FinderAttribute(key, "equals", [groups[1]], unit=groups[0].upper(), source_text=match.group(0)))
+                target.append(FinderAttribute(key, "equals", [groups[1]], unit=groups[0].upper(), source_text=match.group(0)))
             elif key == "dimensions" and len(groups) >= 3:
-                required.append(FinderAttribute(key, "equals", [f"{groups[0]}x{groups[1]}"], unit=groups[2], source_text=match.group(0)))
+                target.append(FinderAttribute(key, "equals", [f"{groups[0]}x{groups[1]}"], unit=groups[2], source_text=match.group(0)))
             else:
                 raw_unit = "TB" if key in {"ram_gb", "storage_gb"} and re.search(r"\b(?:tb|to)\b", match.group(0)) else unit
-                required.append(FinderAttribute(key, "equals", [groups[0]], unit=raw_unit, source_text=match.group(0)))
+                target.append(FinderAttribute(key, "equals", [groups[0]], unit=raw_unit, source_text=match.group(0)))
             raw_match = re.search(re.escape(match.group(0)), remainder, re.I)
             if raw_match:
                 remainder = _strip_match(remainder, raw_match)
@@ -777,9 +790,12 @@ def _parse_attributes(text: str) -> tuple[list[FinderAttribute], list[FinderAttr
     )
     for key, phrases, value, unit in word_count_patterns:
         for phrase in phrases:
-            if normalize_text(phrase) not in normalized:
+            phrase_normalized = normalize_text(phrase)
+            match = re.search(re.escape(phrase_normalized), normalized, re.I)
+            if not match:
                 continue
-            required.append(FinderAttribute(key, "equals", [value], unit=unit, source_text=phrase))
+            target = excluded if is_negated_attribute(match.start()) else required
+            target.append(FinderAttribute(key, "equals", [value], unit=unit, source_text=phrase))
             remainder = re.sub(re.escape(phrase), " ", remainder, flags=re.I)
             break
     return required[:MAX_ATTRIBUTES], preferred[:MAX_ATTRIBUTES], excluded[:MAX_ATTRIBUTES], remainder
@@ -892,8 +908,10 @@ def _strip_search_control_phrases(text: str) -> str:
         r"(?:augmente[rz]?|change[rz]?|mettez?)\s+(?:le\s+)?(?:budget|prix)\s+(?:a|à)\s*[0-9]+(?:[.,][0-9]+)?",
         r"(?:ارفع|زد|غير|غيّر|ضع)\s+(?:ال)?(?:ميزانيه|سعر)\s*(?:الى|إلى|ل)?\s*[0-9]+(?:[.,][0-9]+)?",
         r"\b(?:new\s+search|start\s+over|start\s+a\s+new)\b",
+        # Put the combined phrase first.  Otherwise a shorter "keep same
+        # city" match leaves the word "budget" behind as a fake item term.
+        r"\b(?:keep\s+(?:the\s+)?same\s+(?:city|location)\s+and\s+(?:the\s+)?(?:same\s+)?budget|same\s+(?:city|location)\s+and\s+(?:the\s+)?budget)\b",
         r"\b(?:keep\s+(?:the\s+)?same\s+(?:city|location|budget)(?:\s+and\s+(?:the\s+)?same\s+(?:city|location|budget))?)\b",
-        r"\b(?:keep\s+(?:the\s+)?same\s+(?:city|location)\s+and\s+(?:the\s+)?budget)\b",
         r"\b(?:nouvelle\s+recherche|recommencer|garder\s+(?:la\s+)?meme\s+(?:ville|localisation|budget))\b",
         r"(?:بحث\s+جديد|ابدأ\s+بحث(?:ا)?\s+جديد(?:ا)?|نفس\s+(?:المدينه|المدينة|الموقع|الميزانيه|الميزانية))",
     )
@@ -906,13 +924,13 @@ def _strip_search_control_phrases(text: str) -> str:
 def _keep_context_flags(normalized: str) -> tuple[bool, bool]:
     """Return whether a new search explicitly carries city and/or budget."""
     keep_location = bool(re.search(
-        r"\b(?:same\s+(?:city|location)|keep\s+(?:the\s+)?same\s+(?:city|location)|keep\s+(?:the\s+)?same\s+(?:city|location)\s+and\s+(?:the\s+)?budget|meme\s+(?:ville|localisation)|garder\s+(?:la\s+)?meme\s+(?:ville|localisation))\b"
+        r"\b(?:same\s+(?:city|location)|keep\s+(?:the\s+)?same\s+(?:city|location)|(?:keep\s+(?:the\s+)?)?same\s+(?:city|location)\s+and\s+(?:the\s+)?budget|meme\s+(?:ville|localisation)|garder\s+(?:la\s+)?meme\s+(?:ville|localisation))\b"
         r"|(?:نفس\s+(?:المدينه|المدينة|الموقع))",
         normalized,
         flags=re.I,
     ))
     keep_budget = bool(re.search(
-        r"\b(?:same\s+budget|keep\s+(?:the\s+)?same\s+budget|keep\s+(?:the\s+)?same\s+(?:city|location)\s+and\s+(?:the\s+)?budget|meme\s+budget|garder\s+(?:le\s+)?meme\s+budget)\b"
+        r"\b(?:same\s+budget|keep\s+(?:the\s+)?same\s+budget|(?:keep\s+(?:the\s+)?)?same\s+(?:city|location)\s+and\s+(?:the\s+)?budget|meme\s+budget|garder\s+(?:le\s+)?meme\s+budget)\b"
         r"|(?:نفس\s+(?:الميزانيه|الميزانية))",
         normalized,
         flags=re.I,
@@ -1005,6 +1023,10 @@ def apply_user_turn(
         previous.start_date, previous.end_date = start_date, end_date
     elif len(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", parse_source)) >= 2:
         clarifications = list(dict.fromkeys(clarifications + ["dates"]))
+    # Dates are a structured availability constraint, never item-title terms.
+    # Strip both valid and invalid ISO spans so a malformed/past date cannot
+    # accidentally force a listing title to contain "2027-04-10".
+    remaining = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", remaining)
 
     required, preferred, excluded, remaining = _parse_attributes(remaining)
     if required:
@@ -1306,7 +1328,18 @@ def _evaluate_live_item(
         if not comparable:
             unconfirmed.append("price:conversion_unavailable")
     if spec.start_date and spec.end_date:
-        if item.id in conflicts:
+        dates_valid_now = (
+            spec.start_date >= date.today().isoformat()
+            and spec.start_date < spec.end_date
+        )
+        if not dates_valid_now:
+            # Search state can survive across days.  A range that was future
+            # when it was saved must not later be shown as available merely
+            # because an old Finder message was reopened.
+            hard_failures.append("dates")
+            unconfirmed.append("dates:needs_updated_dates")
+            availability = "confirmation_required"
+        elif item.id in conflicts:
             hard_failures.append("availability")
             availability = "unavailable_for_dates"
         else:
@@ -1632,7 +1665,20 @@ def support_request_response(language: str) -> tuple[str, dict[str, Any]]:
 
 def looks_like_support_request(text: str) -> bool:
     normalized = normalize_text(text)
-    direct = ("support", "agent", "human", "ticket", "account", "password", "payment", "refund", "booking status", "موظف", "دعم", "حساب", "كلمه السر", "كلمة السر", "دفع", "استرجاع")
+    # This boundary runs before parsing or optional provider enrichment, so a
+    # Finder message about an account problem cannot leak into catalog tools.
+    # Keep product nouns (e.g. "booking a camera") out of this list; these
+    # are support/lifecycle terms, not rental-search vocabulary.
+    direct = (
+        "support", "agent", "human", "ticket", "account", "my account",
+        "password", "log in", "login", "sign in", "cannot sign", "can't sign",
+        "payment", "charged", "refund", "payout", "deposit", "booking status",
+        "booking is", "booking pending", "reservation", "my reservation",
+        "support", "compte", "connexion", "connecter", "mot de passe", "paiement",
+        "remboursement", "reservation", "réservation", "en attente", "versement",
+        "موظف", "دعم", "حساب", "تسجيل الدخول", "كلمه السر", "كلمة السر", "دفع",
+        "استرجاع", "حجز", "الحجز", "معلق", "معلّق", "تحويل الارباح", "تحويل الأرباح",
+    )
     return any(normalize_text(term) in normalized for term in direct)
 
 

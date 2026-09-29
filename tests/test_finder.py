@@ -135,6 +135,7 @@ from app.finder_service import (
     SearchSpec,
     apply_user_turn,
     index_coverage,
+    looks_like_support_request,
     rebuild_listing_index,
     search_rentable_listings,
 )
@@ -522,6 +523,33 @@ class FinderTests(unittest.TestCase):
         finally:
             db.close()
 
+        history = owner.get(f"/api/finder/conversation?conversation_id={conversation_id}")
+        self.assertEqual(history.status_code, 200)
+        cards = history.json()["messages"][-1].get("result_cards", [])
+        self.assertNotIn(714, [card["id"] for card in cards])
+
+        # Finder does not create a SupportTicket just because someone searches
+        # with support-like wording; it safely links to the existing route.
+        db = SessionLocal()
+        try:
+            support_before = db.query(SupportTicket).count()
+        finally:
+            db.close()
+        support_response = owner.post(
+            "/api/finder/message",
+            json={"body": "I need support with my account", "conversation_id": conversation_id, "client_message_id": "finder-message-0003", "csrf_token": token},
+        )
+        self.assertEqual(support_response.status_code, 200)
+        self.assertEqual(support_response.json()["messages"][-1].get("support_url"), "/chatbot")
+        db = SessionLocal()
+        try:
+            self.assertEqual(db.query(SupportTicket).count(), support_before)
+            self.assertEqual(db.query(FinderConversation).filter(FinderConversation.id == conversation_id).count(), 1)
+            self.assertEqual(db.query(FinderSearchState).filter(FinderSearchState.conversation_id == conversation_id).count(), 1)
+            self.assertGreaterEqual(db.query(FinderMessage).filter(FinderMessage.conversation_id == conversation_id).count(), 4)
+        finally:
+            db.close()
+
     def test_historical_card_drops_after_live_price_or_booking_change(self) -> None:
         """Finder history is an ID snapshot, never a cache of search claims."""
         self.addCleanup(self._remove_history_revalidation_fixture)
@@ -597,32 +625,6 @@ class FinderTests(unittest.TestCase):
             json={"body": "x" * 2401, "client_message_id": "finder-message-9999", "csrf_token": token, "search_revision": 0},
         )
         self.assertEqual(response.status_code, 422)
-        history = owner.get(f"/api/finder/conversation?conversation_id={conversation_id}")
-        self.assertEqual(history.status_code, 200)
-        cards = history.json()["messages"][-1].get("result_cards", [])
-        self.assertNotIn(714, [card["id"] for card in cards])
-
-        # Finder does not create a SupportTicket just because someone searches
-        # with support-like wording; it safely links to the existing route.
-        db = SessionLocal()
-        try:
-            support_before = db.query(SupportTicket).count()
-        finally:
-            db.close()
-        support_response = owner.post(
-            "/api/finder/message",
-            json={"body": "I need support with my account", "conversation_id": conversation_id, "client_message_id": "finder-message-0003", "csrf_token": token},
-        )
-        self.assertEqual(support_response.status_code, 200)
-        self.assertEqual(support_response.json()["messages"][-1].get("support_url"), "/chatbot")
-        db = SessionLocal()
-        try:
-            self.assertEqual(db.query(SupportTicket).count(), support_before)
-            self.assertEqual(db.query(FinderConversation).filter(FinderConversation.id == conversation_id).count(), 1)
-            self.assertEqual(db.query(FinderSearchState).filter(FinderSearchState.conversation_id == conversation_id).count(), 1)
-            self.assertGreaterEqual(db.query(FinderMessage).filter(FinderMessage.conversation_id == conversation_id).count(), 4)
-        finally:
-            db.close()
 
     def test_stale_search_revision_is_rejected_instead_of_overwriting_newer_state(self) -> None:
         client = TestClient(main_module.app, base_url="http://testserver.local")
@@ -639,6 +641,59 @@ class FinderTests(unittest.TestCase):
             json={"body": "more", "conversation_id": conversation_id, "client_message_id": "finder-message-0011", "csrf_token": token, "search_revision": 0},
         )
         self.assertEqual(stale.status_code, 409)
+
+    def test_control_words_negation_support_boundary_and_expired_dates_do_not_make_false_matches(self) -> None:
+        """Regression checks for parser and historical-state edge cases."""
+        db = SessionLocal()
+        try:
+            prior = SearchSpec(
+                language="en",
+                product_terms=["camera"],
+                location_city="Paris",
+                price=PriceConstraint(kind="target", target=10, currency="USD"),
+            ).normalized()
+            revised, action = apply_user_turn(
+                db,
+                prior,
+                "Start a new search for a bike; keep same city and budget",
+                display_currency="USD",
+            )
+            self.assertEqual(action, "search")
+            self.assertEqual(revised.product_terms, ["bike"])
+            self.assertEqual(revised.location_city, "Paris")
+            self.assertEqual(revised.price.target, 10)
+
+            negated, _ = apply_user_turn(
+                db,
+                SearchSpec(language="en"),
+                "Find a car with no red color",
+                display_currency="USD",
+            )
+            self.assertNotIn("red", negated.product_terms)
+            self.assertTrue(any(attribute.key == "color" for attribute in negated.excluded_attributes))
+
+            excluded_ram, _ = apply_user_turn(
+                db,
+                SearchSpec(language="en"),
+                "Find a laptop, not 16 GB RAM",
+                display_currency="USD",
+            )
+            self.assertFalse(any(attribute.key == "ram_gb" for attribute in excluded_ram.required_attributes))
+            self.assertTrue(any(attribute.key == "ram_gb" for attribute in excluded_ram.excluded_attributes))
+
+            future = date.today() + timedelta(days=10)
+            expired = SearchSpec(
+                language="en", product_terms=["honda"], location_city="Paris",
+                price=PriceConstraint(kind="maximum", maximum=30, currency="USD"),
+                start_date=(date.today() - timedelta(days=3)).isoformat(),
+                end_date=future.isoformat(),
+            ).normalized()
+            self.assertEqual(search_rentable_listings(db, expired).total_confirmed, 0)
+        finally:
+            db.close()
+
+        self.assertTrue(looks_like_support_request("My booking is pending, can Finder fix it?"))
+        self.assertTrue(looks_like_support_request("Je ne peux pas me connecter à mon compte."))
 
 
 if __name__ == "__main__":
