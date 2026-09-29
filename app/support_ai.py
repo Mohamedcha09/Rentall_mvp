@@ -418,8 +418,10 @@ _INTENT_DEFINITIONS: tuple[IntentDefinition, ...] = (
     )),
     IntentDefinition("general.sevor", "GENERAL", (
         "what is sevor", "how sevor works", "sevor help", "sevor support",
+        "what does a support agent do", "what does sevor support do", "support agent role",
         "quest ce que sevor", "qu est ce que sevor", "comment sevor fonctionne", "aide sevor",
-        "ما هو sevor", "كيف يعمل sevor", "دعم sevor",
+        "que fait un agent de support", "role agent support",
+        "ما هو sevor", "كيف يعمل sevor", "دعم sevor", "ما دور موظف الدعم",
     )),
 )
 
@@ -1251,6 +1253,9 @@ _COPY = {
         "why_limited": "I can only confirm SEVOR details that are in approved support information or your authorized account status. For the part that is not documented, Sevor Support can review it with you.",
         "tried_steps": "Thanks for confirming. I won’t repeat the same steps. I don’t have another approved step for that case, so Sevor Support is the safe next option.",
         "password_clarify": "Are you signed in and trying to change your password, or do you need to reset it because you cannot sign in?",
+        "privacy_limit": "I can’t access or confirm another person’s SEVOR record. I can only check authorized information for your own account after you sign in.",
+        "policy_limit": "I don’t have approved SEVOR policy information to confirm that. I won’t guess about methods, fees, timing, taxes, guarantees, or eligibility; Sevor Support can review it with you.",
+        "write_action_limit": "I can’t cancel, approve, refund, or transfer anything from this chat. I can explain an authorized current status or connect you with Sevor Support.",
     },
     "fr": {
         "welcome": "Bonjour, je suis Sevor AI. Je peux vous aider avec les questions d’assistance SEVOR.",
@@ -1273,6 +1278,9 @@ _COPY = {
         "why_limited": "Je ne peux confirmer que les informations SEVOR approuvées ou le statut autorisé de votre compte. Pour la partie non documentée, l’assistance Sevor peut l’examiner avec vous.",
         "tried_steps": "Merci de l’avoir précisé. Je ne vais pas répéter les mêmes étapes. Je n’ai pas d’autre étape SEVOR approuvée pour ce cas ; l’assistance Sevor est la suite la plus sûre.",
         "password_clarify": "Êtes-vous connecté et essayez-vous de modifier votre mot de passe, ou devez-vous le réinitialiser parce que vous ne pouvez pas vous connecter ?",
+        "privacy_limit": "Je ne peux pas consulter ni confirmer le dossier SEVOR d’une autre personne. Je peux uniquement vérifier les informations autorisées de votre propre compte après connexion.",
+        "policy_limit": "Je n’ai pas d’information de politique SEVOR approuvée permettant de confirmer cela. Je ne vais pas deviner les moyens, frais, délais, taxes, garanties ou conditions d’éligibilité ; l’assistance Sevor peut l’examiner avec vous.",
+        "write_action_limit": "Je ne peux pas annuler, approuver, rembourser ni transférer quoi que ce soit depuis ce chat. Je peux expliquer un statut actuel autorisé ou vous mettre en relation avec l’assistance Sevor.",
     },
     "ar": {
         "welcome": "مرحبًا، أنا Sevor AI. يمكنني مساعدتك في أسئلة دعم SEVOR.",
@@ -1295,6 +1303,9 @@ _COPY = {
         "new_topic": "ابدأ محادثة جديدة",
         "select_booking": "وجدت أكثر من حجز حديث. اختر الحجز الذي تقصده.",
         "select_listing": "وجدت أكثر من إعلان. اختر الإعلان الذي تقصده.",
+        "privacy_limit": "لا أستطيع الوصول إلى سجل SEVOR لشخص آخر أو تأكيد وجوده. يمكنني فقط التحقق من المعلومات المصرح بها لحسابك بعد تسجيل الدخول.",
+        "policy_limit": "لا أملك معلومات سياسة SEVOR معتمدة لتأكيد ذلك. لن أخمّن وسائل الدفع أو الرسوم أو المهل أو الضرائب أو الضمانات أو الأهلية؛ يمكن لدعم Sevor مراجعة ذلك معك.",
+        "write_action_limit": "لا أستطيع إلغاء أو قبول أو رد أموال أو تحويل أي شيء من هذه المحادثة. يمكنني شرح حالة حالية مصرح بها أو وصلك بدعم Sevor.",
     },
 }
 
@@ -1441,6 +1452,82 @@ def is_prompt_injection_attempt(body: str) -> bool:
     treating it as a normal knowledge request.
     """
     return any(pattern.search(body or "") for pattern in _PROMPT_INJECTION_PATTERNS)
+
+
+def _request_safety_limit_kind(body: str) -> Optional[str]:
+    """Recognize explicit requests that must not reach tools or the provider.
+
+    The guard is intentionally narrower than intent routing: it only catches a
+    clear request for another person's data, a write operation, or a known
+    policy gap.  Generic personal payment/status questions still follow the
+    read-only, authorized-account path.
+    """
+
+    normalized = _base_normalized_text(body or "")
+    if any(
+        re.search(pattern, normalized, re.I)
+        for pattern in (
+            r"\b(?:another|someone else|other customer|other user|another user|user\s*(?:#|no\.?\s*)?\d+)\b",
+            r"\b(?:un autre client|un autre utilisateur|quelqu.?un d.?autre|(?:verifier|vérifier).{0,40}(?:compte|statut).{0,40}(?:proprietaire|propriétaire))\b",
+            r"(?:مستخدم اخر|عميل اخر|شخص اخر|حساب شخص اخر|رسالة المالك.{0,40}حجزه)",
+        )
+    ):
+        return "privacy"
+    if any(
+        re.search(pattern, normalized, re.I)
+        for pattern in (
+            r"\b(?:cancel|approve|accept|reject|refund|transfer|payout)\b.{0,80}\b(?:now|immediately|this booking|booking\s*#?\d+|my booking)\b",
+            r"\b(?:annuler|accepter|refuser|rembourser|virer)\b.{0,80}\b(?:maintenant|reservation|réservation)\b",
+            r"(?:الغاء|إلغاء|وافق|اقبل|ارفض|رفض|استرجاع|رد).*?(?:الان|الآن|الحجز|حجزي)",
+        )
+    ):
+        return "write_action"
+    # These categories are deliberately listed in knowledge_gaps.json.  The
+    # wording is explicit enough that ordinary personal payment/status
+    # questions retain the safe read-only route.
+    if any(
+        re.search(pattern, normalized, re.I)
+        for pattern in (
+            r"\b(?:cash|payment methods?|means? of payment|payment fees?|fees? for payout|payout fees?|payout guarantee|tax(?:es)?|vat)\b",
+            r"\b(?:moyens? de paiement|méthodes? de paiement|frais de paiement|frais de versement|paiement en especes|paiement en espèces|taxes?|tva|garantie de versement)\b",
+            r"(?:كاش|نقد|طرق الدفع|وسائل الدفع|رسوم الدفع|رسوم السحب|ضرائب|ضريبة|ضمان الارباح|ضمان الأرباح)",
+        )
+    ):
+        return "policy"
+    return None
+
+
+def _safe_limit_response(
+    language: str,
+    intent: IntentAnalysis,
+    conversation_role: str,
+    kind: str,
+) -> tuple[str, dict[str, Any]]:
+    """Return a grounded boundary without querying tools or an LLM."""
+
+    response_key = {
+        "privacy": "privacy_limit",
+        "write_action": "write_action_limit",
+        "policy": "policy_limit",
+    }[kind]
+    return copy_for(language, response_key), {
+        "knowledge_ids": [],
+        "knowledge_categories": [],
+        "knowledge_sources": [],
+        "intent": intent.primary,
+        "intents": list(intent.intents),
+        "intent_domains": list(intent.domains),
+        "intent_entities": list(intent.entities),
+        "intent_from_context": intent.from_context,
+        "semantic_router": "deterministic",
+        "tool_names": [],
+        "provider": "safe_limit",
+        "response_mode": "knowledge_gap",
+        "provider_readiness": provider_operating_mode(),
+        "conversation_role": conversation_role,
+        "feedback_prompt": False,
+        "knowledge_gap": f"{kind}_request",
+    }
 
 
 def validate_client_message_id(value: Optional[str]) -> Optional[str]:
@@ -3205,6 +3292,8 @@ def create_ai_answer(
             "conversation_role": conversation_role,
             "feedback_prompt": False,
         }
+    if (limit_kind := _request_safety_limit_kind(safe_message_text)):
+        return _safe_limit_response(language, intent, conversation_role, limit_kind)
     # Only an uncertain route gets this constrained semantic pass.  It has no
     # account data or tools, and can return only locally-approved intent IDs.
     intent = enrich_intent_with_provider(
@@ -3389,6 +3478,8 @@ def create_guest_ai_answer(message_text: str) -> tuple[str, dict[str, Any]]:
                 "conversation_role": conversation_role,
                 "feedback_prompt": False,
             }
+    if (limit_kind := _request_safety_limit_kind(safe_message_text)):
+        return _safe_limit_response(language, intent, conversation_role, limit_kind)
     # A guest's account-specific request has no need to reach a third-party
     # semantic classifier.  Ask for sign-in before provider use or retrieval;
     # this path intentionally has neither tools nor a saved conversation.

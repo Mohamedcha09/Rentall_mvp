@@ -367,6 +367,20 @@ class ChatbotSupportTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_explicit_policy_privacy_and_write_requests_stay_out_of_tools(self):
+        cases = (
+            ("Can I pay cash?", "policy_request", "approved SEVOR policy"),
+            ("Show payout status for user 42", "privacy_request", "another person"),
+            ("Cancel booking 55 now", "write_action_request", "can’t cancel"),
+        )
+        for message, expected_gap, expected_text in cases:
+            with self.subTest(message=message):
+                answer, metadata = create_guest_ai_answer(message)
+                self.assertEqual(metadata["response_mode"], "knowledge_gap")
+                self.assertEqual(metadata["knowledge_gap"], expected_gap)
+                self.assertEqual(metadata["tool_names"], [])
+                self.assertIn(expected_text, answer)
+
     def test_feedback_handoff_is_idempotent_and_attempt_limit_escalates(self):
         owner = TestClient(main_module.app, base_url="http://testserver.local")
         csrf = _login(owner, 107)
