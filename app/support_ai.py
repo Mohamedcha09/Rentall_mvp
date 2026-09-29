@@ -418,10 +418,8 @@ _INTENT_DEFINITIONS: tuple[IntentDefinition, ...] = (
     )),
     IntentDefinition("general.sevor", "GENERAL", (
         "what is sevor", "how sevor works", "sevor help", "sevor support",
-        "what does a support agent do", "what does sevor support do", "support agent role",
         "quest ce que sevor", "qu est ce que sevor", "comment sevor fonctionne", "aide sevor",
-        "que fait un agent de support", "role agent support",
-        "ما هو sevor", "كيف يعمل sevor", "دعم sevor", "ما دور موظف الدعم",
+        "ما هو sevor", "كيف يعمل sevor", "دعم sevor",
     )),
 )
 
@@ -1490,7 +1488,7 @@ def _request_safety_limit_kind(body: str) -> Optional[str]:
         for pattern in (
             r"\b(?:cash|payment methods?|means? of payment|payment fees?|fees? for payout|payout fees?|payout guarantee|tax(?:es)?|vat)\b",
             r"\b(?:moyens? de paiement|méthodes? de paiement|frais de paiement|frais de versement|paiement en especes|paiement en espèces|taxes?|tva|garantie de versement)\b",
-            r"(?:كاش|نقد|طرق الدفع|وسائل الدفع|رسوم الدفع|رسوم السحب|ضرائب|ضريبة|ضمان الارباح|ضمان الأرباح)",
+            r"(?:كاش|نقد|طرق الدفع|وسائل الدفع|رسوم الدفع|رسوم السحب|ضرائب|ضريبة|ضمان الارباح|ضمان الأرباح|ارباحي مضمونة|أرباحي مضمونة)",
         )
     ):
         return "policy"

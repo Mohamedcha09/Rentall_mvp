@@ -472,7 +472,7 @@
       "category": "General SEVOR Support",
       "intent": "general.sevor",
       "title": "Use SEVOR support",
-      "keywords": ["sevor help", "how sevor works", "support", "support agent", "what does a support agent do", "aide sevor", "agent de support", "ما دور موظف الدعم", "كيف يعمل sevor", "دعم sevor"],
+      "keywords": ["sevor help", "how sevor works", "support", "aide sevor", "كيف يعمل sevor", "دعم sevor"],
       "source": "app/routes_chatbot.py; app/messages.py",
       "content": {
         "en": "Sevor AI is for SEVOR support. It can explain approved help information, check a limited set of authorized account statuses, and connect you with Sevor Support when a reliable answer is not available. It does not make payments, refunds, approvals, or account changes from chat.",

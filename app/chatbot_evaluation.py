@@ -96,6 +96,13 @@ def _route_observation(
     if response_mode == "knowledge_gap":
         observed.add("safe_limit")
         observed.add("unknown_policy")
+        if str(metadata.get("knowledge_gap") or "").startswith("privacy_"):
+            observed.add("privacy_safe_limit")
+    if conversation_role == "password_clarification":
+        # The runtime uses a more informative internal label for the focused
+        # reset-vs-change question; it is still the corpus's clarification
+        # route, not a different answer behavior.
+        observed.add("clarify")
     if is_handoff_request(message):
         # This confirms explicit-human language reaches the shared handoff
         # classifier.  The actual ticket transition is intentionally left to

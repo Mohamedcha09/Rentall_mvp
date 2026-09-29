@@ -370,6 +370,7 @@ class ChatbotSupportTests(unittest.TestCase):
     def test_explicit_policy_privacy_and_write_requests_stay_out_of_tools(self):
         cases = (
             ("Can I pay cash?", "policy_request", "approved SEVOR policy"),
+            ("هل أرباحي مضمونة؟", "policy_request", "سياسة SEVOR معتمدة"),
             ("Show payout status for user 42", "privacy_request", "another person"),
             ("Cancel booking 55 now", "write_action_request", "can’t cancel"),
         )
