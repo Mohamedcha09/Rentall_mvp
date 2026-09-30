@@ -369,6 +369,25 @@ class FinderTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_explicit_unknown_listing_property_stays_searchable_without_a_category_branch(self) -> None:
+        """A future category field uses the generic bounded attribute path."""
+        db = SessionLocal()
+        try:
+            spec, action = apply_user_turn(
+                db,
+                SearchSpec(language="en"),
+                "Find a camping tent with capacity: 4 people in Montréal",
+                display_currency="CAD",
+            )
+            self.assertEqual(action, "search")
+            self.assertTrue(any(
+                attribute.key == "text" and attribute.unit == "capacity" and attribute.values == ["4 people"]
+                for attribute in spec.required_attributes
+            ))
+            self.assertIn(716, _card_ids(search_rentable_listings(db, spec)))
+        finally:
+            db.close()
+
     def test_pagination_is_stable_and_does_not_duplicate_results(self) -> None:
         db = SessionLocal()
         try:
@@ -636,6 +655,35 @@ class FinderTests(unittest.TestCase):
         self.assertEqual(second.status_code, 200, second.text)
         self.assertEqual(first.json()["conversation"]["id"], second.json()["conversation"]["id"])
 
+    def test_rank_explanation_uses_the_current_seen_result_not_model_prose(self) -> None:
+        client = TestClient(main_module.app, base_url="http://testserver.local")
+        token = _login(client, 701)
+        first = client.post(
+            "/api/finder/message",
+            json={
+                "body": "Honda red two doors in Paris around 10 USD/day",
+                "client_message_id": "finder-rank-0001",
+                "csrf_token": token,
+            },
+        )
+        self.assertEqual(first.status_code, 200, first.text)
+        conversation_id = first.json()["conversation"]["id"]
+        revision = first.json()["conversation"]["revision"]
+        explained = client.post(
+            "/api/finder/message",
+            json={
+                "body": "Why did you put it first?",
+                "conversation_id": conversation_id,
+                "client_message_id": "finder-rank-0002",
+                "csrf_token": token,
+                "search_revision": revision,
+            },
+        )
+        self.assertEqual(explained.status_code, 200, explained.text)
+        assistant = explained.json()["messages"][-1]
+        self.assertIn("closest to your target", assistant["body"])
+        self.assertEqual(assistant["result_cards"][0]["id"], 714)
+
     def test_stale_search_revision_is_rejected_instead_of_overwriting_newer_state(self) -> None:
         client = TestClient(main_module.app, base_url="http://testserver.local")
         token = _login(client, 701)
@@ -704,6 +752,7 @@ class FinderTests(unittest.TestCase):
 
         self.assertTrue(looks_like_support_request("My booking is pending, can Finder fix it?"))
         self.assertTrue(looks_like_support_request("Je ne peux pas me connecter à mon compte."))
+        self.assertFalse(looks_like_support_request("Find a listing where the deposit is 10 dollars."))
 
 
 if __name__ == "__main__":

@@ -26,6 +26,11 @@ availability, ranks results, and creates listing links.
    direct message. Live catalog data remains authoritative: a result is
    rechecked when it is returned and when historical Finder cards are read.
 
+   Finder history is bounded per signed-in user (100 conversations) and repeated
+   empty “New search” requests reuse the same empty conversation. This prevents
+   an accidental or abusive empty-history flood without deleting completed search
+   history.
+
 3. Deploy the application and use `/finder`. The endpoint requires an
    authenticated SEVOR user and uses the existing CSRF/session protection.
 
@@ -43,6 +48,11 @@ The index extracts only text explicitly present in title, description, or
 subcategory. It records the source and does not infer doors, sizes, condition,
 or other claims from an image. Unknown attributes remain unknown rather than
 being treated as confirmed matches.
+
+For a new category-specific field, owners can state an explicit bounded
+key/value fact in the listing text (for example `capacity: 4 people`). Finder
+indexes that as a generic, source-tagged attribute and can match the same
+explicit query without adding a database column or a category-specific branch.
 
 ## Provider mode and fallback
 

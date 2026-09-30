@@ -96,9 +96,9 @@ _CITY_ALIASES: dict[str, frozenset[str]] = {
 }
 
 _STOP_TOKENS = {
-    "i", "need", "want", "looking", "find", "show", "me", "results", "result", "from", "for", "a", "an", "the", "to", "rent", "rental", "please", "can", "could", "would", "should", "may", "with", "and", "or", "only", "in", "at", "near", "per", "day", "daily", "hour", "hourly", "week", "weekly", "month", "monthly", "is", "start", "search", "keep", "same", "city", "location", "budget", "no", "not", "without", "deposit", "security",
-    "je", "cherche", "voudrais", "louer", "une", "un", "des", "de", "du", "pour", "avec", "et", "ou", "seulement", "suis", "dans", "a", "à", "par", "jour", "journaliere", "journalière", "heure", "heures", "semaine", "semaines", "mois", "nouvelle", "recherche", "garder", "meme", "même", "ville", "localisation", "budget", "sans", "pas", "caution",
-    "اريد", "أريد", "ابحث", "أبحث", "عن", "كراء", "استئجار", "للايجار", "للإيجار", "في", "مع", "و", "او", "أو", "فقط", "من", "ب", "يوم", "يوميا", "يومياً", "لليوم", "ساعه", "ساعة", "اسبوع", "أسبوع", "شهريا", "شهري", "بحث", "جديد", "ابدأ", "نفس", "المدينه", "المدينة", "الموقع", "الميزانيه", "الميزانية", "لا", "بدون", "وديعه", "وديعة",
+    "i", "need", "want", "looking", "find", "show", "me", "results", "result", "from", "for", "a", "an", "the", "to", "rent", "rental", "please", "can", "could", "would", "should", "may", "must", "required", "require", "have", "has", "with", "and", "or", "only", "in", "at", "near", "per", "day", "daily", "hour", "hourly", "week", "weekly", "month", "monthly", "is", "start", "search", "keep", "same", "city", "location", "budget", "no", "not", "without", "deposit", "security",
+    "je", "cherche", "voudrais", "louer", "une", "un", "des", "de", "du", "pour", "avec", "et", "ou", "seulement", "doit", "doivent", "avoir", "suis", "dans", "a", "à", "par", "jour", "journaliere", "journalière", "heure", "heures", "semaine", "semaines", "mois", "nouvelle", "recherche", "garder", "meme", "même", "ville", "localisation", "budget", "sans", "pas", "caution",
+    "اريد", "أريد", "ابحث", "أبحث", "عن", "كراء", "استئجار", "للايجار", "للإيجار", "يجب", "تكون", "في", "مع", "و", "او", "أو", "فقط", "من", "ب", "يوم", "يوميا", "يومياً", "لليوم", "ساعه", "ساعة", "اسبوع", "أسبوع", "شهريا", "شهري", "بحث", "جديد", "ابدأ", "نفس", "المدينه", "المدينة", "الموقع", "الميزانيه", "الميزانية", "لا", "بدون", "وديعه", "وديعة",
     "around", "about", "approximately", "environ", "vers", "حوالي", "تقريبا", "تقريباً", "حدود", "usd", "cad", "eur", "dollar", "dollars", "euro", "euros", "دولار", "يورو",
 }
 
@@ -114,6 +114,10 @@ _ATTRIBUTE_KEY_ALIASES: dict[str, tuple[str, ...]] = {
     "dimensions": ("dimension", "dimensions", "size", "taille", "ابعاد", "أبعاد"),
     "quantity": ("quantity", "qty", "quantité", "عدد", "كمية"),
     "material": ("material", "matiere", "matière", "مادة"),
+    # ``text`` is a bounded generic key/value path, not a database column.
+    # It lets future category-specific fields remain searchable without an
+    # if/elif branch or a schema migration for every new kind of rental.
+    "text": (),
 }
 
 
@@ -400,6 +404,33 @@ def _attribute_row(key: str, value: Any, *, unit: str = "", source: str = "descr
     }
 
 
+def _canonical_attribute_key(raw_key: str) -> tuple[str, str]:
+    """Map a bounded key/value label without making it a schema field.
+
+    A natural sentence can precede a colon (``a tent with capacity: 4``), so
+    a regex capture is not always a clean field name. Prefer an exact known
+    alias, then inspect short trailing phrases, and finally retain only the
+    final token as the generic property label. The latter makes equivalent
+    listing/query wording meet at ``capacity`` rather than preserving prose.
+    """
+    normalized_key = normalize_text(raw_key)
+    if not normalized_key:
+        return "text", ""
+    aliases = {
+        normalize_text(alias): canonical
+        for canonical, values in _ATTRIBUTE_KEY_ALIASES.items()
+        for alias in values
+    }
+    if normalized_key in aliases:
+        return aliases[normalized_key], ""
+    words = normalized_key.split()
+    for width in range(min(3, len(words)), 0, -1):
+        candidate = " ".join(words[-width:])
+        if candidate in aliases:
+            return aliases[candidate], ""
+    return "text", words[-1][:28] if words else normalized_key[:28]
+
+
 def extract_explicit_attributes(item: Item) -> list[dict[str, str]]:
     """Extract only explicit text claims; never infer a property from an image."""
     fields = (
@@ -456,13 +487,14 @@ def extract_explicit_attributes(item: Item) -> list[dict[str, str]]:
 
         # A limited explicit key/value pattern provides extensibility for new
         # categories without granting a free-form database field to requests.
-        for key_raw, value_raw in re.findall(r"\b([\w -]{2,28})\s*[:=]\s*([^,;\n]{1,60})", raw, flags=re.UNICODE):
-            normalized_key = normalize_text(key_raw)
-            canonical = next(
-                (candidate for candidate, aliases in _ATTRIBUTE_KEY_ALIASES.items() if normalized_key in {normalize_text(alias) for alias in aliases}),
-                "text",
-            )
-            add(canonical, value_raw, "", source)
+        for key_raw, value_raw in re.findall(r"\b([\w -]{2,28})\s*[:=]\s*([^,;.\n]{1,60})", raw, flags=re.UNICODE):
+            canonical, generic_label = _canonical_attribute_key(key_raw)
+            # For an unknown, owner-entered key (for example ``capacity`` or
+            # a new category's own field), retain the normalized key as the
+            # attribute unit. It is data only, but lets a matching user query
+            # prove the same explicitly stated property rather than treating
+            # all unknown key/value pairs as interchangeable free text.
+            add(canonical, value_raw, generic_label if canonical == "text" else "", source)
     return output[:48]
 
 
@@ -798,6 +830,31 @@ def _parse_attributes(text: str) -> tuple[list[FinderAttribute], list[FinderAttr
             target.append(FinderAttribute(key, "equals", [value], unit=unit, source_text=phrase))
             remainder = re.sub(re.escape(phrase), " ", remainder, flags=re.I)
             break
+
+    # Explicit key/value wording is the safe extension path for attributes
+    # that have no predefined SEVOR column or category branch. It uses the
+    # same bounded ``text`` attribute that listing extraction stores, never a
+    # user-provided SQL field. Ordinary natural-language properties still fall
+    # back to product terms until a provider-on evaluation justifies more
+    # parsing rules.
+    reserved_keys = {"price", "budget", "currency", "city", "location", "date", "dates", "category"}
+    for match in re.finditer(r"\b([\w -]{2,28})\s*[:=]\s*([^,;.\n]{1,60})", remainder, flags=re.UNICODE):
+        key_raw, value_raw = match.group(1), match.group(2).strip()
+        key = normalize_text(key_raw)
+        # Location extraction runs before this pass and can leave its joining
+        # preposition behind (``capacity: 4 people in Paris`` → ``... in``).
+        # It is grammar, not part of the owner-entered attribute value.
+        value = re.sub(r"\b(?:in|at|near|dans|a|à|في)\s*$", "", value_raw, flags=re.I).strip()
+        if not key or not value or key in reserved_keys:
+            continue
+        canonical, generic_label = _canonical_attribute_key(key_raw)
+        # ``text`` carries the owner-entered property label in its unit; known
+        # keys keep their existing canonical matching semantics.
+        unit = generic_label if canonical == "text" else ""
+        source_position = normalized.find(normalize_text(match.group(0)))
+        target = excluded if source_position >= 0 and is_negated_attribute(source_position) else required
+        target.append(FinderAttribute(canonical, "contains", [value], unit=unit, source_text=match.group(0)))
+        remainder = remainder.replace(match.group(0), " ", 1)
     return required[:MAX_ATTRIBUTES], preferred[:MAX_ATTRIBUTES], excluded[:MAX_ATTRIBUTES], remainder
 
 
@@ -883,6 +940,14 @@ def _is_new_search_request(normalized: str) -> bool:
 
 def _is_compare_request(normalized: str) -> bool:
     return bool(re.search(r"\b(?:compare|comparison|comparer|comparez|قارن|مقارنه|مقارنة)\b", normalized))
+
+
+def _is_rank_explanation_request(normalized: str) -> bool:
+    return bool(re.search(
+        r"\b(?:why\s+(?:is|was|did).*?(?:first|top)|why\s+first|pourquoi.*?(?:premier|premiere)|لماذا.*?(?:اولا|أولا|الاول|الأول))\b",
+        normalized,
+        flags=re.I,
+    ))
 
 
 def _sort_from_text(normalized: str) -> Optional[str]:
@@ -991,6 +1056,8 @@ def apply_user_turn(
     previous.language = language
     if _is_compare_request(normalized):
         return previous.normalized(), "compare"
+    if _is_rank_explanation_request(normalized):
+        return previous.normalized(), "rank_explanation"
     if _is_more_request(normalized) and len(tokens(normalized)) <= 5:
         return previous.normalized(), "more"
     requested_sort = _sort_from_text(normalized)
@@ -1301,11 +1368,12 @@ def _evaluate_live_item(
         hard_failures.append("location")
     for attribute in spec.required_attributes:
         matched_attribute, state = _attribute_match(attribute, attrs)
+        display_key = attribute.unit if attribute.key == "text" and attribute.unit else attribute.key
         if matched_attribute:
-            matched.append({"key": attribute.key, "value": ", ".join(attribute.values), "source": "mentioned"})
+            matched.append({"key": display_key, "value": ", ".join(attribute.values), "source": "mentioned"})
         else:
-            hard_failures.append(attribute.key)
-            unconfirmed.append(f"{attribute.key}:{state}")
+            hard_failures.append(display_key)
+            unconfirmed.append(f"{display_key}:{state}")
     for attribute in spec.excluded_attributes:
         matches_excluded, state = _attribute_match(attribute, attrs)
         if matches_excluded:
@@ -1464,6 +1532,11 @@ _COPY: dict[str, dict[str, str]] = {
         "support": "Finder searches rental listings. For an account, booking, payment, or support issue, use SEVOR Support.",
         "compare": "I can compare the results you saw. Tell me which two positions or listing titles you mean.",
         "comparison": "Here is a live comparison of the two listings you selected.",
+        "rank_target": "I placed this first because it still confirms your filters and its current price is closest to your target budget.",
+        "rank_lowest": "I placed this first because it still confirms your filters and has the lowest current comparable price.",
+        "rank_newest": "I placed this first because it still confirms your filters and is the newest current listing in this result set.",
+        "rank_match": "I placed this first because it still confirms your filters and leads the current stable relevance order.",
+        "rank_unavailable": "That earlier result is no longer a current confirmed match, so I cannot give a stale ranking reason.",
         "availability": "Availability is checked for the dates you provided; otherwise it needs confirmation on the listing.",
     },
     "fr": {
@@ -1483,6 +1556,11 @@ _COPY: dict[str, dict[str, str]] = {
         "support": "Finder recherche des annonces de location. Pour un compte, une réservation, un paiement ou une question d’assistance, utilisez SEVOR Support.",
         "compare": "Je peux comparer les résultats affichés. Indiquez les deux positions ou titres voulus.",
         "comparison": "Voici une comparaison en direct des deux annonces sélectionnées.",
+        "rank_target": "Je l’ai placée en premier car elle confirme encore vos filtres et son prix actuel est le plus proche de votre budget cible.",
+        "rank_lowest": "Je l’ai placée en premier car elle confirme encore vos filtres et a le prix comparable actuel le plus bas.",
+        "rank_newest": "Je l’ai placée en premier car elle confirme encore vos filtres et est l’annonce actuelle la plus récente de ce résultat.",
+        "rank_match": "Je l’ai placée en premier car elle confirme encore vos filtres et arrive en tête de l’ordre de pertinence stable actuel.",
+        "rank_unavailable": "Ce résultat antérieur n’est plus une correspondance confirmée actuelle ; je ne peux donc pas donner une raison de classement obsolète.",
         "availability": "La disponibilité est vérifiée pour les dates données ; sinon elle doit être confirmée sur l’annonce.",
     },
     "ar": {
@@ -1502,6 +1580,11 @@ _COPY: dict[str, dict[str, str]] = {
         "support": "Finder يبحث في إعلانات الكراء. لمشكلة حساب أوحجز أو دفع أو دعم، استخدم SEVOR Support.",
         "compare": "أستطيع مقارنة النتائج التي ظهرت لك. حدّد النتيجتين أو اسمي الإعلانين.",
         "comparison": "هذه مقارنة مباشرة بين الإعلانين اللذين حددتهما.",
+        "rank_target": "وضعت هذا أولًا لأنه ما زال يطابق شروطك وسعره الحالي هو الأقرب إلى ميزانيتك المستهدفة.",
+        "rank_lowest": "وضعت هذا أولًا لأنه ما زال يطابق شروطك ولديه أقل سعر حالي قابل للمقارنة.",
+        "rank_newest": "وضعت هذا أولًا لأنه ما زال يطابق شروطك وهو أحدث إعلان حالي في هذه النتائج.",
+        "rank_match": "وضعت هذا أولًا لأنه ما زال يطابق شروطك ويتصدر ترتيب الصلة الثابت الحالي.",
+        "rank_unavailable": "هذه النتيجة السابقة لم تعد مطابقة مؤكدة حاليًا، لذلك لا يمكنني إعطاء سبب ترتيب قديم.",
         "availability": "يتم التحقق من التوفر فقط للتواريخ التي قدمتها؛ وإلا يحتاج إلى تأكيد من صفحة الإعلان.",
     },
 }
@@ -1657,6 +1740,29 @@ def comparison_for_seen_listings(db: Session, seen_ids: Iterable[int], requested
         "currency": [left.get("currency"), right.get("currency")],
         "location": [left.get("city"), right.get("city")],
     }}
+
+
+def rank_explanation_for_seen_listings(db: Session, seen_ids: Iterable[int], *, spec: SearchSpec) -> tuple[str, dict[str, Any]]:
+    """Explain the first displayed result from current server data only."""
+    first_id = next(iter(seen_ids), None)
+    if first_id is None:
+        return finder_copy(spec.language, "compare"), {"kind": "rank_explanation", "result_cards": []}
+    cards = get_listing_details(db, [first_id], spec=spec)
+    if not cards or cards[0].get("unavailable"):
+        return finder_copy(spec.language, "rank_unavailable"), {"kind": "rank_explanation", "result_cards": []}
+    if spec.price.kind == "target":
+        copy_key = "rank_target"
+    elif spec.sort_mode == "price_asc":
+        copy_key = "rank_lowest"
+    elif spec.sort_mode == "newest":
+        copy_key = "rank_newest"
+    else:
+        copy_key = "rank_match"
+    return finder_copy(spec.language, copy_key), {
+        "kind": "rank_explanation",
+        "result_cards": cards,
+        "rank_reason": cards[0].get("rank_reason"),
+    }
 
 
 def support_request_response(language: str) -> tuple[str, dict[str, Any]]:

@@ -365,9 +365,16 @@
         if (message.id) { rendered.add(message.id); lastMessageId = Math.max(lastMessageId, Number(message.id) || 0); }
       }
       function setConversationUrl(id) { if (!id) return; const url = new URL(window.location.href); url.searchParams.set("conversation", id); window.history.replaceState({}, "", url); }
+      function applyConversationLanguage(language) {
+        const code = typeof language === "string" ? language.toLowerCase().slice(0, 2) : "";
+        if (!code) return;
+        document.documentElement.lang = code;
+        document.documentElement.dir = code === "ar" ? "rtl" : "ltr";
+      }
       function hydrate(payload, reset = false) {
         if (reset) { rendered.clear(); pending.clear(); messagesEl.replaceChildren(); lastMessageId = 0; hasPersistedMessages = false; }
         conversation = payload && payload.conversation ? payload.conversation : conversation;
+        if (conversation && conversation.language) applyConversationLanguage(conversation.language);
         const incoming = payload && Array.isArray(payload.messages) ? payload.messages : [];
         if (incoming.length) hasPersistedMessages = true;
         incoming.forEach((message) => renderMessage(message));
@@ -458,6 +465,7 @@
         document.getElementById("sf-example-title").textContent = texts.examples;
         document.getElementById("sf-status-note").textContent = texts.note;
         document.getElementById("sf-header-status-text").textContent = locale.startsWith("ar") ? "ابحث في إعلانات SEVOR الحقيقية" : locale.startsWith("fr") ? "Recherchez des locations SEVOR réelles" : "Search real SEVOR rentals";
+        applyConversationLanguage(locale);
         if (!loggedIn) { setError(texts.signIn); return; }
         try {
           const query = initialConversationId ? `?conversation_id=${encodeURIComponent(initialConversationId)}` : "";

@@ -30,6 +30,7 @@ from .finder_service import (
     make_assistant_search_message,
     parse_compare_positions,
     public_listings_query,
+    rank_explanation_for_seen_listings,
     search_rentable_listings,
     spec_summary,
     support_request_response,
@@ -429,6 +430,12 @@ def finder_message(
     # creating or changing a ticket.
     if support_requested:
         answer, metadata = support_request_response(next_spec.language)
+    elif action == "rank_explanation":
+        answer, metadata = rank_explanation_for_seen_listings(
+            db,
+            _seen_ids(state),
+            spec=next_spec,
+        )
     elif action == "compare":
         answer, metadata = comparison_for_seen_listings(
             db,
