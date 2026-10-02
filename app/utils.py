@@ -57,14 +57,19 @@ CATEGORIES = [
     {"key": "furniture",   "label": "Furniture"},
     {"key": "clothing",    "label": "Clothing"},
     {"key": "tools",       "label": "Tools & Equipment"},
+    {"key": "Digital Accounts", "label": "Digital Accounts"},
     {"key": "other",       "label": "Other"},
 ]
 
 def category_label(key: str) -> str:
+    raw = str(key or "").strip()
     for c in CATEGORIES:
-        if c["key"] == key:
+        if c["key"] == raw or c["label"] == raw:
             return c["label"]
-    return "Other"
+    # Explore/category records are database-backed and can contain a category
+    # introduced after this small legacy Home compatibility list.  Preserve a
+    # real stored label instead of incorrectly rendering it as "Other".
+    return raw.replace("_", " ").title() if raw else "Other"
 
 
 def fx_convert(amount: float, base: str, quote: str, rates: dict):

@@ -1123,7 +1123,16 @@ def home(
 
     if q:
         pattern = f"%{q}%"
-        query = query.filter(or_(Item.title.ilike(pattern), Item.description.ilike(pattern)))
+        query = query.filter(
+            or_(
+                Item.title.ilike(pattern),
+                Item.description.ilike(pattern),
+                Item.category.ilike(pattern),
+                Item.subcategory.ilike(pattern),
+                Item.third_level.ilike(pattern),
+                Item.custom_third_level.ilike(pattern),
+            )
+        )
 
     if city:
         cities_raw = db.query(func.lower(Item.city)).distinct().all()

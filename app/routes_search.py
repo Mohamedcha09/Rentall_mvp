@@ -99,7 +99,14 @@ def api_search(
         .filter(
             Item.is_active == "yes",
             Item.status == "approved",        # ✔ FIX
-            or_(Item.title.ilike(pattern), Item.description.ilike(pattern)),
+            or_(
+                Item.title.ilike(pattern),
+                Item.description.ilike(pattern),
+                Item.category.ilike(pattern),
+                Item.subcategory.ilike(pattern),
+                Item.third_level.ilike(pattern),
+                Item.custom_third_level.ilike(pattern),
+            ),
         )
     )
 
@@ -196,7 +203,14 @@ def search_page(
             .filter(
                 Item.is_active == "yes",
                 Item.status == "approved",      # ✔ FIX
-                or_(Item.title.ilike(pattern), Item.description.ilike(pattern)),
+                or_(
+                    Item.title.ilike(pattern),
+                    Item.description.ilike(pattern),
+                    Item.category.ilike(pattern),
+                    Item.subcategory.ilike(pattern),
+                    Item.third_level.ilike(pattern),
+                    Item.custom_third_level.ilike(pattern),
+                ),
             )
         )
 

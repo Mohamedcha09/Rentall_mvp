@@ -1,8 +1,9 @@
 # app/admin_items.py
 from fastapi import APIRouter, Depends, Request, HTTPException, Form, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from datetime import datetime
+import json
 
 from .database import get_db
 from .models import Item, MessageAttachment, MessageThread
@@ -12,6 +13,7 @@ from .message_attachments import (
 )
 from .notifications_api import push_notification
 from .finder_service import remove_listing_index, sync_listing_index
+from .catalog_taxonomy import listing_hierarchy, normalize_language, ui_copy
 
 router = APIRouter(tags=["admin-items"], prefix="/admin/items")
 
@@ -34,6 +36,33 @@ def flash(request: Request, message: str, category: str = "success"):
     request.session["flash_category"] = category
 
 
+def _pending_item_images(item: Item) -> list[str]:
+    """Normalize current ARRAY plus legacy JSON/CSV image values for display.
+
+    This is presentation-only: it never rewrites the attachment/storage value
+    and keeps a legacy ``image_path`` fallback for listings created before
+    multi-image support.
+    """
+    raw = getattr(item, "image_urls", None)
+    if isinstance(raw, (list, tuple)):
+        images = [str(value).strip() for value in raw if str(value or "").strip()]
+    elif isinstance(raw, str) and raw.strip():
+        candidate = raw.strip()
+        try:
+            decoded = json.loads(candidate)
+        except (TypeError, ValueError):
+            decoded = None
+        if isinstance(decoded, list):
+            images = [str(value).strip() for value in decoded if str(value or "").strip()]
+        else:
+            images = [value.strip() for value in candidate.split(",") if value.strip()]
+    else:
+        images = []
+    if not images and getattr(item, "image_path", None):
+        images = [str(item.image_path).strip()]
+    return images
+
+
 # ==========================
 # 1) LIST PENDING ITEMS
 # ==========================
@@ -43,10 +72,25 @@ def list_pending(request: Request, db: Session = Depends(get_db)):
 
     items = (
         db.query(Item)
+        .options(selectinload(Item.owner))
         .filter(Item.status == "pending")
         .order_by(Item.created_at.asc())
         .all()
     )
+    language = normalize_language(request.cookies.get("lang"))
+    for item in items:
+        item.taxonomy_hierarchy = listing_hierarchy(item, language)
+        item.pending_image_urls = _pending_item_images(item)
+    admin_copy = {
+        key: ui_copy(key, language)
+        for key in (
+            "category", "subcategory", "type", "digital_type", "service", "service_platform",
+            "pending_review", "pending_items_review", "pending_items_lead", "pending_count", "no_pending_items",
+            "owner", "unknown", "email", "user_id", "account_type", "location", "price", "per_day",
+            "listing_category_hierarchy", "image", "description", "images",
+            "created", "no_images", "approve", "delete", "feedback", "send_feedback", "cancel", "delete_confirm",
+        )
+    }
 
     return request.app.templates.TemplateResponse(
         request=request,
@@ -54,6 +98,9 @@ def list_pending(request: Request, db: Session = Depends(get_db)):
         context={
             "request": request,
             "items": items,
+            "pending_count": len(items),
+            "admin_copy": admin_copy,
+            "admin_language": language,
             "session_user": request.session.get("user"),
         }
     )

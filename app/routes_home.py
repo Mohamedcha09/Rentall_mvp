@@ -69,6 +69,11 @@ def _serialize(i: Item, ratings: dict) -> dict:
         if part
     ).strip()
 
+    third_level = getattr(i, "third_level", "") or ""
+    custom_third_level = getattr(i, "custom_third_level", "") or ""
+    category_display = custom_third_level if third_level == "Other" and custom_third_level else third_level
+    category_display = category_display or getattr(i, "subcategory", "") or getattr(i, "category", "") or ""
+
     return {
         "id": rid,
         "title": getattr(i, "title", "") or "",
@@ -77,6 +82,9 @@ def _serialize(i: Item, ratings: dict) -> dict:
         "city": getattr(i, "city", "") or "",
         "category": getattr(i, "category", "") or "",
         "subcategory": getattr(i, "subcategory", "") or "",
+        "third_level": third_level,
+        "custom_third_level": custom_third_level,
+        "category_display": category_display,
         "price_per_day": getattr(i, "price_per_day", None),
         "rating_avg": r["avg"],
         "rating_count": r["cnt"],

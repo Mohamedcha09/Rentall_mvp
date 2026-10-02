@@ -386,7 +386,10 @@ def _safe_public_media_url(raw: Any) -> str:
 def _listing_source_text(item: Item) -> str:
     return "\n".join(
         str(getattr(item, field, "") or "")
-        for field in ("category", "subcategory", "title", "description", "city")
+        for field in (
+            "category", "subcategory", "third_level", "custom_third_level",
+            "title", "description", "city",
+        )
     )
 
 
@@ -437,6 +440,8 @@ def extract_explicit_attributes(item: Item) -> list[dict[str, str]]:
         ("title", str(getattr(item, "title", "") or "")),
         ("description", str(getattr(item, "description", "") or "")),
         ("subcategory", str(getattr(item, "subcategory", "") or "")),
+        ("third_level", str(getattr(item, "third_level", "") or "")),
+        ("custom_third_level", str(getattr(item, "custom_third_level", "") or "")),
     )
     output: list[dict[str, str]] = []
     seen: set[tuple[str, str, str]] = set()
@@ -501,7 +506,10 @@ def extract_explicit_attributes(item: Item) -> list[dict[str, str]]:
 def listing_fingerprint(item: Item) -> str:
     values = [
         str(getattr(item, field, "") or "")
-        for field in ("title", "description", "category", "subcategory", "city", "currency", "price", "price_per_day", "is_active", "status")
+        for field in (
+            "title", "description", "category", "subcategory", "third_level", "custom_third_level",
+            "city", "currency", "price", "price_per_day", "is_active", "status",
+        )
     ]
     return hashlib.sha256("\x1f".join(values).encode("utf-8", "ignore")).hexdigest()
 
@@ -1311,6 +1319,8 @@ def _item_card(
         "city": str(getattr(item, "city", "") or "").strip(),
         "category": str(getattr(item, "category", "") or "").strip(),
         "subcategory": str(getattr(item, "subcategory", "") or "").strip(),
+        "third_level": str(getattr(item, "third_level", "") or "").strip(),
+        "custom_third_level": str(getattr(item, "custom_third_level", "") or "").strip(),
         "matched_attributes": matched_attributes[:8],
         "unconfirmed_attributes": unavailable_attributes[:8],
         "availability": availability,

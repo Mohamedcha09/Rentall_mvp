@@ -2502,7 +2502,7 @@ body[data-path="/"] :is(.home-listing__link,.home-listing__favorite,.home-sectio
               <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
             {% endif %}
             {% if it.category is defined %}
-              <span class="category-chip">{{ it.subcategory or category_label(it.category) }}</span>
+              <span class="category-chip">{{ it.category_display or it.subcategory or category_label(it.category) }}</span>
             {% endif %}
           </div>
 
@@ -2582,7 +2582,7 @@ body[data-path="/"] :is(.home-listing__link,.home-listing__favorite,.home-sectio
               {% if it.price_per_day is defined %}
                 <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
               {% endif %}
-              <span class="category-chip">{{ it.subcategory or category_label(it.category) }}</span>
+              <span class="category-chip">{{ it.category_display or it.subcategory or category_label(it.category) }}</span>
             </div>
 
             <div class="card-body spot-body">
@@ -2760,8 +2760,8 @@ body[data-path="/"] :is(.home-listing__link,.home-listing__favorite,.home-sectio
   alt="{{ it.title or 'Sevor listing' }}">
 
             <div class="spot-overlay"></div>
-            {% if it.subcategory %}
-              <span class="category-chip">{{ it.subcategory }}</span>
+            {% if it.category_display or it.subcategory %}
+              <span class="category-chip">{{ it.category_display or it.subcategory }}</span>
             {% elif it.category %}
               <span class="category-chip">{{ category_label(it.category) }}</span>
             {% endif %}

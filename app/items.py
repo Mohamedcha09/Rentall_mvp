@@ -29,11 +29,31 @@ from .models import (
 from .utils import CATEGORIES, category_label
 from .utils_badges import get_user_badges
 from .models import Category, Subcategory
+from .catalog_taxonomy import (
+    CATEGORY_TREE,
+    TaxonomyValidationError,
+    catalog_tree_payload,
+    listing_hierarchy,
+    normalize_language,
+    resolve_listing_hierarchy,
+    taxonomy_label,
+)
 from .finder_service import remove_listing_index, sync_listing_index
 
 router = APIRouter()
 
 _OWNER_ITEMS_NOTICE_KEY = "owner_items_notice"
+
+
+def _taxonomy_language(request: Request) -> str:
+    """The site already stores its selected language in this cookie."""
+    return normalize_language(request.cookies.get("lang"))
+
+
+def _taxonomy_form_payload(db: Session, request: Request) -> dict:
+    categories = db.query(Category).order_by(Category.name.asc()).all()
+    subcategories = db.query(Subcategory).order_by(Subcategory.name.asc()).all()
+    return catalog_tree_payload(categories, subcategories, _taxonomy_language(request))
 
 
 def _set_owner_items_notice(request: Request, kind: str, text: str) -> None:
@@ -417,6 +437,7 @@ def items_list(
     lat: float | None = None,
     lng: float | None = None,
     seller: str = None,
+    service: str = None,
 ):
     # Load DB categories
     categories_db = db.query(Category).order_by(Category.name.asc()).all()
@@ -456,7 +477,8 @@ def items_list(
 
     current_category = category
 
-    # Filter by category (by name)
+    # Filter by category (by canonical stored name).  Third-level filtering is
+    # optional and is only exposed when the selected category/type has services.
     if category:
         q = q.filter(Item.category == category)
 
@@ -464,6 +486,24 @@ def items_list(
         sub = request.query_params.get("sub")
         if sub:
             q = q.filter(Item.subcategory == sub)
+
+            allowed_services = CATEGORY_TREE.get(category, {}).get(sub, ())
+            selected_service = (service or request.query_params.get("service") or "").strip()
+            if selected_service and selected_service in allowed_services:
+                q = q.filter(Item.third_level == selected_service)
+            elif selected_service:
+                # A stale/forged child filter must never silently look active.
+                selected_service = ""
+        else:
+            selected_service = ""
+    else:
+        sub = ""
+        selected_service = ""
+
+    third_levels = [
+        {"name": value}
+        for value in CATEGORY_TREE.get(category or "", {}).get(sub or "", ())
+    ]
 
     # City filtering
     if city:
@@ -569,7 +609,11 @@ def items_list(
             "current_category": current_category,
             "current_seller": seller,  # ✅ NEW
             "subcategories": subcategories_db,
-            "current_sub": request.query_params.get("sub"),
+            "current_sub": sub,
+            "third_levels": third_levels,
+            "current_service": selected_service,
+            "taxonomy_label": taxonomy_label,
+            "taxonomy_language": _taxonomy_language(request),
             "display_currency": disp_cur,
             "selected_city": city or "",
             "current_sort": current_sort,
@@ -605,6 +649,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     from sqlalchemy import func as _func
 
     item.category_label = category_label(item.category)
+    item.taxonomy_hierarchy = listing_hierarchy(item, _taxonomy_language(request))
     owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
 
@@ -682,6 +727,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "base_amount": float(src_amount),
             "base_currency": base_cur,
             "website_url": website_url,
+            "item_hierarchy": item.taxonomy_hierarchy,
         }
     )
 
@@ -706,6 +752,8 @@ def my_items(request: Request, db: Session = Depends(get_db)):
 
     for it in items:
         it.category_label = category_label(it.category)
+        it.taxonomy_hierarchy = listing_hierarchy(it, _taxonomy_language(request))
+        it.taxonomy_display = " · ".join(row["value"] for row in it.taxonomy_hierarchy)
         it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
 
     disp_cur = _display_currency(request)
@@ -768,6 +816,7 @@ def item_edit_get(
         .filter(Category.name == item.category))
         .all()
     )
+    taxonomy_payload = _taxonomy_form_payload(db, request)
 
     return request.app.templates.TemplateResponse(
         request=request,
@@ -777,6 +826,8 @@ def item_edit_get(
             "item": item,
             "categories": categories,
             "subcategories": subcategories,
+            "taxonomy_payload": taxonomy_payload,
+            "taxonomy_language": _taxonomy_language(request),
             "session_user": u,
             "website_error": website_error,
         }
@@ -789,6 +840,8 @@ def item_edit_post(
     title: str = Form(...),
     category: str = Form(...),
     subcategory_id: int = Form(None),
+    third_level: str = Form(""),
+    custom_third_level: str = Form(""),
     description: str = Form(""),
     city: str = Form(""),
     website_url: str = Form(""),
@@ -823,9 +876,23 @@ def item_edit_post(
             status_code=303,
         )
 
+    try:
+        hierarchy = resolve_listing_hierarchy(
+            db,
+            category_name=category,
+            subcategory_id=subcategory_id,
+            third_level=third_level,
+            custom_third_level=custom_third_level,
+        )
+    except TaxonomyValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
     # Update main fields
     it.title = title
-    it.category = category
+    it.category = hierarchy["category"]
+    it.subcategory = hierarchy["subcategory"]
+    it.third_level = hierarchy["third_level"]
+    it.custom_third_level = hierarchy["custom_third_level"]
     it.description = description
     it.city = city
     it.website_url = normalized_website_url
@@ -840,14 +907,6 @@ def item_edit_post(
     it.currency = currency
     it.latitude = latitude or None
     it.longitude = longitude or None
-
-    # Subcategory
-    sub_name = None
-    if subcategory_id:
-        sc = db.query(Subcategory).filter(Subcategory.id == subcategory_id).first()
-        if sc:
-            sub_name = sc.name
-    it.subcategory = sub_name
 
     # Upload new images (optional)
     if images:
@@ -940,17 +999,10 @@ def item_new_get(
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    # Load categories from DB
+    # The payload is a server-produced view of the shared category tree.  It
+    # keeps levels 2/3 in one source instead of duplicating service lists in JS.
     categories_db = db.query(Category).order_by(Category.name.asc()).all()
-
-    # Load all subcategories once
-    subcats_db = db.query(Subcategory).all()
-
-    # Build dictionary: { category_id: [subcat, subcat, ...] }
-    subcats_map = {}
-    for s in subcats_db:
-        subcats_map.setdefault(s.category_id, [])
-        subcats_map[s.category_id].append({"id": s.id, "name": s.name})
+    taxonomy_payload = _taxonomy_form_payload(db, request)
 
     return request.app.templates.TemplateResponse(
         request=request,
@@ -958,8 +1010,9 @@ def item_new_get(
         context={
             "request": request,
             "title": "Add Item",
-            "categories": categories_db,     # full category objects
-            "subcats_map": subcats_map,     # dict for JS dynamic
+            "categories": categories_db,
+            "taxonomy_payload": taxonomy_payload,
+            "taxonomy_language": _taxonomy_language(request),
             "session_user": request.session.get("user"),
             "account_limited": is_account_limited(request),
             "website_error": website_error,
@@ -972,6 +1025,8 @@ def item_new_post(
 
     # Form fields
     subcategory_id: int | None = Form(None),
+    third_level: str = Form(""),
+    custom_third_level: str = Form(""),
     title: str = Form(...),
     category: str = Form(...),
     description: str = Form(""),
@@ -1014,14 +1069,18 @@ def item_new_post(
     if currency not in {"CAD", "USD", "EUR"}:
         currency = "CAD"
 
-    # ------------------------------
-    # GET SUBCATEGORY NAME FROM ID
-    # ------------------------------
-    subcat_name = None
-    if subcategory_id:
-        subcat = db.query(Subcategory).filter(Subcategory.id == subcategory_id).first()
-        if subcat:
-            subcat_name = subcat.name   # "Vans" for example
+    try:
+        hierarchy = resolve_listing_hierarchy(
+            db,
+            category_name=category,
+            subcategory_id=subcategory_id,
+            third_level=third_level,
+            custom_third_level=custom_third_level,
+        )
+    except TaxonomyValidationError as exc:
+        # Do not trust a manually altered form payload.  This validates both
+        # child-parent relationships and the configured third-level branch.
+        raise HTTPException(status_code=422, detail=str(exc))
 
     # ------------------------------
     # MULTI IMAGES UPLOAD HANDLING
@@ -1081,8 +1140,10 @@ def item_new_post(
         description=description,
         city=city,
         website_url=normalized_website_url,
-        category=category,          # example: Vehicles
-        subcategory=subcat_name,    # example: "Vans" instead of id (VERY IMPORTANT)
+        category=hierarchy["category"],
+        subcategory=hierarchy["subcategory"],
+        third_level=hierarchy["third_level"],
+        custom_third_level=hierarchy["custom_third_level"],
         is_active="yes",
         latitude=lat,
         longitude=lng,

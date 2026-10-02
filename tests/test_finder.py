@@ -55,7 +55,8 @@ def _bootstrap_schema(path: Path) -> None:
           city VARCHAR(120), currency VARCHAR(3), price NUMERIC,
           status VARCHAR(20), admin_feedback TEXT, reviewed_at TIMESTAMP,
           latitude REAL, longitude REAL, price_per_day INTEGER,
-          category VARCHAR(80), subcategory VARCHAR(120), image_path VARCHAR(500),
+          category VARCHAR(80), subcategory VARCHAR(120), third_level VARCHAR(160),
+          custom_third_level VARCHAR(200), image_path VARCHAR(500),
           is_active VARCHAR(10), created_at TIMESTAMP
         );
         CREATE TABLE bookings (
@@ -387,6 +388,62 @@ class FinderTests(unittest.TestCase):
             self.assertIn(716, _card_ids(search_rentable_listings(db, spec)))
         finally:
             db.close()
+
+    def test_global_search_matches_configured_and_custom_third_level_values(self) -> None:
+        """The normal Search endpoint must not stop at title/description."""
+        db = SessionLocal()
+        try:
+            db.add_all(
+                [
+                    Item(
+                        id=760,
+                        owner_id=703,
+                        title="Sports account",
+                        description="Rental access.",
+                        city="Montréal",
+                        currency="CAD",
+                        price=12,
+                        price_per_day=12,
+                        category="Digital Accounts",
+                        subcategory="Sports",
+                        third_level="beIN Sports",
+                        status="approved",
+                        is_active="yes",
+                    ),
+                    Item(
+                        id=761,
+                        owner_id=703,
+                        title="Streaming account",
+                        description="Rental access.",
+                        city="Montréal",
+                        currency="CAD",
+                        price=12,
+                        price_per_day=12,
+                        category="Digital Accounts",
+                        subcategory="Movies & Streaming",
+                        third_level="Other",
+                        custom_third_level="NewStreamingPlatform",
+                        status="approved",
+                        is_active="yes",
+                    ),
+                ]
+            )
+            db.commit()
+            # Keep this fixture aligned with the Finder's derived-index
+            # contract so later coverage assertions still exercise all public
+            # approved listings.
+            rebuild_listing_index(db)
+            db.commit()
+        finally:
+            db.close()
+
+        client = TestClient(main_module.app, base_url="http://testserver.local")
+        by_service = client.get("/api/search", params={"q": "beIN"})
+        self.assertEqual(by_service.status_code, 200)
+        self.assertIn(760, {row["id"] for row in by_service.json()["items"]})
+        by_custom_value = client.get("/api/search", params={"q": "NewStreaming"})
+        self.assertEqual(by_custom_value.status_code, 200)
+        self.assertIn(761, {row["id"] for row in by_custom_value.json()["items"]})
 
     def test_pagination_is_stable_and_does_not_duplicate_results(self) -> None:
         db = SessionLocal()

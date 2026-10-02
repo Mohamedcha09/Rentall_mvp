@@ -205,6 +205,7 @@
     .item-detail__rating-count { color: var(--detail-muted); font-weight: 650; }
     .item-detail__metadata { display: flex; flex-wrap: wrap; gap: 7px 14px; margin: 16px 0 0; color: var(--detail-muted); font-size: .91rem; line-height: 1.4; }
     .item-detail__metadata-item { display: inline-flex; align-items: center; min-width: 0; gap: 6px; overflow-wrap: anywhere; }
+    .item-detail__metadata-item strong { color: var(--detail-ink); font-size: .8em; font-weight: 780; }
     .item-detail__metadata-item + .item-detail__metadata-item::before { width: 1px; height: 15px; margin-right: 8px; background: var(--detail-line); content: ""; }
     .item-detail__metadata .item-detail__metadata-icon {
       position: relative;
@@ -540,9 +541,13 @@
             {% endif %}
           </div>
 
-          {% if item_category or item_city %}
+          {% if item_hierarchy or item_category or item_city %}
             <div class="item-detail__metadata" aria-label="Listing details">
-              {% if item_category %}
+              {% if item_hierarchy %}
+                {% for level in item_hierarchy %}
+                  <span class="item-detail__metadata-item"><i class="bi bi-tag-fill item-detail__metadata-icon" aria-hidden="true"></i><strong>{{ level.kind }}:</strong> {{ level.value }}</span>
+                {% endfor %}
+              {% elif item_category %}
                 <span class="item-detail__metadata-item"><i class="bi bi-tag-fill item-detail__metadata-icon" aria-hidden="true"></i>{{ item_category }}</span>
               {% endif %}
               {% if item_city %}

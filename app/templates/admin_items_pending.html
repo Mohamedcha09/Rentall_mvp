@@ -1,276 +1,229 @@
 {% extends "base.html" %}
 {% block content %}
-
 <style>
-
-    /* === ULTRA COMPACT CARD === */
-    .pending-card {
-        border-radius: 10px;
-        padding: 8px;                     /* أصغر */
-        margin-bottom: 12px;
-        background: #fff;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-        border: 1px solid #e6e6e6;
-
-        max-width: 480px;                 /* أصغر عرض ممكن */
-        margin-left: auto;
-        margin-right: auto;
-        box-sizing: border-box;
-        width: 100%;
-    }
-
-    h4 {
-        font-size: 14px;                  /* أصغر */
-        margin-bottom: 4px;
-        margin-top: 4px;
-    }
-
-    .small {
-        font-size: 11px !important;
-    }
-
-    .badge {
-        font-size: 10px;
-        padding: 3px 6px;
-    }
-
-    /* === OWNER BOX COMPACT === */
-    .owner-box {
-        background: #fafaff;
-        border: 1px solid #dcdcff;
-        padding: 6px 8px;                 /* أصغر */
-        border-radius: 6px;
-        margin-bottom: 6px;
-        font-size: 11px;                  /* أصغر */
-        line-height: 1.25;
-    }
-
-    .owner-box b {
-        font-size: 11px;
-    }
-
-    /* LABEL + TEXT */
-    .label {
-        font-weight: 600;
-        color: #444;
-        margin-bottom: 2px;
-        font-size: 12px;
-    }
-
-    .value {
-        color: #222;
-        font-size: 11px;
-        margin-bottom: 4px;
-        line-height: 1.3;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-    }
-
-    /* === IMAGES COMPACT GRID === */
-    .item-images-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); /* أصغر */
-        gap: 6px;
-        margin-top: 6px;
-    }
-
-    .item-images-grid img {
-        width: 100%;
-        height: 70px;                    /* أصغر */
-        object-fit: cover;
-        border-radius: 6px;
-        border: 1px solid #ddd;
-    }
-
-    .actions-row button {
-        padding: 3px 6px !important;
-        font-size: 11px !important;
-    }
-
-    .actions-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    .actions-row form {
-        margin: 0;
-    }
-
-    /* FEEDBACK */
-    .feedback-popup {
-        background: rgba(0,0,0,0.5);
-        position: fixed;
-        inset: 0;
-        padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
-        box-sizing: border-box;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-    }
-
-    .feedback-box {
-        background: #fff;
-        padding: 18px;
-        border-radius: 14px;
-        box-sizing: border-box;
-        width: min(90%, 360px);
-        max-width: 360px;
-        max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px);
-        overflow-y: auto;
-    }
-
-    #fbTitle {
-        font-size: 14px;
-        margin-bottom: 6px;
-    }
-
-    textarea {
-        font-size: 12px !important;
-    }
-
-    .btn-primary {
-        font-size: 12px !important;
-        padding: 6px 10px !important;
-    }
-
-    #fbTitle,
-    .owner-box,
-    h4 {
-        overflow-wrap: anywhere;
-        word-break: break-word;
-    }
-
-    @media (max-width: 360px) {
-        .pending-card {
-            padding: 8px;
-        }
-
-        .feedback-popup {
-            padding: 12px;
-        }
-
-        .feedback-box {
-            width: 100%;
-        }
-    }
-
+  /* Scoped admin review surface. Shared navigation, buttons and cards remain untouched. */
+  .admin-pending, .admin-pending *, .admin-pending *::before, .admin-pending *::after,
+  .admin-pending-modal, .admin-pending-modal *, .admin-pending-modal *::before, .admin-pending-modal *::after { box-sizing: border-box; }
+  .admin-pending {
+    --ap-ink: #18213e;
+    --ap-muted: #68708b;
+    --ap-line: rgba(77, 73, 130, .13);
+    --ap-surface: #fff;
+    --ap-lavender: #f6f4ff;
+    --ap-purple: #7354e8;
+    --ap-blue: #4f91f3;
+    width: min(100%, 1040px);
+    min-width: 0;
+    margin: 0 auto;
+    padding: max(18px, env(safe-area-inset-top, 0px)) 14px calc(42px + env(safe-area-inset-bottom, 0px));
+    color: var(--ap-ink);
+  }
+  .admin-pending__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    min-width: 0;
+    margin: 4px 0 22px;
+  }
+  .admin-pending__eyebrow { margin: 0 0 5px; color: var(--ap-purple); font-size: .75rem; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
+  .admin-pending__title { margin: 0; color: var(--ap-ink); font-size: clamp(1.35rem, 3.5vw, 2rem); letter-spacing: -.035em; font-weight: 850; }
+  .admin-pending__lead { max-width: 650px; margin: 7px 0 0; color: var(--ap-muted); line-height: 1.5; }
+  .admin-pending__count { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 7px 11px; color: #fff; background: linear-gradient(135deg, var(--ap-purple), var(--ap-blue)); border: 1px solid rgba(255,255,255,.72); border-radius: 999px; box-shadow: 0 8px 22px rgba(89, 78, 191, .16); font-size: .82rem; font-weight: 800; white-space: nowrap; }
+  .admin-pending__count strong { font-size: 1rem; }
+  .admin-pending__empty { padding: 28px 18px; color: var(--ap-muted); text-align: center; background: var(--ap-surface); border: 1px solid var(--ap-line); border-radius: 22px; box-shadow: 0 12px 28px rgba(34, 42, 78, .06); }
+  .admin-pending__list { display: grid; gap: 16px; min-width: 0; }
+  .admin-pending-card { min-width: 0; overflow: hidden; background: linear-gradient(145deg, #fff 0%, #fff 72%, #faf9ff 100%); border: 1px solid var(--ap-line); border-radius: 24px; box-shadow: 0 13px 30px rgba(37, 45, 86, .07); }
+  .admin-pending-card__body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding: clamp(15px, 2.5vw, 22px); }
+  .admin-pending-card__owner { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 11px; min-width: 0; padding: 10px 12px; background: var(--ap-lavender); border: 1px solid rgba(111, 82, 229, .12); border-radius: 16px; }
+  .admin-pending-card__avatar { display: grid; width: 42px; height: 42px; place-items: center; overflow: hidden; color: #fff; background: linear-gradient(135deg, var(--ap-purple), var(--ap-blue)); border-radius: 50%; font-weight: 850; }
+  .admin-pending-card__avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .admin-pending-card__owner-copy { min-width: 0; }
+  .admin-pending-card__owner-kicker { display: block; margin-bottom: 2px; color: var(--ap-muted); font-size: .72rem; font-weight: 750; }
+  .admin-pending-card__owner-name { overflow: hidden; color: var(--ap-ink); font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-pending-card__identity { display: flex; flex-wrap: wrap; gap: 5px 12px; min-width: 0; margin: 10px 0 0; color: var(--ap-muted); font-size: .82rem; }
+  .admin-pending-card__identity span { min-width: 0; overflow-wrap: anywhere; }
+  .admin-pending-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; }
+  .admin-pending-card__title { min-width: 0; margin: 0; color: var(--ap-ink); font-size: clamp(1.12rem, 2.4vw, 1.45rem); font-weight: 850; letter-spacing: -.025em; overflow-wrap: anywhere; }
+  .admin-pending-card__status { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; color: #755400; background: #fff6d7; border: 1px solid rgba(207, 155, 20, .26); border-radius: 999px; font-size: .75rem; font-weight: 850; white-space: nowrap; }
+  .admin-pending-card__hierarchy { display: flex; flex-wrap: wrap; gap: 7px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+  .admin-pending-card__hierarchy li { display: inline-flex; align-items: center; min-width: 0; gap: 5px; padding: 6px 9px; color: #3f347c; background: #f3efff; border: 1px solid rgba(112, 80, 227, .16); border-radius: 999px; font-size: .8rem; overflow-wrap: anywhere; }
+  .admin-pending-card__hierarchy li + li::before { margin-inline-end: 2px; color: #8067da; content: "→"; font-weight: 850; }
+  .admin-pending-card__hierarchy small { color: #756d9b; font-size: .69rem; font-weight: 800; }
+  .admin-pending-card__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .admin-pending-card__info { min-width: 0; padding: 11px 12px; background: #fbfcff; border: 1px solid rgba(61, 76, 121, .09); border-radius: 15px; }
+  .admin-pending-card__info-label { display: block; margin-bottom: 3px; color: var(--ap-muted); font-size: .72rem; font-weight: 800; letter-spacing: .02em; }
+  .admin-pending-card__info-value { display: block; color: var(--ap-ink); font-size: .9rem; font-weight: 730; overflow-wrap: anywhere; }
+  .admin-pending-card__section-title { margin: 0 0 7px; color: var(--ap-ink); font-size: .79rem; font-weight: 850; letter-spacing: .035em; text-transform: uppercase; }
+  .admin-pending-card__description { min-width: 0; padding: 12px; color: #343c57; background: #fafbff; border: 1px solid rgba(61, 76, 121, .09); border-radius: 15px; line-height: 1.52; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .admin-pending-card__gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 9px; min-width: 0; }
+  .admin-pending-card__image { display: block; aspect-ratio: 1 / 1; overflow: hidden; background: #edf0f8; border: 1px solid rgba(61, 76, 121, .11); border-radius: 14px; }
+  .admin-pending-card__image img { width: 100%; height: 100%; object-fit: cover; transition: transform .18s ease; }
+  .admin-pending-card__image:hover img { transform: scale(1.035); }
+  .admin-pending-card__no-images { padding: 13px; color: var(--ap-muted); background: #fafbff; border: 1px dashed var(--ap-line); border-radius: 15px; font-size: .88rem; }
+  .admin-pending-card__feedback { padding: 11px 12px; color: #725415; background: #fff9e8; border: 1px solid rgba(207, 155, 20, .24); border-radius: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+  .admin-pending-card__actions { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; padding: 13px clamp(15px, 2.5vw, 22px); background: rgba(247, 248, 255, .8); border-top: 1px solid var(--ap-line); }
+  .admin-pending-card__actions form { min-width: 0; margin: 0; }
+  .admin-pending-card__actions form .admin-pending-action { width: 100%; }
+  .admin-pending-action { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 9px 13px; border: 1px solid transparent; border-radius: 13px; font: inherit; font-size: .88rem; font-weight: 800; text-decoration: none; cursor: pointer; transition: transform .16s ease, box-shadow .16s ease, background .16s ease; }
+  .admin-pending-action:hover { transform: translateY(-1px); }
+  .admin-pending-action:focus-visible, .admin-pending-modal__close:focus-visible { outline: 3px solid rgba(84, 115, 243, .3); outline-offset: 2px; }
+  .admin-pending-action--approve { color: #fff; background: linear-gradient(135deg, #288e70, #41ae7e); box-shadow: 0 8px 18px rgba(34, 143, 107, .18); }
+  .admin-pending-action--feedback { color: #3d3470; background: #fff; border-color: rgba(101, 81, 194, .2); }
+  .admin-pending-action--delete { color: #b33749; background: #fff4f5; border-color: rgba(179, 55, 73, .2); }
+  .admin-pending-modal { position: fixed; z-index: 10000; inset: 0; display: none; align-items: center; justify-content: center; padding: max(14px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px); background: rgba(17, 24, 53, .48); }
+  .admin-pending-modal.is-open { display: flex; }
+  .admin-pending-modal__dialog { width: min(100%, 440px); max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 28px); overflow: auto; padding: 18px; background: #fff; border: 1px solid rgba(255,255,255,.65); border-radius: 20px; box-shadow: 0 24px 60px rgba(11, 20, 58, .28); }
+  .admin-pending-modal__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+  .admin-pending-modal__title { min-width: 0; margin: 0; color: var(--ap-ink); font-size: 1.05rem; font-weight: 850; overflow-wrap: anywhere; }
+  .admin-pending-modal__close { flex: 0 0 auto; width: 34px; height: 34px; padding: 0; color: var(--ap-muted); background: #f4f5fb; border: 0; border-radius: 50%; cursor: pointer; }
+  .admin-pending-modal textarea { min-height: 112px; resize: vertical; }
+  .admin-pending-modal__submit { width: 100%; margin-top: 12px; }
+  @media (min-width: 760px) {
+    .admin-pending-card__body { grid-template-columns: minmax(0, 1fr) minmax(300px, .9fr); align-items: start; }
+    .admin-pending-card__owner, .admin-pending-card__heading, .admin-pending-card__hierarchy, .admin-pending-card__grid, .admin-pending-card__description { grid-column: 1 / -1; }
+    .admin-pending-card__gallery-wrap { grid-column: 1; }
+    .admin-pending-card__description-wrap { grid-column: 2; }
+  }
+  @media (max-width: 440px) {
+    .admin-pending { padding-inline: 10px; }
+    .admin-pending__header { gap: 10px; }
+    .admin-pending__count { min-height: 32px; padding-inline: 9px; }
+    .admin-pending__count span { display: none; }
+    .admin-pending-card { border-radius: 20px; }
+    .admin-pending-card__body { padding: 14px; gap: 14px; }
+    .admin-pending-card__grid { grid-template-columns: 1fr; }
+    .admin-pending-card__actions { display: grid; grid-template-columns: 1fr 1fr; padding: 12px 14px; }
+    .admin-pending-action--feedback { grid-column: 1 / -1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .admin-pending *, .admin-pending *::before, .admin-pending *::after { scroll-behavior: auto !important; transition: none !important; } }
 </style>
 
-<div class="container py-2">
+<section class="admin-pending" lang="{{ admin_language }}" dir="{{ 'rtl' if admin_language == 'ar' else 'ltr' }}" aria-labelledby="pendingItemsTitle">
+  <header class="admin-pending__header">
+    <div>
+      <p class="admin-pending__eyebrow">SEVOR Admin</p>
+      <h1 class="admin-pending__title" id="pendingItemsTitle">{{ admin_copy.pending_items_review }}</h1>
+      <p class="admin-pending__lead">{{ admin_copy.pending_items_lead }}</p>
+    </div>
+    <div class="admin-pending__count" aria-label="{{ admin_copy.pending_count }}: {{ pending_count }}"><strong>{{ pending_count }}</strong><span>{{ admin_copy.pending_count }}</span></div>
+  </header>
 
-    <h3 class="mb-2" style="font-size:16px; text-align:center;">Pending Items Review</h3>
-
-    {% if items|length == 0 %}
-        <div class="alert alert-info text-center" style="font-size:13px;">No items waiting.</div>
-    {% endif %}
-
-    {% for it in items %}
-
-        <div class="pending-card">
-
-            <!-- OWNER INFO -->
-            <div class="owner-box">
-                <strong style="font-size:12px;">Owner:</strong><br>
-                <b>Name:</b> {{ it.owner.full_name if it.owner else "Unknown" }}<br>
-                <b>Email:</b> {{ it.owner.email if it.owner else "No email" }}<br>
-                <b>ID:</b> {{ it.owner.id if it.owner else "—" }}
-            </div>
-
-            <h4>{{ it.title }}</h4>
-
-            <div class="text-muted small mb-1">
-                📍 <b>{{ it.city or "No city" }}</b>
-            </div>
-
-            <div class="mb-1">
-                <span class="badge bg-primary">{{ it.category }}</span>
-                {% if it.subcategory %}
-                <span class="badge bg-info">{{ it.subcategory }}</span>
-                {% endif %}
-            </div>
-
-            <span class="badge bg-warning text-dark mb-2">Pending Review</span>
-
-            <!-- DESCRIPTION -->
-            <div class="label">Description:</div>
-            <div class="value">{{ it.description or "No description." }}</div>
-
-            <!-- PRICE -->
-            <div class="label">Price:</div>
-            <div class="value">{{ it.price }} {{ it.currency }}</div>
-
-            <!-- IMAGES -->
-            <div class="label mb-1">Images:</div>
-            <div class="item-images-grid">
-                {% if it.image_urls %}
-                    {% for img in it.image_urls %}
-                        <img src="{{ img }}">
-                    {% endfor %}
-                {% else %}
-                    <div class="text-muted small">No images.</div>
-                {% endif %}
-            </div>
-
-            {% if it.admin_feedback %}
-                <div class="alert alert-warning mt-2 py-1" style="font-size:11px;">
-                    <strong>Previous:</strong> {{ it.admin_feedback }}
+  {% if not items %}
+    <div class="admin-pending__empty">{{ admin_copy.no_pending_items }}</div>
+  {% else %}
+    <div class="admin-pending__list">
+      {% for it in items %}
+        {% set owner = it.owner %}
+        {% set owner_name = ((owner.first_name if owner else '') ~ ' ' ~ (owner.last_name if owner else ''))|trim %}
+        {% if not owner_name and owner and owner.company_name %}{% set owner_name = owner.company_name %}{% endif %}
+        {% set images = it.pending_image_urls or [] %}
+        <article class="admin-pending-card">
+          <div class="admin-pending-card__body">
+            <div class="admin-pending-card__owner">
+              <span class="admin-pending-card__avatar" aria-hidden="true">
+                {% if owner and owner.avatar_path %}<img src="{{ owner.avatar_path|media_url }}" alt="" loading="lazy" decoding="async">{% else %}{{ (owner_name or 'S')[:1]|upper }}{% endif %}
+              </span>
+              <div class="admin-pending-card__owner-copy">
+                <span class="admin-pending-card__owner-kicker">{{ admin_copy.owner }}</span>
+                <div class="admin-pending-card__owner-name">{{ owner_name or admin_copy.unknown }}</div>
+                <div class="admin-pending-card__identity">
+                  {% if owner and owner.email %}<span>{{ admin_copy.email }}: {{ owner.email }}</span>{% endif %}
+                  {% if owner %}<span>{{ admin_copy.user_id }}: {{ owner.id }}</span>{% endif %}
+                  {% if owner and owner.account_type %}<span>{{ admin_copy.account_type }}: {{ owner.account_type|title }}</span>{% endif %}
                 </div>
+              </div>
+            </div>
+
+            <div class="admin-pending-card__heading">
+              <h2 class="admin-pending-card__title">{{ it.title }}</h2>
+              <span class="admin-pending-card__status"><i class="bi bi-hourglass-split" aria-hidden="true"></i>{{ admin_copy.pending_review }}</span>
+            </div>
+
+            {% if it.taxonomy_hierarchy %}
+              <ol class="admin-pending-card__hierarchy" aria-label="{{ admin_copy.listing_category_hierarchy }}">
+                {% for level in it.taxonomy_hierarchy %}<li><small>{{ level.kind }}</small><span>{{ level.value }}</span></li>{% endfor %}
+              </ol>
             {% endif %}
 
-            <!-- ACTION BUTTONS -->
-            <div class="actions-row mt-2">
-
-                <form method="post" action="/admin/items/{{ it.id }}/approve" style="display:inline;">
-                    <button class="btn btn-success btn-sm">Approve</button>
-                </form>
-
-                <form method="post" action="/admin/items/{{ it.id }}/delete" style="display:inline;">
-                    <button class="btn btn-danger btn-sm">Delete</button>
-                </form>
-
-                <button class="btn btn-secondary btn-sm"
-                        onclick="openFeedback({{ it.id }}, '{{ it.title }}')">
-                    Feedback
-                </button>
-
+            <div class="admin-pending-card__grid">
+              <div class="admin-pending-card__info"><span class="admin-pending-card__info-label">{{ admin_copy.location }}</span><span class="admin-pending-card__info-value">{{ it.city or '—' }}</span></div>
+              <div class="admin-pending-card__info"><span class="admin-pending-card__info-label">{{ admin_copy.price }}</span><span class="admin-pending-card__info-value">{{ it.price }} {{ it.currency }} {{ admin_copy.per_day }}</span></div>
+              {% if it.created_at %}<div class="admin-pending-card__info"><span class="admin-pending-card__info-label">{{ admin_copy.created }}</span><span class="admin-pending-card__info-value">{{ it.created_at.strftime('%Y-%m-%d') }}</span></div>{% endif %}
             </div>
 
-        </div>
+            <section class="admin-pending-card__gallery-wrap" aria-label="{{ admin_copy.images }}">
+              <h3 class="admin-pending-card__section-title">{{ admin_copy.images }}</h3>
+              {% if images %}
+                <div class="admin-pending-card__gallery">
+                  {% for image in images if image %}
+                    <a class="admin-pending-card__image" href="{{ image|media_url }}" target="_blank" rel="noopener noreferrer"><img src="{{ image|media_url }}" alt="{{ it.title }} — {{ admin_copy.image }} {{ loop.index }}" loading="lazy" decoding="async"></a>
+                  {% endfor %}
+                </div>
+              {% else %}<div class="admin-pending-card__no-images">{{ admin_copy.no_images }}</div>{% endif %}
+            </section>
 
-    {% endfor %}
+            <section class="admin-pending-card__description-wrap">
+              <h3 class="admin-pending-card__section-title">{{ admin_copy.description }}</h3>
+              <div class="admin-pending-card__description">{{ it.description or '—' }}</div>
+            </section>
 
-</div>
-
-<!-- FEEDBACK POPUP -->
-<div id="feedbackPopup" class="feedback-popup">
-    <div class="feedback-box">
-        <h5 id="fbTitle"></h5>
-
-        <form id="fbForm" method="post">
-            <textarea name="feedback"
-                      class="form-control mb-2"
-                      placeholder="Write message..."
-                      rows="4"></textarea>
-
-            <button class="btn btn-primary w-100">Send</button>
-        </form>
-
-        <button onclick="closeFeedback()" class="btn btn-light w-100 mt-2" style="font-size:12px;">Cancel</button>
+            {% if it.admin_feedback %}<div class="admin-pending-card__feedback"><strong>{{ admin_copy.feedback }}:</strong> {{ it.admin_feedback }}</div>{% endif %}
+          </div>
+          <footer class="admin-pending-card__actions">
+            <form method="post" action="/admin/items/{{ it.id }}/approve"><button class="admin-pending-action admin-pending-action--approve" type="submit"><i class="bi bi-check2-circle" aria-hidden="true"></i>&nbsp;{{ admin_copy.approve }}</button></form>
+            <button class="admin-pending-action admin-pending-action--feedback" type="button" data-feedback-id="{{ it.id }}" data-feedback-title="{{ it.title }}"><i class="bi bi-chat-square-text" aria-hidden="true"></i>&nbsp;{{ admin_copy.feedback }}</button>
+            <form method="post" action="/admin/items/{{ it.id }}/delete" data-delete-form><button class="admin-pending-action admin-pending-action--delete" type="submit"><i class="bi bi-trash3" aria-hidden="true"></i>&nbsp;{{ admin_copy.delete }}</button></form>
+          </footer>
+        </article>
+      {% endfor %}
     </div>
+  {% endif %}
+</section>
+
+<div class="admin-pending-modal" id="feedbackPopup" aria-hidden="true">
+  <section class="admin-pending-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
+    <div class="admin-pending-modal__top"><h2 class="admin-pending-modal__title" id="feedbackTitle"></h2><button class="admin-pending-modal__close" type="button" data-feedback-close aria-label="{{ admin_copy.cancel }}"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+    <form id="feedbackForm" method="post">
+      <label class="visually-hidden" for="feedbackText">{{ admin_copy.feedback }}</label>
+      <textarea class="form-control" id="feedbackText" name="feedback" rows="5" required></textarea>
+      <button class="admin-pending-action admin-pending-action--approve admin-pending-modal__submit" type="submit">{{ admin_copy.send_feedback }}</button>
+    </form>
+    <button class="admin-pending-action admin-pending-action--feedback w-100 mt-2" type="button" data-feedback-close>{{ admin_copy.cancel }}</button>
+  </section>
 </div>
 
 <script>
-function openFeedback(id, title) {
-    document.getElementById("feedbackPopup").style.display = "flex";
-    document.getElementById("fbTitle").innerText = "Feedback for: " + title;
-    document.getElementById("fbForm").action = "/admin/items/" + id + "/reject";
-}
-
-function closeFeedback() {
-    document.getElementById("feedbackPopup").style.display = "none";
-}
+(() => {
+  const modal = document.getElementById('feedbackPopup');
+  const title = document.getElementById('feedbackTitle');
+  const form = document.getElementById('feedbackForm');
+  const field = document.getElementById('feedbackText');
+  const feedbackLabel = {{ admin_copy.feedback | tojson }};
+  let lastTrigger = null;
+  const close = () => {
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    if (field) field.value = '';
+    lastTrigger?.focus();
+  };
+  document.querySelectorAll('[data-feedback-id]').forEach((button) => button.addEventListener('click', () => {
+    if (!modal || !form || !title) return;
+    lastTrigger = button;
+    title.textContent = `${feedbackLabel}: ${button.dataset.feedbackTitle || ''}`;
+    form.action = `/admin/items/${button.dataset.feedbackId}/reject`;
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    window.setTimeout(() => field?.focus(), 0);
+  }));
+  document.querySelectorAll('[data-feedback-close]').forEach((button) => button.addEventListener('click', close));
+  modal?.addEventListener('click', (event) => { if (event.target === modal) close(); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && modal?.classList.contains('is-open')) close(); });
+  const deleteCopy = {{ admin_copy.delete_confirm | tojson }};
+  document.querySelectorAll('[data-delete-form]').forEach((formElement) => formElement.addEventListener('submit', (event) => {
+    if (!window.confirm(deleteCopy)) event.preventDefault();
+  }));
+})();
 </script>
-
 {% endblock %}

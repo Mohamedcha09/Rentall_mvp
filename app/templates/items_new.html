@@ -843,7 +843,7 @@
         </div>
 
         <div class="listing-create__field" data-field>
-          <label class="listing-create__label" for="catSelect">Category</label>
+          <label class="listing-create__label" for="catSelect">{{ taxonomy_payload['labels']['category'] }}</label>
           <select
             class="listing-create__control"
             id="catSelect"
@@ -853,16 +853,17 @@
             data-error-target="categoryError"
             data-error-message="Choose a category."
           >
-            <option value="">Select category</option>
+            <option value="">{{ taxonomy_payload['labels']['select_category'] }}</option>
             {% for cat in categories %}
-              <option value="{{ cat.name }}" data-id="{{ cat.id }}">{{ cat.name }}</option>
+              {% set catalog_category = taxonomy_payload.categories | selectattr('id', 'equalto', cat.id) | list | first %}
+              <option value="{{ cat.name }}" data-id="{{ cat.id }}">{{ catalog_category.label if catalog_category else cat.name }}</option>
             {% endfor %}
           </select>
           <p class="listing-create__error" id="categoryError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
         </div>
 
         <div class="listing-create__field" data-field>
-          <label class="listing-create__label" for="subSelect">Subcategory</label>
+          <label class="listing-create__label" id="subSelectLabel" for="subSelect">{{ taxonomy_payload['labels']['subcategory'] }}</label>
           <select
             class="listing-create__control"
             id="subSelect"
@@ -873,10 +874,46 @@
             data-error-target="subcategoryError"
             data-error-message="Choose a subcategory."
           >
-            <option value="">Select a category first</option>
+            <option value="">{{ taxonomy_payload['labels']['select_category_first'] }}</option>
           </select>
-          <div class="listing-create__helper-row"><span id="subcategoryHelp">Available after you choose a category.</span></div>
+          <div class="listing-create__helper-row"><span id="subcategoryHelp">{{ taxonomy_payload['labels']['subcategory_help'] }}</span></div>
           <p class="listing-create__error" id="subcategoryError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        </div>
+
+        <div class="listing-create__field" id="thirdLevelField" data-field hidden>
+          <label class="listing-create__label" id="thirdLevelLabel" for="thirdLevelSelect">{{ taxonomy_payload['labels']['service_platform'] }}</label>
+          <select
+            class="listing-create__control"
+            id="thirdLevelSelect"
+            name="third_level"
+            disabled
+            aria-disabled="true"
+            aria-describedby="thirdLevelHelp thirdLevelError"
+            data-error-target="thirdLevelError"
+            data-error-message="Choose a valid service."
+          >
+            <option value="">{{ taxonomy_payload['labels']['select_level2_first'] }}</option>
+          </select>
+          <div class="listing-create__helper-row"><span id="thirdLevelHelp"></span></div>
+          <p class="listing-create__error" id="thirdLevelError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        </div>
+
+        <div class="listing-create__field" id="customThirdLevelField" data-field hidden>
+          <label class="listing-create__label" for="customThirdLevel">{{ taxonomy_payload['labels']['custom_service'] }}</label>
+          <input
+            class="listing-create__control"
+            type="text"
+            id="customThirdLevel"
+            name="custom_third_level"
+            maxlength="200"
+            disabled
+            aria-disabled="true"
+            autocomplete="off"
+            data-error-target="customThirdLevelError"
+            data-error-message="Enter the service name."
+          >
+          <div class="listing-create__helper-row"><span>{{ taxonomy_payload['labels']['custom_service_help'] }}</span></div>
+          <p class="listing-create__error" id="customThirdLevelError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
         </div>
 
         <div class="listing-create__field listing-create__field--wide" data-field>
@@ -1104,6 +1141,13 @@
   const titleCount = document.getElementById('titleCount');
   const catSelect = document.getElementById('catSelect');
   const subSelect = document.getElementById('subSelect');
+  const subSelectLabel = document.getElementById('subSelectLabel');
+  const thirdLevelField = document.getElementById('thirdLevelField');
+  const thirdLevelLabel = document.getElementById('thirdLevelLabel');
+  const thirdLevelSelect = document.getElementById('thirdLevelSelect');
+  const thirdLevelHelp = document.getElementById('thirdLevelHelp');
+  const customThirdLevelField = document.getElementById('customThirdLevelField');
+  const customThirdLevelInput = document.getElementById('customThirdLevel');
   const websiteInput = document.getElementById('websiteUrlNew');
   const noWebsite = document.getElementById('noWebsiteNew');
   const cityInput = document.getElementById('cityNew');
@@ -1121,7 +1165,9 @@
   const submitButton = document.getElementById('submitListingButton');
   const submitLabel = submitButton?.querySelector('[data-submit-label]');
   const submitSpinner = submitButton?.querySelector('[data-submit-spinner]');
-  const subcatsMap = {{ subcats_map | tojson }};
+  const taxonomy = {{ taxonomy_payload | tojson }};
+  const taxonomyCategories = Array.isArray(taxonomy.categories) ? taxonomy.categories : [];
+  const taxonomyLabels = taxonomy.labels || {};
 
   const MAX_CLIENT_IMAGES = 10;
   const allowedImageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
@@ -1200,15 +1246,72 @@
   noWebsite?.addEventListener('change', syncWebsiteInput);
   syncWebsiteInput();
 
+  function selectedCategory() {
+    const selectedOption = catSelect?.options[catSelect.selectedIndex];
+    return taxonomyCategories.find((category) => String(category.id) === String(selectedOption?.dataset.id || '')) || null;
+  }
+
+  function resetCustomThirdLevel() {
+    if (!customThirdLevelField || !customThirdLevelInput) return;
+    customThirdLevelField.hidden = true;
+    customThirdLevelInput.value = '';
+    customThirdLevelInput.disabled = true;
+    customThirdLevelInput.required = false;
+    customThirdLevelInput.setAttribute('aria-disabled', 'true');
+    clearFieldError(customThirdLevelInput);
+  }
+
+  function resetThirdLevel(category = selectedCategory()) {
+    if (!thirdLevelField || !thirdLevelSelect) return;
+    thirdLevelField.hidden = true;
+    thirdLevelSelect.replaceChildren(new Option(category?.level3_placeholder || taxonomyLabels.select_level2_first || 'Select a type first', ''));
+    thirdLevelSelect.disabled = true;
+    thirdLevelSelect.required = false;
+    thirdLevelSelect.setAttribute('aria-disabled', 'true');
+    if (thirdLevelHelp) thirdLevelHelp.textContent = '';
+    clearFieldError(thirdLevelSelect);
+    resetCustomThirdLevel();
+  }
+
+  function updateCustomThirdLevel() {
+    if (!customThirdLevelField || !customThirdLevelInput || !thirdLevelSelect) return;
+    const isOther = thirdLevelSelect.value === 'Other';
+    customThirdLevelField.hidden = !isOther;
+    customThirdLevelInput.disabled = !isOther;
+    customThirdLevelInput.required = isOther;
+    customThirdLevelInput.setAttribute('aria-disabled', String(!isOther));
+    if (!isOther) {
+      customThirdLevelInput.value = '';
+      clearFieldError(customThirdLevelInput);
+    }
+  }
+
+  function updateThirdLevels() {
+    const category = selectedCategory();
+    const subcategory = category?.subcategories?.find((sub) => String(sub.id) === String(subSelect?.value || ''));
+    const levels = Array.isArray(subcategory?.third_levels) ? subcategory.third_levels : [];
+    resetThirdLevel(category);
+    if (!category || !subcategory || !levels.length || !thirdLevelField || !thirdLevelSelect) return;
+
+    thirdLevelField.hidden = false;
+    if (thirdLevelLabel) thirdLevelLabel.textContent = category.level_labels?.level3 || taxonomyLabels.service_platform || 'Service / Platform';
+    thirdLevelSelect.replaceChildren(new Option(taxonomyLabels.select_service || 'Select service / platform', ''));
+    levels.forEach((level) => thirdLevelSelect.append(new Option(level.label || level.name, level.name)));
+    thirdLevelSelect.disabled = false;
+    thirdLevelSelect.required = true;
+    thirdLevelSelect.setAttribute('aria-disabled', 'false');
+    if (thirdLevelHelp) thirdLevelHelp.textContent = taxonomyLabels.service_help || 'Choose the service or platform for this type.';
+  }
+
   function updateSubcategories() {
     if (!catSelect || !subSelect) return;
-    const selectedOption = catSelect.options[catSelect.selectedIndex];
-    const categoryId = selectedOption?.dataset.id || '';
-    const subcategories = Array.isArray(subcatsMap[categoryId]) ? subcatsMap[categoryId] : [];
-
+    const category = selectedCategory();
+    const subcategories = Array.isArray(category?.subcategories) ? category.subcategories : [];
+    resetThirdLevel(category);
     subSelect.replaceChildren();
-    if (!categoryId) {
-      subSelect.append(new Option('Select a category first', ''));
+    if (subSelectLabel) subSelectLabel.textContent = category?.level_labels?.level2 || taxonomyLabels.subcategory || 'Subcategory';
+    if (!category) {
+      subSelect.append(new Option(taxonomyLabels.select_category_first || 'Select a category first', ''));
       subSelect.disabled = true;
       subSelect.required = false;
       subSelect.setAttribute('aria-disabled', 'true');
@@ -1217,7 +1320,7 @@
     }
 
     if (!subcategories.length) {
-      subSelect.append(new Option('No subcategories available', ''));
+      subSelect.append(new Option(taxonomyLabels.no_subcategories || 'No subcategories available', ''));
       subSelect.disabled = true;
       subSelect.required = false;
       subSelect.setAttribute('aria-disabled', 'true');
@@ -1225,16 +1328,17 @@
       return;
     }
 
-    subSelect.append(new Option('Select subcategory', ''));
-    subcategories.forEach((subcategory) => {
-      subSelect.append(new Option(subcategory.name, String(subcategory.id)));
-    });
+    const placeholder = category.level2_placeholder || taxonomyLabels.select_subcategory || 'Select subcategory';
+    subSelect.append(new Option(placeholder, ''));
+    subcategories.forEach((subcategory) => subSelect.append(new Option(subcategory.label || subcategory.name, String(subcategory.id))));
     subSelect.disabled = false;
     subSelect.required = true;
     subSelect.setAttribute('aria-disabled', 'false');
   }
 
   catSelect?.addEventListener('change', updateSubcategories);
+  subSelect?.addEventListener('change', updateThirdLevels);
+  thirdLevelSelect?.addEventListener('change', updateCustomThirdLevel);
   updateSubcategories();
 
   function setLocationStatus(message, state) {

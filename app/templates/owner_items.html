@@ -886,7 +886,7 @@
           {% set is_enabled = (it.is_active or '')|lower == 'yes' %}
           {% set is_live = status == 'approved' and is_enabled %}
           {% set is_inactive = status == 'approved' and not is_enabled %}
-          {% set category_name = it.subcategory or it.category_label or it.category or 'Other' %}
+          {% set category_name = it.taxonomy_display or it.subcategory or it.category_label or it.category or 'Other' %}
           {% set images = it.image_urls or [] %}
           {% set listing_image = images[0] if images else it.image_path %}
           {% if listing_image %}

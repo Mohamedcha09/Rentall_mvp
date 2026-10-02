@@ -259,11 +259,12 @@ img.edit-thumb {
 
   <!-- Category -->
   <div class="mb-3">
-    <label class="form-label">Category</label>
+    <label class="form-label">{{ taxonomy_payload['labels']['category'] }}</label>
     <select class="form-select" id="catSelect" name="category" required>
       {% for cat in categories %}
-        <option value="{{ cat.name }}" {% if cat.name == item.category %}selected{% endif %}>
-          {{ cat.name }}
+        {% set catalog_category = taxonomy_payload.categories | selectattr('id', 'equalto', cat.id) | list | first %}
+        <option value="{{ cat.name }}" data-id="{{ cat.id }}" {% if cat.name == item.category %}selected{% endif %}>
+          {{ catalog_category.label if catalog_category else cat.name }}
         </option>
       {% endfor %}
     </select>
@@ -271,7 +272,7 @@ img.edit-thumb {
 
   <!-- Subcategory -->
   <div class="mb-3">
-    <label class="form-label">Subcategory</label>
+    <label class="form-label" id="subSelectLabel">{{ taxonomy_payload['labels']['subcategory'] }}</label>
     <select class="form-select" id="subSelect" name="subcategory_id">
       {% for sc in subcategories %}
         <option value="{{ sc.id }}"
@@ -280,6 +281,20 @@ img.edit-thumb {
         </option>
       {% endfor %}
     </select>
+  </div>
+
+  <div class="mb-3" id="thirdLevelField" hidden>
+    <label class="form-label" id="thirdLevelLabel" for="thirdLevelSelect">{{ taxonomy_payload['labels']['service_platform'] }}</label>
+    <select class="form-select" id="thirdLevelSelect" name="third_level" disabled aria-disabled="true">
+      <option value="">{{ taxonomy_payload['labels']['select_level2_first'] }}</option>
+    </select>
+    <div class="form-text" id="thirdLevelHelp"></div>
+  </div>
+
+  <div class="mb-3" id="customThirdLevelField" hidden>
+    <label class="form-label" for="customThirdLevel">{{ taxonomy_payload['labels']['custom_service'] }}</label>
+    <input type="text" class="form-control" id="customThirdLevel" name="custom_third_level" maxlength="200" disabled aria-disabled="true">
+    <div class="form-text">{{ taxonomy_payload['labels']['custom_service_help'] }}</div>
   </div>
 
   <!-- Description -->
@@ -406,6 +421,120 @@ document.getElementById('imgInput').addEventListener('change', function(){
 
     noWebsite.addEventListener('change', syncWebsiteInput);
     syncWebsiteInput();
+})();
+
+(() => {
+    const categorySelect = document.getElementById('catSelect');
+    const subcategorySelect = document.getElementById('subSelect');
+    const subcategoryLabel = document.getElementById('subSelectLabel');
+    const thirdField = document.getElementById('thirdLevelField');
+    const thirdLabel = document.getElementById('thirdLevelLabel');
+    const thirdSelect = document.getElementById('thirdLevelSelect');
+    const thirdHelp = document.getElementById('thirdLevelHelp');
+    const customField = document.getElementById('customThirdLevelField');
+    const customInput = document.getElementById('customThirdLevel');
+    const taxonomy = {{ taxonomy_payload | tojson }};
+    const categories = Array.isArray(taxonomy.categories) ? taxonomy.categories : [];
+    const labels = taxonomy.labels || {};
+    const initial = {
+        subcategory: {{ (item.subcategory or '') | tojson }},
+        thirdLevel: {{ (item.third_level or '') | tojson }},
+        customThirdLevel: {{ (item.custom_third_level or '') | tojson }},
+    };
+
+    if (!categorySelect || !subcategorySelect || !thirdSelect || !thirdField || !customField || !customInput) return;
+
+    function selectedCategory() {
+        const option = categorySelect.options[categorySelect.selectedIndex];
+        return categories.find((category) => String(category.id) === String(option?.dataset.id || '')) || null;
+    }
+
+    function resetCustom() {
+        customField.hidden = true;
+        customInput.value = '';
+        customInput.disabled = true;
+        customInput.required = false;
+        customInput.setAttribute('aria-disabled', 'true');
+    }
+
+    function resetThird(category = selectedCategory()) {
+        thirdField.hidden = true;
+        thirdSelect.replaceChildren(new Option(category?.level3_placeholder || labels.select_level2_first || 'Select a type first', ''));
+        thirdSelect.disabled = true;
+        thirdSelect.required = false;
+        thirdSelect.setAttribute('aria-disabled', 'true');
+        if (thirdHelp) thirdHelp.textContent = '';
+        resetCustom();
+    }
+
+    function updateCustom() {
+        const show = thirdSelect.value === 'Other';
+        customField.hidden = !show;
+        customInput.disabled = !show;
+        customInput.required = show;
+        customInput.setAttribute('aria-disabled', String(!show));
+        if (!show) customInput.value = '';
+    }
+
+    function updateThird(preserve) {
+        const category = selectedCategory();
+        const subcategory = category?.subcategories?.find((sub) => String(sub.id) === String(subcategorySelect.value || ''));
+        const levels = Array.isArray(subcategory?.third_levels) ? subcategory.third_levels : [];
+        resetThird(category);
+        if (!category || !subcategory || !levels.length) return;
+
+        thirdField.hidden = false;
+        if (thirdLabel) thirdLabel.textContent = category.level_labels?.level3 || labels.service_platform || 'Service / Platform';
+        thirdSelect.replaceChildren(new Option(labels.select_service || 'Select service / platform', ''));
+        levels.forEach((level) => thirdSelect.append(new Option(level.label || level.name, level.name)));
+        thirdSelect.disabled = false;
+        thirdSelect.required = true;
+        thirdSelect.setAttribute('aria-disabled', 'false');
+        if (thirdHelp) thirdHelp.textContent = labels.service_help || 'Choose the service or platform for this type.';
+        if (preserve && levels.some((level) => level.name === initial.thirdLevel)) {
+            thirdSelect.value = initial.thirdLevel;
+            updateCustom();
+            if (thirdSelect.value === 'Other') customInput.value = initial.customThirdLevel;
+        }
+    }
+
+    function updateSubcategories(preserve) {
+        const category = selectedCategory();
+        const subcategories = Array.isArray(category?.subcategories) ? category.subcategories : [];
+        resetThird(category);
+        subcategorySelect.replaceChildren();
+        if (subcategoryLabel) subcategoryLabel.textContent = category?.level_labels?.level2 || labels.subcategory || 'Subcategory';
+        if (!category) {
+            subcategorySelect.append(new Option(labels.select_category_first || 'Select a category first', ''));
+            subcategorySelect.disabled = true;
+            subcategorySelect.required = false;
+            subcategorySelect.setAttribute('aria-disabled', 'true');
+            return;
+        }
+        if (!subcategories.length) {
+            subcategorySelect.append(new Option(labels.no_subcategories || 'No subcategories available', ''));
+            subcategorySelect.disabled = true;
+            subcategorySelect.required = false;
+            subcategorySelect.setAttribute('aria-disabled', 'true');
+            return;
+        }
+        const placeholder = category.level2_placeholder || labels.select_subcategory || 'Select subcategory';
+        subcategorySelect.append(new Option(placeholder, ''));
+        subcategories.forEach((subcategory) => subcategorySelect.append(new Option(subcategory.label || subcategory.name, String(subcategory.id))));
+        subcategorySelect.disabled = false;
+        subcategorySelect.required = true;
+        subcategorySelect.setAttribute('aria-disabled', 'false');
+        if (preserve) {
+            const selected = subcategories.find((subcategory) => subcategory.name === initial.subcategory);
+            if (selected) subcategorySelect.value = String(selected.id);
+        }
+        updateThird(preserve);
+    }
+
+    categorySelect.addEventListener('change', () => updateSubcategories(false));
+    subcategorySelect.addEventListener('change', () => updateThird(false));
+    thirdSelect.addEventListener('change', updateCustom);
+    updateSubcategories(true);
 })();
 </script>
 

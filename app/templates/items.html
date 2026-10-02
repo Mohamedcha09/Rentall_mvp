@@ -3,6 +3,7 @@
 {% macro category_icon(name) -%}
   {% set key = (name or '')|lower %}
   {% if 'elect' in key %}<i class="bi bi-laptop" aria-hidden="true"></i>
+  {% elif 'digital' in key or 'numer' in key or 'رقمي' in key %}<i class="bi bi-cloud-check" aria-hidden="true"></i>
   {% elif 'home' in key or 'living' in key %}<i class="bi bi-lamp" aria-hidden="true"></i>
   {% elif 'vehicle' in key or 'car' in key %}<i class="bi bi-car-front" aria-hidden="true"></i>
   {% elif 'tool' in key %}<i class="bi bi-wrench-adjustable" aria-hidden="true"></i>
@@ -628,16 +629,16 @@
 
     <nav class="explore-sellerbar" aria-label="Seller type">
       <a class="explore-seller" {% if (current_seller or 'all') == 'all' %}aria-current="page"{% endif %}
-         href="/items?seller=all{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
+         href="/items?seller=all{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if current_service %}&amp;service={{ current_service|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
         <i class="bi bi-people-fill" aria-hidden="true"></i><span>All sellers</span>
       </a>
       <span class="explore-sellerbar__separator" aria-hidden="true"></span>
       <a class="explore-seller" {% if (current_seller or 'all') == 'company' %}aria-current="page"{% endif %}
-         href="/items?seller=company{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
+         href="/items?seller=company{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if current_service %}&amp;service={{ current_service|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
         <i class="bi bi-buildings" aria-hidden="true"></i><span>Companies</span>
       </a>
       <a class="explore-seller" {% if (current_seller or 'all') == 'individual' %}aria-current="page"{% endif %}
-         href="/items?seller=individual{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
+         href="/items?seller=individual{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if current_service %}&amp;service={{ current_service|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
         <i class="bi bi-person" aria-hidden="true"></i><span>Individuals</span>
       </a>
     </nav>
@@ -651,7 +652,7 @@
     {% for cat in categories %}
       <a class="explore-category" {% if current_category == cat.name %}aria-current="page"{% endif %}
          href="/items?category={{ cat.name|urlencode }}&amp;seller={{ (current_seller or 'all')|urlencode }}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
-        {{ category_icon(cat.name) }}<span class="explore-category__label">{{ cat.name }}</span>
+        {{ category_icon(cat.name) }}<span class="explore-category__label">{{ taxonomy_label(cat.name, taxonomy_language) }}</span>
       </a>
     {% endfor %}
   </nav>
@@ -665,6 +666,15 @@
     </nav>
   {% endif %}
 
+  {% if current_category and current_sub and third_levels %}
+    <nav class="explore-subcategories" aria-label="{{ current_sub }} services">
+      {% for service in third_levels %}
+        <a class="explore-subcategory" {% if current_service == service.name %}aria-current="page"{% endif %}
+           href="/items?category={{ current_category|urlencode }}&amp;sub={{ current_sub|urlencode }}&amp;service={{ service.name|urlencode }}&amp;seller={{ (current_seller or 'all')|urlencode }}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">{{ service.name }}</a>
+      {% endfor %}
+    </nav>
+  {% endif %}
+
   <form id="itemsLocForm" class="explore-location-form" action="/items" method="get" role="search">
     <i class="bi bi-search" aria-hidden="true"></i>
     <div class="explore-location-form__field">
@@ -674,6 +684,7 @@
     </div>
     {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
     {% if current_sub %}<input type="hidden" name="sub" value="{{ current_sub }}">{% endif %}
+    {% if current_service %}<input type="hidden" name="service" value="{{ current_service }}">{% endif %}
     <input type="hidden" name="seller" value="{{ current_seller or 'all' }}">
     {% if current_sort and current_sort != 'random' %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
     <input id="itemsLat" type="hidden" name="lat" value="{{ lat if lat is not none else '' }}">
@@ -691,7 +702,7 @@
     {% else %}
       <h2>Popular near you</h2>
     {% endif %}
-    {% if current_category or current_sub or selected_city or (current_seller or 'all') != 'all' %}
+    {% if current_category or current_sub or current_service or selected_city or (current_seller or 'all') != 'all' %}
       <a href="/items?seller=all">See all <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
     {% endif %}
   </div>
