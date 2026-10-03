@@ -124,6 +124,7 @@ Digital Accounts → Movies & Streaming → Amazon Prime Video
 
 - Existing listing strings are never rewritten by the rental expansion.
 - Declared legacy L1 aliases (`vehicle`, `housing`, `electronics`, `furniture`, `clothing`, `tools`, `sports`, `Sports Equipment`, `books`) resolve to their new presentation/tree parent only for lookup, display, search, and validation. Their stored values remain intact.
+- A legacy L1-only item such as `vehicle` remains editable without a forced L2 after that parent gains children. This Edit-only compatibility path requires the unchanged, equivalent parent and blank child fields; it preserves the raw stored value rather than guessing a new branch. It also tolerates a single canonical lookup parent when a legacy alias row is absent, while ambiguous lookup matches fail closed. New or moved paths persist the resolved lookup-row value rather than a browser-supplied alias.
 - A pre-existing `Vehicles → Cars` listing with no L3 remains editable on the unchanged path. It is shown under Vehicles and Cars, but it does not falsely match a chosen L3 such as Sports Cars.
 - New creates and edits that move into a configured three-level branch must select a valid L3.
 - Moving from a three-level branch to a two-level branch clears `third_level` and `custom_third_level` atomically.
@@ -156,8 +157,8 @@ Sources were consulted on 2026-10-03. They demonstrate that these are actual ren
 | `app/rental_catalog.py` | New immutable-in-process central rental definition, labels, aliases, topology safeguards, and seed contract. |
 | `app/catalog_taxonomy.py` | Merges the rental tree with Digital Accounts; provides one validation/presentation/translation path, including generic `Other` labels. |
 | `db_migrations/versions/20261004_expand_rental_catalog.py` | New additive static L1/L2 seed migration, revision `rental_catalog_20261004` after `digital_catalog_20261003`; no Item rewrite or deletion. |
-| `app/items.py` | Preserves unchanged legacy two-level edit paths while requiring L3 for new/moved configured paths. |
-| `app/templates/items_new.html` / `items_edit.html` | Data-driven labels, progressive L3 behavior, and accessible client-side option filters for long lists. |
+| `app/items.py` | Preserves unchanged legacy one- and two-level edit paths while requiring L2/L3 for new or moved configured paths; Explore reads compatible L1 aliases without rewriting rows. |
+| `app/templates/items_new.html` / `items_edit.html` | Data-driven labels and L3 prompts, progressive behavior, localized generic validation copy, and accessible client-side option filters that preserve a selected native option. |
 | `app/finder_service.py` / `app/routes_finder.py` | Finder reads configured plus lookup taxonomy, including zero-listing categories, without per-category rules. |
 | `app/routes_search.py` | Search resolves exact EN/FR/AR taxonomy labels and legacy L1 aliases against structured taxonomy fields. |
 | `tests/test_rental_catalog.py`, `tests/test_item_taxonomy.py`, `tests/test_item_taxonomy_route_flow.py` | Topology, compatibility, migration, and full route-flow regression coverage. |
@@ -168,14 +169,14 @@ The migration has an immutable tuple snapshot rather than importing mutable appl
 
 All database tests used temporary SQLite files, never `app.db`, `database.db`, or a production connection.
 
-- `tests.test_rental_catalog`: 4 passing checks for no missing parent, no duplicate sibling, depth at most 3, translation presence, aliases, and L1/L2 seed contract.
-- `tests.test_item_taxonomy`: 8 passing checks for server validation, forged relationships, Digital Accounts, `Other`, representative rental branches, and legacy blank-L3 compatibility.
+- `tests.test_rental_catalog`: 5 passing checks for no missing parent, no duplicate sibling, depth at most 3, translation presence, aliases, and an immutable L1/L2 migration-seed contract.
+- `tests.test_item_taxonomy`: 9 passing checks for every Create-form payload node in EN/FR/AR, every resolver path, forged relationships, Digital Accounts, `Other`, representative rental branches, alias normalization, and legacy blank-L3 compatibility.
 - `tests.test_item_taxonomy_route_flow`: 3 passing isolated migrations/HTTP flows.
 - `tests.test_finder`: 30 passing isolated checks for configured zero-listing branches, lookup-table additions, localized taxonomy matching, and legacy category compatibility.
 - Complete Create-form coverage audit: with all central lookup rows seeded in an isolated SQLite database, the real `_taxonomy_form_payload` exposed exactly 21 L1, 121 L2, and 701 L3 values in English, French, and Arabic. The real resolver accepted all 25 two-level paths and all 701 third-level values; the 96 parent-scoped `Other` choices required and retained a custom name.
-- Combined focused run: 45 tests passed in 17.120 seconds with `DATABASE_URL` explicitly set to an in-memory SQLite URL; no checked-in or production database was targeted.
+- Combined focused run: 47 tests passed in 17.440 seconds with `DATABASE_URL` explicitly set to an in-memory SQLite URL; no checked-in or production database was targeted.
 - The end-to-end flow runs: migration → Create → persisted Item → Pending → Admin approval → Explore L1/L2/L3 filters → Details → Edit.
-- Route examples include School Buses, Popcorn Machines, a non-Digital `Other` custom value, a two-level Housing branch, Digital Accounts → Amazon Prime Video, and an old untyped Cars listing.
+- Route examples include School Buses, Popcorn Machines, a non-Digital `Other` custom value, a two-level Housing branch, Digital Accounts → Amazon Prime Video, an old untyped Cars listing, and an L1-only legacy `vehicle` listing viewed under canonical Vehicles, retained after a validation-error re-render, and saved unchanged after Edit.
 - Create and Explore are asserted to render seeded zero-listing categories.
 - Jinja templates were parsed successfully after the changes.
 
@@ -194,3 +195,5 @@ No Git write command, Render deployment, production migration, production restar
 ## I. Out-of-scope observation
 
 The focused test run emitted `python-dotenv could not parse statement starting at line 18` while reading the existing local `.env`. It did not expose a value and did not prevent the isolated taxonomy tests from passing. It is unrelated to taxonomy and was intentionally not changed.
+
+The legacy Home rails still read `app/utils.py:CATEGORIES` through `app/main.py`; that is a separate older, two-level presentation list (`vehicle`, `housing`, and similar aliases). It is not used by Create, Edit, Admin, Explore, Search, or Finder, so it cannot hide or invalidate a new listing in the flow tested here. It was intentionally not changed by this Create/Explore-focused task; it should be consolidated separately if Home is expected to browse the complete expanded catalog.

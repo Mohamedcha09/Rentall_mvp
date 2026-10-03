@@ -89,6 +89,7 @@ class ItemTaxonomyCatalogTests(unittest.TestCase):
         self.assertEqual(digital["label"], "الحسابات الرقمية")
         self.assertIn("beIN Sports", [row["name"] for row in digital["subcategories"][0]["third_levels"]])
         self.assertEqual(digital["level2_placeholder"], "اختر النوع الرقمي")
+        self.assertEqual(digital["level3_select_placeholder"], "اختر الخدمة / المنصة")
 
     def test_generic_taxonomy_concepts_translate_without_changing_internal_values(self):
         """FR/AR labels must never create locale-specific database values."""
@@ -125,6 +126,7 @@ class ItemTaxonomyCatalogTests(unittest.TestCase):
         self.assertEqual(category["level_labels"]["level2"], "Type")
         self.assertEqual(category["level2_placeholder"], "Select type")
         self.assertEqual(category["level3_placeholder"], "Select a type first")
+        self.assertEqual(category["level3_select_placeholder"], "Select type")
         self.assertEqual(
             [row["name"] for row in category["subcategories"][0]["third_levels"]],
             ["Lift Pass", OTHER_VALUE],
@@ -166,6 +168,13 @@ class ItemTaxonomyCatalogTests(unittest.TestCase):
 
         for language in ("en", "fr", "ar"):
             payload = catalog_tree_payload(categories, subcategories, language)
+            for copy_key in (
+                "choose_category",
+                "choose_subcategory",
+                "choose_type",
+                "enter_custom_type",
+            ):
+                self.assertTrue(payload["labels"][copy_key])
             by_category = {category["name"]: category for category in payload["categories"]}
             self.assertEqual(set(by_category), expected_category_names)
             self.assertEqual(
@@ -246,7 +255,7 @@ conn.close()
 
 from app.database import SessionLocal
 from app.models import Category, Subcategory
-from app.catalog_taxonomy import TaxonomyValidationError, resolve_listing_hierarchy
+from app.catalog_taxonomy import CATEGORY_TREE, OTHER_VALUE, TaxonomyValidationError, resolve_listing_hierarchy
 import app.items as item_routes
 
 # Listing-index work is covered independently.  This isolates the real form
@@ -262,19 +271,104 @@ try:
     digital = Category(name="Digital Accounts")
     baby = Category(name="Baby & Kids")
     vehicles = Category(name="Vehicles")
+    legacy_vehicle = Category(name="vehicle")
     food = Category(name="Food & Concession Equipment")
     housing = Category(name="Housing & Stays")
-    db.add_all([digital, baby, vehicles, food, housing])
+    db.add_all([digital, baby, vehicles, legacy_vehicle, food, housing])
     db.flush()
     sports = Subcategory(category_id=digital.id, name="Sports")
     movies = Subcategory(category_id=digital.id, name="Movies & Streaming")
     seats = Subcategory(category_id=baby.id, name="Car Seats")
     buses = Subcategory(category_id=vehicles.id, name="Buses")
     cars = Subcategory(category_id=vehicles.id, name="Cars")
+    legacy_vehicle_cars = Subcategory(category_id=legacy_vehicle.id, name="Cars")
     popcorn = Subcategory(category_id=food.id, name="Popcorn Equipment")
     parking = Subcategory(category_id=housing.id, name="Parking & Storage")
-    db.add_all([sports, movies, seats, buses, cars, popcorn, parking])
+    db.add_all([sports, movies, seats, buses, cars, legacy_vehicle_cars, popcorn, parking])
     db.commit()
+
+    # The old lookup parent can remain as the alias `vehicle`, while newer
+    # L2 choices are attached to it.  A title-only edit of an L1-only item
+    # must remain possible without inventing a Cars/L3 classification.
+    legacy_l1 = resolve_listing_hierarchy(
+        db,
+        category_name="vehicle",
+        subcategory_id=None,
+        third_level="",
+        custom_third_level="",
+        legacy_blank_path=("vehicle", None),
+    )
+    assert legacy_l1 == {
+        "category": "vehicle", "subcategory": None,
+        "third_level": None, "custom_third_level": None,
+    }
+
+    # Expand the isolated lookup rows to the complete central tree.  This is
+    # intentionally data-driven: a future category/branch added to the
+    # catalog must be accepted by the same resolver that the POST handler
+    # uses, without adding a special test branch or route condition.
+    all_subcategory_ids = {}
+    for category_name, branches in CATEGORY_TREE.items():
+        category = db.query(Category).filter(Category.name == category_name).first()
+        if category is None:
+            category = Category(name=category_name)
+            db.add(category)
+            db.flush()
+        for subcategory_name in branches:
+            subcategory = (
+                db.query(Subcategory)
+                .filter(
+                    Subcategory.category_id == category.id,
+                    Subcategory.name == subcategory_name,
+                )
+                .first()
+            )
+            if subcategory is None:
+                subcategory = Subcategory(category_id=category.id, name=subcategory_name)
+                db.add(subcategory)
+                db.flush()
+            all_subcategory_ids[(category_name, subcategory_name)] = subcategory.id
+    db.commit()
+
+    two_level_paths = 0
+    third_level_values = 0
+    for category_name, branches in CATEGORY_TREE.items():
+        for subcategory_name, third_levels in branches.items():
+            subcategory_id = all_subcategory_ids[(category_name, subcategory_name)]
+            if not third_levels:
+                resolved = resolve_listing_hierarchy(
+                    db,
+                    category_name=category_name,
+                    subcategory_id=subcategory_id,
+                    third_level="",
+                    custom_third_level="",
+                )
+                assert resolved == {
+                    "category": category_name,
+                    "subcategory": subcategory_name,
+                    "third_level": None,
+                    "custom_third_level": None,
+                }
+                two_level_paths += 1
+                continue
+            for third_level in third_levels:
+                custom_name = "Catalog-specific other" if third_level == OTHER_VALUE else ""
+                resolved = resolve_listing_hierarchy(
+                    db,
+                    category_name=category_name,
+                    subcategory_id=subcategory_id,
+                    third_level=third_level,
+                    custom_third_level=custom_name,
+                )
+                assert resolved == {
+                    "category": category_name,
+                    "subcategory": subcategory_name,
+                    "third_level": third_level,
+                    "custom_third_level": custom_name or None,
+                }
+                third_level_values += 1
+    assert two_level_paths == 25
+    assert third_level_values == 701
 
     normal = resolve_listing_hierarchy(
         db, category_name="Baby & Kids", subcategory_id=seats.id,
@@ -326,6 +420,18 @@ try:
         third_level="", custom_third_level="",
     )
     assert new_two_level == {
+        "category": "Housing & Stays", "subcategory": "Parking & Storage",
+        "third_level": None, "custom_third_level": None,
+    }
+
+    # A browser may send an accepted legacy L1 alias even when the lookup
+    # table has only its canonical parent.  New paths must persist the lookup
+    # value, not the caller-controlled alias spelling.
+    normalized_alias = resolve_listing_hierarchy(
+        db, category_name="housing", subcategory_id=parking.id,
+        third_level="", custom_third_level="",
+    )
+    assert normalized_alias == {
         "category": "Housing & Stays", "subcategory": "Parking & Storage",
         "third_level": None, "custom_third_level": None,
     }
@@ -465,6 +571,43 @@ try:
     db.refresh(legacy_item)
     assert (legacy_item.category, legacy_item.subcategory, legacy_item.third_level, legacy_item.custom_third_level) == (
         "Vehicles", "Cars", None, None,
+    )
+
+    legacy_l1_item = item_routes.Item(
+        owner_id=41,
+        title="Legacy vehicle",
+        description="Created before this category gained subcategories",
+        city="Montréal",
+        currency="CAD",
+        price=10,
+        price_per_day=10,
+        category="vehicle",
+        subcategory=None,
+        status="approved",
+        is_active="yes",
+    )
+    db.add(legacy_l1_item)
+    db.commit()
+    item_routes.item_edit_post(
+        Request(), legacy_l1_item.id, db,
+        title="Legacy vehicle updated",
+        category="vehicle",
+        subcategory_id=None,
+        third_level="",
+        custom_third_level="",
+        description="Only title changed",
+        city="Montréal",
+        website_url="",
+        no_website=True,
+        price="10",
+        currency="CAD",
+        images=None,
+        latitude="",
+        longitude="",
+    )
+    db.refresh(legacy_l1_item)
+    assert (legacy_l1_item.category, legacy_l1_item.subcategory, legacy_l1_item.third_level, legacy_l1_item.custom_third_level) == (
+        "vehicle", None, None, None,
     )
 finally:
     db.close()
@@ -681,6 +824,7 @@ with TestClient(main_module.app) as client:
             self.assertIn("third_levels", template)
             self.assertIn("level2_placeholder", template)
             self.assertIn("level3_placeholder", template)
+            self.assertIn("level3_select_placeholder", template)
             self.assertIn("const selectedValue = select.value", template)
             self.assertIn("const keepSelected = option.value === selectedValue", template)
         self.assertIn("&amp;service=", explore)

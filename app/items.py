@@ -31,6 +31,8 @@ from .utils_badges import get_user_badges
 from .models import Category, Subcategory
 from .catalog_taxonomy import (
     TaxonomyValidationError,
+    canonical_rental_category,
+    category_storage_values,
     catalog_tree_payload,
     listing_hierarchy,
     normalize_language,
@@ -54,6 +56,23 @@ def _taxonomy_form_payload(db: Session, request: Request) -> dict:
     categories = db.query(Category).order_by(Category.name.asc()).all()
     subcategories = db.query(Subcategory).order_by(Subcategory.name.asc()).all()
     return catalog_tree_payload(categories, subcategories, _taxonomy_language(request))
+
+
+def _taxonomy_selected_category_value(taxonomy_payload: dict, requested_value: str | None) -> str:
+    """Map a legacy stored L1 spelling to one visible form option, if unique.
+
+    It is presentation-only.  The Edit resolver receives the original item
+    path separately and preserves it when the owner leaves that legacy path
+    unchanged.
+    """
+    requested = str(requested_value or "").strip()
+    categories = taxonomy_payload.get("categories", []) if isinstance(taxonomy_payload, dict) else []
+    names = [str(category.get("name", "") or "") for category in categories]
+    if requested in names:
+        return requested
+    canonical = canonical_rental_category(requested)
+    matches = [name for name in names if canonical_rental_category(name) == canonical]
+    return matches[0] if len(matches) == 1 else requested
 
 
 def _render_item_new_form(
@@ -101,13 +120,44 @@ def _render_item_edit_form(
     status_code: int = 200,
 ):
     """Render Edit Listing with the same taxonomy payload as Create Listing."""
+    taxonomy_payload = _taxonomy_form_payload(db, request)
+    submitted_category = (form_values or {}).get("category", getattr(item, "category", ""))
+    stored_category = str(getattr(item, "category", "") or "").strip()
+    submitted_category_text = str(submitted_category or "").strip()
+    # An error re-render can carry a canonical visible value (``Vehicles``)
+    # while a pre-expansion Item retains its historical alias (``vehicle``).
+    # Compare their taxonomy identity, not raw spelling, so an unrelated form
+    # error does not suddenly make a missing legacy child required.
+    legacy_category_unchanged = bool(
+        stored_category
+        and submitted_category_text
+        and canonical_rental_category(stored_category)
+        == canonical_rental_category(submitted_category_text)
+    )
+    legacy_blank_subcategory = bool(
+        legacy_category_unchanged
+        and not str(getattr(item, "subcategory", "") or "").strip()
+        and not str(getattr(item, "third_level", "") or "").strip()
+        and not str(getattr(item, "custom_third_level", "") or "").strip()
+    )
+    legacy_blank_third_level = bool(
+        legacy_category_unchanged
+        and not str(getattr(item, "third_level", "") or "").strip()
+        and not str(getattr(item, "custom_third_level", "") or "").strip()
+    )
     return request.app.templates.TemplateResponse(
         request=request,
         name="items_edit.html",
         context={
             "request": request,
             "item": item,
-            "taxonomy_payload": _taxonomy_form_payload(db, request),
+            "taxonomy_payload": taxonomy_payload,
+            "taxonomy_selected_category": _taxonomy_selected_category_value(
+                taxonomy_payload,
+                submitted_category,
+            ),
+            "taxonomy_legacy_blank_subcategory": legacy_blank_subcategory,
+            "taxonomy_legacy_blank_third_level": legacy_blank_third_level,
             "taxonomy_language": _taxonomy_language(request),
             "session_user": request.session.get("user"),
             "website_error": website_error,
@@ -507,12 +557,18 @@ def items_list(
     # LOAD SUBCATEGORIES CORRECTLY
     # =======================
     subcategories_db = []
+    compatible_category_rows = []
     if category:
-        cat_obj = db.query(Category).filter(Category.name == category).first()
-        if cat_obj:
+        compatible_values = {value.casefold() for value in category_storage_values(category)}
+        compatible_category_rows = [
+            category_row
+            for category_row in categories_db
+            if str(category_row.name or "").casefold() in compatible_values
+        ]
+        if compatible_category_rows:
             subcategories_db = (
                 db.query(Subcategory)
-                .filter(Subcategory.category_id == cat_obj.id)
+                .filter(Subcategory.category_id.in_([category_row.id for category_row in compatible_category_rows]))
                 .order_by(Subcategory.name.asc())
                 .all()
             )
@@ -542,7 +598,8 @@ def items_list(
     # Filter by category (by canonical stored name).  Third-level filtering is
     # optional and is only exposed when the selected category/type has services.
     if category:
-        q = q.filter(Item.category == category)
+        compatible_values = [value.casefold() for value in category_storage_values(category)]
+        q = q.filter(func.lower(Item.category).in_(compatible_values))
 
         # Filter by subcategory
         sub = request.query_params.get("sub")

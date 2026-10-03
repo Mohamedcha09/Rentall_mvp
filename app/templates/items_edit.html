@@ -267,7 +267,7 @@ img.edit-thumb {
     <input class="form-control mb-2" type="search" id="categoryTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_categories'] }}" placeholder="{{ taxonomy_payload['labels']['filter_categories'] }}">
     <select class="form-select" id="catSelect" name="category" required>
       {% for catalog_category in taxonomy_payload.categories %}
-        <option value="{{ catalog_category.name }}" data-id="{{ catalog_category.id }}" {% if catalog_category.name == form_values.get('category', item.category) %}selected{% endif %}>
+        <option value="{{ catalog_category.name }}" data-id="{{ catalog_category.id }}" {% if catalog_category.name == taxonomy_selected_category %}selected{% endif %}>
           {{ catalog_category.label }}
         </option>
       {% endfor %}
@@ -281,6 +281,7 @@ img.edit-thumb {
     <select class="form-select" id="subSelect" name="subcategory_id">
       <option value="">{{ taxonomy_payload['labels']['select_category_first'] }}</option>
     </select>
+    <div class="form-text" id="subcategoryHelp"></div>
   </div>
 
   <div class="mb-3" id="thirdLevelField" hidden>
@@ -430,6 +431,7 @@ document.getElementById('imgInput').addEventListener('change', function(){
     const subcategorySelect = document.getElementById('subSelect');
     const subcategoryFilter = document.getElementById('subcategoryTaxonomyFilter');
     const subcategoryLabel = document.getElementById('subSelectLabel');
+    const subcategoryHelp = document.getElementById('subcategoryHelp');
     const thirdField = document.getElementById('thirdLevelField');
     const thirdLabel = document.getElementById('thirdLevelLabel');
     const thirdSelect = document.getElementById('thirdLevelSelect');
@@ -442,12 +444,13 @@ document.getElementById('imgInput').addEventListener('change', function(){
     const categories = Array.isArray(taxonomy.categories) ? taxonomy.categories : [];
     const labels = taxonomy.labels || {};
     const initial = {
-        category: {{ form_values.get('category', item.category) | tojson }},
+        category: {{ taxonomy_selected_category | tojson }},
         subcategoryId: {{ form_values.get('subcategory_id', '') | tojson }},
         subcategory: {{ form_values.get('subcategory', item.subcategory or '') | tojson }},
         thirdLevel: {{ form_values.get('third_level', item.third_level or '') | tojson }},
         customThirdLevel: {{ form_values.get('custom_third_level', item.custom_third_level or '') | tojson }},
-        legacyBlankThirdLevel: {{ ((not item.third_level and not item.custom_third_level and form_values.get('category', item.category) == item.category) | tojson) }},
+        legacyBlankSubcategory: {{ taxonomy_legacy_blank_subcategory | tojson }},
+        legacyBlankThirdLevel: {{ taxonomy_legacy_blank_third_level | tojson }},
     };
 
     if (!categorySelect || !subcategorySelect || !thirdSelect || !thirdField || !customField || !customInput) return;
@@ -522,7 +525,7 @@ document.getElementById('imgInput').addEventListener('change', function(){
         thirdField.hidden = false;
         if (thirdLabel) thirdLabel.textContent = category.level_labels?.level3 || labels.service_platform || 'Service / Platform';
         if (customLabel) customLabel.textContent = category.level_labels?.custom_level3 || labels.custom_service || 'Custom Service Name';
-        thirdSelect.replaceChildren(new Option(labels.select_service || 'Select service / platform', ''));
+        thirdSelect.replaceChildren(new Option(category.level3_select_placeholder || labels.select_type || 'Select type', ''));
         levels.forEach((level) => thirdSelect.append(new Option(level.label || level.name, level.name)));
         refreshTaxonomyFilter(thirdFilter, thirdSelect);
         thirdSelect.disabled = false;
@@ -563,6 +566,7 @@ document.getElementById('imgInput').addEventListener('change', function(){
             subcategorySelect.disabled = true;
             subcategorySelect.required = false;
             subcategorySelect.setAttribute('aria-disabled', 'true');
+            if (subcategoryHelp) subcategoryHelp.textContent = '';
             return;
         }
         if (!subcategories.length) {
@@ -570,6 +574,7 @@ document.getElementById('imgInput').addEventListener('change', function(){
             subcategorySelect.disabled = true;
             subcategorySelect.required = false;
             subcategorySelect.setAttribute('aria-disabled', 'true');
+            if (subcategoryHelp) subcategoryHelp.textContent = '';
             return;
         }
         const placeholder = category.level2_placeholder || labels.select_subcategory || 'Select subcategory';
@@ -577,8 +582,18 @@ document.getElementById('imgInput').addEventListener('change', function(){
         subcategories.forEach((subcategory) => subcategorySelect.append(new Option(subcategory.label || subcategory.name, String(subcategory.id))));
         refreshTaxonomyFilter(subcategoryFilter, subcategorySelect);
         subcategorySelect.disabled = false;
-        subcategorySelect.required = true;
+        const preserveLegacyBlankSubcategory = Boolean(
+            preserve
+            && initial.legacyBlankSubcategory
+            && category.name === initial.category
+        );
+        subcategorySelect.required = !preserveLegacyBlankSubcategory;
         subcategorySelect.setAttribute('aria-disabled', 'false');
+        if (subcategoryHelp) {
+            subcategoryHelp.textContent = preserveLegacyBlankSubcategory
+                ? (labels.legacy_subcategory_help || 'This existing listing has no subcategory selected; you may keep it unchanged or choose one.')
+                : '';
+        }
         if (preserve) {
             const selected = initial.subcategoryId
                 ? subcategories.find((subcategory) => String(subcategory.id) === String(initial.subcategoryId))

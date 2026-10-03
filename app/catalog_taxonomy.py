@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 from .rental_catalog import (
+    RENTAL_CATEGORY_ALIASES,
     RENTAL_CATEGORY_PRESENTATION,
     RENTAL_CATEGORY_TREE,
     RENTAL_VALUE_LABELS,
@@ -188,6 +189,7 @@ _COPY: dict[str, dict[str, str]] = {
         "enter_custom_type": "Enter a custom type name.",
         "type_help": "Choose the most specific type for this group.",
         "legacy_type_help": "This existing listing has no type selected; you may keep it unchanged or choose a type.",
+        "legacy_subcategory_help": "This existing listing has no subcategory selected; you may keep it unchanged or choose one.",
         "filter_categories": "Find a category",
         "filter_subcategories": "Find a subcategory",
         "filter_types": "Find a type",
@@ -256,6 +258,7 @@ _COPY: dict[str, dict[str, str]] = {
         "enter_custom_type": "Saisissez un nom de type personnalisé.",
         "type_help": "Choisissez le type le plus précis pour ce groupe.",
         "legacy_type_help": "Cette annonce existante n’a pas de type sélectionné; vous pouvez la conserver telle quelle ou choisir un type.",
+        "legacy_subcategory_help": "Cette annonce existante n’a pas de sous-catégorie sélectionnée; vous pouvez la conserver telle quelle ou en choisir une.",
         "filter_categories": "Trouver une catégorie",
         "filter_subcategories": "Trouver une sous-catégorie",
         "filter_types": "Trouver un type",
@@ -324,6 +327,7 @@ _COPY: dict[str, dict[str, str]] = {
         "enter_custom_type": "أدخل اسم نوع مخصص.",
         "type_help": "اختر النوع الأكثر تحديدًا لهذه المجموعة.",
         "legacy_type_help": "هذا الإعلان الحالي لا يحتوي على نوع محدد؛ يمكنك إبقاؤه كما هو أو اختيار نوع.",
+        "legacy_subcategory_help": "هذا الإعلان الحالي لا يحتوي على فئة فرعية محددة؛ يمكنك إبقاؤه كما هو أو اختيار فئة.",
         "filter_categories": "ابحث عن فئة",
         "filter_subcategories": "ابحث عن فئة فرعية",
         "filter_types": "ابحث عن نوع",
@@ -486,6 +490,35 @@ def taxonomy_label(value: Any, language: str | None = None) -> str:
     return _VALUE_LABELS.get(canonical, {}).get(language, raw)
 
 
+def category_storage_values(category_name: str | None) -> tuple[str, ...]:
+    """Return canonical plus known legacy spellings for a stored L1 value.
+
+    Lookup tables and newly created listings may use a canonical category
+    spelling, while pre-taxonomy Items can retain a legacy alias such as
+    ``vehicle``.  This helper is intentionally limited to L1 aliases and is
+    used for read/display compatibility; it never rewrites an Item row.
+    """
+    raw = str(category_name or "").strip()
+    if not raw:
+        return ()
+    canonical = canonical_rental_category(raw)
+    values: list[str] = [raw, canonical]
+    values.extend(
+        alias
+        for alias, mapped_category in RENTAL_CATEGORY_ALIASES.items()
+        if mapped_category == canonical
+    )
+    unique: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        value = str(value or "").strip()
+        key = value.casefold()
+        if value and key not in seen:
+            seen.add(key)
+            unique.append(value)
+    return tuple(unique)
+
+
 def third_levels_for(
     category_name: str | None,
     subcategory_name: str | None,
@@ -530,6 +563,18 @@ def category_level3_placeholder(category_name: str | None, language: str | None 
     """Return the progressive-disclosure hint without assuming Digital Accounts."""
     presentation = CATEGORY_LEVEL_PRESENTATION.get(canonical_rental_category(category_name), {})
     key = "select_type_first" if presentation.get("level2") == "digital_type" else "select_level2_first"
+    return ui_copy(key, language)
+
+
+def category_level3_select_placeholder(category_name: str | None, language: str | None = None) -> str:
+    """Return the prompt for an enabled third-level select.
+
+    The disabled control needs a "choose level two first" hint, while the
+    enabled control needs a prompt matching its own meaning.  Digital
+    Accounts therefore says Service / Platform; rental branches say Type.
+    """
+    presentation = CATEGORY_LEVEL_PRESENTATION.get(canonical_rental_category(category_name), {})
+    key = "select_service" if presentation.get("level3") == "service_platform" else "select_type"
     return ui_copy(key, language)
 
 
@@ -583,6 +628,7 @@ def catalog_tree_payload(categories: Iterable[Any], subcategories: Iterable[Any]
                 "level_labels": category_level_labels(name, language),
                 "level2_placeholder": category_level2_placeholder(name, language),
                 "level3_placeholder": category_level3_placeholder(name, language),
+                "level3_select_placeholder": category_level3_select_placeholder(name, language),
                 "subcategories": subs_by_category.get(category_id, []),
             }
         )
@@ -645,10 +691,10 @@ def resolve_listing_hierarchy(
     its actual parent.  A generic level-three field is allowed only for a
     configured branch, and a free text value is accepted only after the
     explicit ``Other`` choice.  ``legacy_blank_path`` is used exclusively by
-    Edit to preserve an existing two-level listing after a new L3 catalog is
-    introduced under its unchanged parent.  New listings never receive that
-    exception.  The returned canonical values are ready to be persisted on
-    ``Item``.
+    Edit to preserve an existing one- or two-level listing after new children
+    are introduced under its unchanged parent.  New listings never receive
+    that exception.  The returned values are ready to be persisted on
+    ``Item`` without silently rewriting a legacy stored category spelling.
     """
     # Imported lazily so Alembic can import the central data module without
     # loading application models while rendering an offline migration.
@@ -659,6 +705,30 @@ def resolve_listing_hierarchy(
         raise TaxonomyValidationError("Choose a valid category.")
     category = db.query(Category).filter(Category.name == category_name).first()
     if category is None:
+        # Be resilient to a partially migrated lookup table: an old Item may
+        # store ``vehicle`` while the lookup parent is now ``Vehicles``.  A
+        # single known equivalent parent is safe; ambiguous matches fail
+        # closed just like a forged category value.
+        from sqlalchemy import func
+
+        compatible_names = [value.casefold() for value in category_storage_values(category_name)]
+        matches = (
+            db.query(Category)
+            .filter(func.lower(Category.name).in_(compatible_names))
+            .all()
+            if compatible_names
+            else []
+        )
+        category = matches[0] if len(matches) == 1 else None
+    if category is None:
+        raise TaxonomyValidationError("The selected category is not available.")
+    # Persist the lookup row's own stable value, never an equivalent spelling
+    # supplied by the browser.  For example, a legacy ``vehicle`` submission
+    # may resolve to the ``Vehicles`` row; a new listing must then store
+    # ``Vehicles``.  The explicitly unchanged legacy Edit branches below are
+    # the only place where an old raw Item value is intentionally preserved.
+    resolved_category_name = str(getattr(category, "name", "") or "").strip()
+    if not resolved_category_name:
         raise TaxonomyValidationError("The selected category is not available.")
 
     try:
@@ -676,31 +746,58 @@ def resolve_listing_hierarchy(
         if subcategory is None:
             raise TaxonomyValidationError("The selected subcategory does not belong to this category.")
 
+    legacy_category = str(legacy_blank_path[0] or "").strip() if legacy_blank_path else ""
+    legacy_subcategory = (
+        str(legacy_blank_path[1] or "").strip() or None
+        if legacy_blank_path
+        else None
+    )
+    same_legacy_category = bool(
+        legacy_category
+        and canonical_rental_category(category_name)
+        == canonical_rental_category(legacy_category)
+    )
+    submitted_third = str(third_level or "").strip()
+    submitted_custom = str(custom_third_level or "").strip()
+
     available_subcategories = db.query(Subcategory.id).filter(Subcategory.category_id == category.id).first()
     if available_subcategories is not None and subcategory is None:
+        # A listing saved before this category gained L2 choices may honestly
+        # have only its L1 value.  Edit passes its original path explicitly;
+        # preserve that exact stored value only while the owner leaves the
+        # taxonomy unchanged.  New creates and moved/forged paths still must
+        # choose a real child.
+        if (
+            same_legacy_category
+            and legacy_subcategory is None
+            and not submitted_third
+            and not submitted_custom
+        ):
+            return {
+                "category": legacy_category,
+                "subcategory": None,
+                "third_level": None,
+                "custom_third_level": None,
+            }
         raise TaxonomyValidationError("Choose a valid subcategory.")
 
     canonical_subcategory = str(getattr(subcategory, "name", "") or "").strip() or None
-    valid_third_levels = third_levels_for(category_name, canonical_subcategory)
-    submitted_third = str(third_level or "").strip()
-    submitted_custom = str(custom_third_level or "").strip()
+    valid_third_levels = third_levels_for(resolved_category_name, canonical_subcategory)
 
     if not valid_third_levels:
         if submitted_third or submitted_custom:
             raise TaxonomyValidationError("This category does not use a service level.")
         return {
-            "category": category_name,
+            "category": resolved_category_name,
             "subcategory": canonical_subcategory,
             "third_level": None,
             "custom_third_level": None,
         }
 
     if not submitted_third and not submitted_custom and legacy_blank_path is not None:
-        legacy_category = str(legacy_blank_path[0] or "").strip()
-        legacy_subcategory = str(legacy_blank_path[1] or "").strip() or None
-        if category_name == legacy_category and canonical_subcategory == legacy_subcategory:
+        if same_legacy_category and canonical_subcategory == legacy_subcategory:
             return {
-                "category": category_name,
+                "category": legacy_category,
                 "subcategory": canonical_subcategory,
                 "third_level": None,
                 "custom_third_level": None,
@@ -717,7 +814,7 @@ def resolve_listing_hierarchy(
         raise TaxonomyValidationError("A custom service name is allowed only after choosing Other.")
 
     return {
-        "category": category_name,
+        "category": resolved_category_name,
         "subcategory": canonical_subcategory,
         "third_level": submitted_third,
         "custom_third_level": submitted_custom if submitted_third == OTHER_VALUE else None,

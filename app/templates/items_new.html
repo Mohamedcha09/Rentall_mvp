@@ -1350,7 +1350,7 @@
     if (customThirdLevelLabel) {
       customThirdLevelLabel.textContent = category.level_labels?.custom_level3 || taxonomyLabels.custom_service || 'Custom Service Name';
     }
-    thirdLevelSelect.replaceChildren(new Option(taxonomyLabels.select_service || 'Select service / platform', ''));
+    thirdLevelSelect.replaceChildren(new Option(category.level3_select_placeholder || taxonomyLabels.select_type || 'Select type', ''));
     levels.forEach((level) => thirdLevelSelect.append(new Option(level.label || level.name, level.name)));
     refreshTaxonomyFilter(thirdLevelTaxonomyFilter, thirdLevelSelect);
     thirdLevelSelect.disabled = false;

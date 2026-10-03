@@ -780,6 +780,32 @@ with TestClient(main_module.app) as client:
     finally:
         db.close()
 
+    # A legacy row can retain an alias L1 even when the lookup table has only
+    # the modern canonical parent.  It must remain visible under that parent
+    # and editable without inventing an L2/L3 selection.
+    db = SessionLocal()
+    try:
+        legacy_l1 = Item(
+            owner_id=901,
+            title="Legacy L1 vehicle",
+            description="Created before vehicle groups existed",
+            city="Montréal",
+            currency="CAD",
+            price=10,
+            price_per_day=10,
+            category="vehicle",
+            subcategory=None,
+            third_level=None,
+            custom_third_level=None,
+            status="approved",
+            is_active="yes",
+        )
+        db.add(legacy_l1)
+        db.commit()
+        ids["legacy_l1_item"] = legacy_l1.id
+    finally:
+        db.close()
+
     # Explore must read the same canonical fields at every depth.
     digital_level_one = client.get("/items?category=Digital%20Accounts")
     assert digital_level_one.status_code == 200
@@ -834,11 +860,13 @@ with TestClient(main_module.app) as client:
     vehicles_level_one = client.get("/items?category=Vehicles")
     assert vehicles_level_one.status_code == 200
     assert "School bus for field trip" in vehicles_level_one.text
+    assert "Legacy L1 vehicle" in vehicles_level_one.text
     assert "Popcorn machine for event" not in vehicles_level_one.text
     buses_level_two = client.get("/items?category=Vehicles&sub=Buses")
     assert buses_level_two.status_code == 200
     assert "School bus for field trip" in buses_level_two.text
     assert "Legacy untyped car" not in buses_level_two.text
+    assert "Legacy L1 vehicle" not in buses_level_two.text
     school_bus_type = client.get("/items?category=Vehicles&sub=Buses&service=School%20Buses")
     assert school_bus_type.status_code == 200
     assert "School bus for field trip" in school_bus_type.text
@@ -880,6 +908,44 @@ with TestClient(main_module.app) as client:
     # pending review, keeping public approval meaningful while satisfying the
     # intended lifecycle.
     assert client.get("/_test_taxonomy_route_login/user").status_code == 200
+    legacy_l1_edit = client.get(f"/owner/items/{ids['legacy_l1_item']}/edit", follow_redirects=False)
+    assert legacy_l1_edit.status_code == 200, legacy_l1_edit.text[:1000]
+    assert f'value="Vehicles" data-id="{ids["vehicles"]}" selected' in legacy_l1_edit.text
+    assert "legacyBlankSubcategory: true" in legacy_l1_edit.text
+    # An unrelated validation error must retain the compatible legacy empty
+    # path even though the visible canonical option differs from the stored
+    # historical alias (vehicle).
+    legacy_l1_error = client.post(
+        f"/owner/items/{ids['legacy_l1_item']}/edit",
+        data=listing_form(
+            title="",
+            category="Vehicles",
+            subcategory_id="",
+        ),
+        follow_redirects=False,
+    )
+    assert legacy_l1_error.status_code == 422, legacy_l1_error.text[:1000]
+    assert "Enter a title for your listing." in legacy_l1_error.text
+    assert "legacyBlankSubcategory: true" in legacy_l1_error.text
+    legacy_l1_save = client.post(
+        f"/owner/items/{ids['legacy_l1_item']}/edit",
+        data=listing_form(
+            title="Legacy L1 vehicle updated",
+            category="Vehicles",
+            subcategory_id="",
+        ),
+        follow_redirects=False,
+    )
+    assert legacy_l1_save.status_code == 303, legacy_l1_save.text[:1000]
+    db = SessionLocal()
+    try:
+        legacy_l1 = db.get(Item, ids["legacy_l1_item"])
+        assert (legacy_l1.category, legacy_l1.subcategory, legacy_l1.third_level, legacy_l1.custom_third_level) == (
+            "vehicle", None, None, None,
+        )
+    finally:
+        db.close()
+
     approved_edit = client.get(f"/owner/items/{ids['bein_item']}/edit", follow_redirects=False)
     assert approved_edit.status_code == 200, approved_edit.text[:1000]
     assert "beIN Sports" in approved_edit.text
