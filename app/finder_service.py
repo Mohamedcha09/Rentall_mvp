@@ -11,19 +11,22 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
+from difflib import SequenceMatcher
 import copy
 import hashlib
 import json
 import logging
+import math
 import os
 import re
 import unicodedata
 from typing import Any, Iterable, Optional
 
-from sqlalchemy import func
+from sqlalchemy import func, inspect as sqlalchemy_inspect, or_
 from sqlalchemy.orm import Session
 
-from .models import Booking, FinderListingIndex, FxRate, Item
+from .catalog_taxonomy import CATEGORY_TREE, configured_catalog_rows
+from .models import Booking, FinderListingIndex, FxRate, Item, ItemReview
 
 
 LOGGER = logging.getLogger(__name__)
@@ -48,28 +51,52 @@ MAX_RESULTS_PER_PAGE = 6
 MAX_SEARCH_PAGE_SIZE = 12
 MAX_CATALOG_CANDIDATES = 10_000
 SUPPORTED_CURRENCIES = {"CAD", "USD", "EUR"}
-SUPPORTED_SORTS = {"relevance", "price_asc", "price_desc", "budget", "newest"}
+SUPPORTED_SORTS = {
+    "best_match", "relevance", "price_asc", "price_desc", "budget", "newest",
+    "closest", "highest_rated", "best_value",
+}
+FINDER_INTENTS = {
+    "NEW_SEARCH", "REFINE_SEARCH", "CHANGE_PRODUCT", "CHANGE_LOCATION",
+    "CHANGE_PRICE", "ADD_FILTER", "REMOVE_FILTER", "ADD_EXCLUSION",
+    "CHANGE_SORT", "MORE_RESULTS", "COMPARE_RESULTS", "ASK_WHY",
+    "ASK_DETAILS", "RESET_SEARCH", "CLARIFICATION_RESPONSE",
+}
 
 
 # These groups are an assist for common multilingual wording, not a closed
 # category taxonomy.  Every actual Item.category/subcategory/title/description
 # stays searchable even if it never appears in this table.
-_TERM_GROUPS: tuple[frozenset[str], ...] = (
-    frozenset({"car", "cars", "vehicle", "vehicles", "auto", "automobile", "voiture", "voitures", "سياره", "سيارات", "مركبه", "مركبات"}),
-    frozenset({"camera", "cameras", "caméra", "caméras", "appareil photo", "كاميرا", "كاميرات"}),
-    frozenset({"phone", "phones", "smartphone", "telephone", "téléphone", "هاتف", "هواتف"}),
-    frozenset({"computer", "laptop", "ordinateur", "portable", "حاسوب", "كمبيوتر", "لابتوب"}),
-    frozenset({"bike", "bicycle", "velo", "vélo", "bicyclette", "دراجه", "دراجة"}),
-    frozenset({"apartment", "flat", "home", "house", "appartement", "maison", "شقه", "شقة", "منزل", "بيت"}),
-    frozenset({"shoe", "shoes", "sneaker", "chaussure", "chaussures", "حذاء", "احذيه", "أحذية"}),
-    frozenset({"dress", "clothes", "clothing", "robe", "vetement", "vêtement", "ملابس", "فستان", "لباس"}),
-    frozenset({"table", "tables", "chair", "chairs", "tableau", "chaise", "طاولة", "طاولات", "كرسي", "كراسي"}),
-    frozenset({"rug", "carpet", "tapis", "سجاده", "سجادة", "زرابيه", "زربية"}),
-    frozenset({"bus", "coach", "autobus", "حافله", "حافلة", "باص"}),
-    # Brand aliases improve cross-script retrieval without making Finder a
-    # closed category switch. Other brands/models remain free-text terms.
-    frozenset({"honda", "هوندا"}),
-    frozenset({"sony", "سوني"}),
+# These small alias groups are only language assists for common concepts.  They
+# do not constitute a Finder-only category tree: all category/type/service
+# values are added from the live taxonomy and catalogue below.  In particular,
+# a generic *vehicle* is deliberately not synonymous with a *car*: a Bus is a
+# vehicle but it is not a confirmed car result.
+_CORE_PRODUCT_ALIASES: dict[str, frozenset[str]] = {
+    "car": frozenset({"car", "cars", "auto", "automobile", "voiture", "voitures", "سياره", "سيارات"}),
+    "vehicle": frozenset({"vehicle", "vehicles", "vehicule", "véhicule", "مركبه", "مركبات"}),
+    "bus": frozenset({"bus", "buses", "coach", "autobus", "حافله", "حافلة", "باص"}),
+    "camera": frozenset({"camera", "cameras", "caméra", "caméras", "appareil photo", "كاميرا", "كاميرات"}),
+    "phone": frozenset({"phone", "phones", "smartphone", "telephone", "téléphone", "هاتف", "هواتف"}),
+    "computer": frozenset({"computer", "laptop", "ordinateur", "portable", "حاسوب", "كمبيوتر", "لابتوب"}),
+    "bike": frozenset({"bike", "bicycle", "velo", "vélo", "bicyclette", "دراجه", "دراجة"}),
+    "apartment": frozenset({"apartment", "flat", "home", "house", "appartement", "maison", "شقه", "شقة", "منزل", "بيت"}),
+    "shoe": frozenset({"shoe", "shoes", "sneaker", "chaussure", "chaussures", "حذاء", "احذيه", "أحذية"}),
+    "dress": frozenset({"dress", "clothes", "clothing", "robe", "vetement", "vêtement", "ملابس", "فستان", "لباس"}),
+    "table": frozenset({"table", "tables", "tableau", "طاولة", "طاولات"}),
+    "chair": frozenset({"chair", "chairs", "chaise", "كراسي", "كرسي"}),
+    "rug": frozenset({"rug", "carpet", "tapis", "سجاده", "سجادة", "زرابيه", "زربية"}),
+}
+
+# Brands are catalog-search anchors, not product identities. A request for
+# "Sony camera" therefore resolves Camera as the product and Sony as an
+# additional exact term; "Sony" alone remains a short clarification case.
+_KNOWN_BRAND_ALIASES: dict[str, frozenset[str]] = {
+    "Honda": frozenset({"honda", "هوندا"}),
+    "Sony": frozenset({"sony", "سوني"}),
+}
+
+_TERM_GROUPS: tuple[frozenset[str], ...] = tuple(_CORE_PRODUCT_ALIASES.values())
+_TERM_GROUPS += (
 )
 
 _COLOR_GROUPS: dict[str, frozenset[str]] = {
@@ -90,15 +117,15 @@ _COLOR_GROUPS: dict[str, frozenset[str]] = {
 # a city absent from the live catalog.
 _CITY_ALIASES: dict[str, frozenset[str]] = {
     "paris": frozenset({"paris", "باريس"}),
-    "montreal": frozenset({"montreal", "montréal", "مونتريال"}),
+    "montreal": frozenset({"montreal", "montréal", "mtl", "مونتريال"}),
     "toronto": frozenset({"toronto", "تورونتو"}),
     "new york": frozenset({"new york", "newyork", "نيويورك", "نيو يورك"}),
 }
 
 _STOP_TOKENS = {
     "i", "need", "want", "looking", "find", "show", "me", "results", "result", "from", "for", "a", "an", "the", "to", "rent", "rental", "please", "can", "could", "would", "should", "may", "must", "required", "require", "have", "has", "with", "and", "or", "only", "in", "at", "near", "per", "day", "daily", "hour", "hourly", "week", "weekly", "month", "monthly", "is", "start", "search", "keep", "same", "city", "location", "budget", "no", "not", "without", "deposit", "security",
-    "je", "cherche", "voudrais", "louer", "une", "un", "des", "de", "du", "pour", "avec", "et", "ou", "seulement", "doit", "doivent", "avoir", "suis", "dans", "a", "à", "par", "jour", "journaliere", "journalière", "heure", "heures", "semaine", "semaines", "mois", "nouvelle", "recherche", "garder", "meme", "même", "ville", "localisation", "budget", "sans", "pas", "caution",
-    "اريد", "أريد", "ابحث", "أبحث", "عن", "كراء", "استئجار", "للايجار", "للإيجار", "يجب", "تكون", "في", "مع", "و", "او", "أو", "فقط", "من", "ب", "يوم", "يوميا", "يومياً", "لليوم", "ساعه", "ساعة", "اسبوع", "أسبوع", "شهريا", "شهري", "بحث", "جديد", "ابدأ", "نفس", "المدينه", "المدينة", "الموقع", "الميزانيه", "الميزانية", "لا", "بدون", "وديعه", "وديعة",
+    "je", "cherche", "veux", "veu", "voudrais", "louer", "une", "un", "des", "de", "du", "pour", "avec", "et", "ou", "seulement", "doit", "doivent", "avoir", "suis", "dans", "a", "à", "par", "jour", "journaliere", "journalière", "heure", "heures", "semaine", "semaines", "mois", "nouvelle", "recherche", "garder", "meme", "même", "ville", "localisation", "budget", "sans", "pas", "caution", "svp",
+    "اريد", "أريد", "ابحث", "أبحث", "عن", "كراء", "استئجار", "للايجار", "للإيجار", "يجب", "تكون", "في", "مع", "و", "او", "أو", "فقط", "من", "ب", "يوم", "يوميا", "يومياً", "لليوم", "ساعه", "ساعة", "اسبوع", "أسبوع", "شهريا", "شهري", "بحث", "جديد", "ابدأ", "نفس", "المدينه", "المدينة", "الموقع", "الميزانيه", "الميزانية", "لا", "بدون", "وديعه", "وديعة", "nheb", "n7eb", "fi", "b",
     "around", "about", "approximately", "environ", "vers", "حوالي", "تقريبا", "تقريباً", "حدود", "usd", "cad", "eur", "dollar", "dollars", "euro", "euros", "دولار", "يورو",
 }
 
@@ -111,6 +138,7 @@ _ATTRIBUTE_KEY_ALIASES: dict[str, tuple[str, ...]] = {
     "storage_gb": ("storage", "stockage", "ssd", "gb storage", "تخزين", "سعة"),
     "resolution": ("4k", "8k", "1080p", "résolution", "resolution", "دقة"),
     "shoe_size": ("shoe size", "pointure", "taille", "مقاس الحذاء", "مقاس"),
+    "platform": ("platform", "plateforme", "console", "ps4", "ps5", "xbox", "playstation"),
     "dimensions": ("dimension", "dimensions", "size", "taille", "ابعاد", "أبعاد"),
     "quantity": ("quantity", "qty", "quantité", "عدد", "كمية"),
     "material": ("material", "matiere", "matière", "مادة"),
@@ -183,9 +211,18 @@ class PriceConstraint:
 @dataclass
 class SearchSpec:
     language: str = "en"
+    # ``product_terms`` is retained for backwards-compatible history cards,
+    # but it is now a bounded set of catalog-validated anchors rather than a
+    # growing bag of words from every user sentence.
     product_terms: list[str] = field(default_factory=list)
+    product_concept: str = ""
+    product_confidence: str = ""
     category_candidates: list[str] = field(default_factory=list)
+    subcategory_candidates: list[str] = field(default_factory=list)
+    service_candidates: list[str] = field(default_factory=list)
     location_city: str = ""
+    reference_latitude: Optional[float] = None
+    reference_longitude: Optional[float] = None
     price: PriceConstraint = field(default_factory=PriceConstraint)
     start_date: str = ""
     end_date: str = ""
@@ -194,7 +231,13 @@ class SearchSpec:
     preferred_attributes: list[FinderAttribute] = field(default_factory=list)
     excluded_attributes: list[FinderAttribute] = field(default_factory=list)
     sort_mode: str = "relevance"
+    intent: str = "NEW_SEARCH"
     clarifications_needed: list[str] = field(default_factory=list)
+    # A pending choice is persisted in the Finder-owned state, never inferred
+    # from an old assistant message.  It lets a simple “yes” apply exactly the
+    # grounded interpretation that was offered and lets “no” discard it.
+    pending_clarification: dict[str, Any] = field(default_factory=dict)
+    unknown_terms: list[str] = field(default_factory=list)
     search_revision: int = 0
 
     def normalized(self) -> "SearchSpec":
@@ -207,11 +250,38 @@ class SearchSpec:
                 if len(result) >= limit:
                     break
             return result
+        pending = self.pending_clarification if isinstance(self.pending_clarification, dict) else {}
+        safe_pending: dict[str, Any] = {}
+        if pending.get("kind") in {"product", "location"}:
+            options = pending.get("options")
+            safe_options: list[dict[str, str]] = []
+            if isinstance(options, list):
+                for option in options[:4]:
+                    if not isinstance(option, dict):
+                        continue
+                    label = str(option.get("label") or "").strip()[:120]
+                    value = str(option.get("value") or "").strip()[:120]
+                    if label and value:
+                        safe_options.append({"label": label, "value": value})
+            question = str(pending.get("question") or "").strip()[:240]
+            if safe_options or question:
+                safe_pending = {
+                    "kind": str(pending.get("kind")),
+                    "question": question,
+                    "options": safe_options,
+                    "proposed": str(pending.get("proposed") or "")[:120],
+                }
         return SearchSpec(
             language=self.language if self.language in {"ar", "fr", "en"} else "en",
             product_terms=unique_words(self.product_terms, MAX_PRODUCT_TERMS),
+            product_concept=str(self.product_concept or "").strip()[:120],
+            product_confidence=str(self.product_confidence or "") if str(self.product_confidence or "") in {"high", "medium", "low"} else "",
             category_candidates=unique_words(self.category_candidates, 8),
+            subcategory_candidates=unique_words(self.subcategory_candidates, 8),
+            service_candidates=unique_words(self.service_candidates, 8),
             location_city=str(self.location_city or "").strip()[:120],
+            reference_latitude=_valid_coordinate(self.reference_latitude, -90, 90),
+            reference_longitude=_valid_coordinate(self.reference_longitude, -180, 180),
             price=self.price.normalized(),
             start_date=_valid_iso_date(self.start_date),
             end_date=_valid_iso_date(self.end_date),
@@ -220,7 +290,10 @@ class SearchSpec:
             preferred_attributes=[attribute.normalized() for attribute in self.preferred_attributes[:MAX_ATTRIBUTES] if attribute.normalized().values],
             excluded_attributes=[attribute.normalized() for attribute in self.excluded_attributes[:MAX_ATTRIBUTES] if attribute.normalized().values],
             sort_mode=self.sort_mode if self.sort_mode in SUPPORTED_SORTS else "relevance",
+            intent=self.intent if self.intent in FINDER_INTENTS else "NEW_SEARCH",
             clarifications_needed=unique_words(self.clarifications_needed, 3),
+            pending_clarification=safe_pending,
+            unknown_terms=unique_words(self.unknown_terms, 4),
             search_revision=max(0, int(self.search_revision or 0)),
         )
 
@@ -254,8 +327,14 @@ class SearchSpec:
         return cls(
             language=str(raw.get("language") or "en"),
             product_terms=list(raw.get("product_terms") or []),
+            product_concept=str(raw.get("product_concept") or ""),
+            product_confidence=str(raw.get("product_confidence") or ""),
             category_candidates=list(raw.get("category_candidates") or []),
+            subcategory_candidates=list(raw.get("subcategory_candidates") or []),
+            service_candidates=list(raw.get("service_candidates") or []),
             location_city=str(raw.get("location_city") or ""),
+            reference_latitude=raw.get("reference_latitude"),
+            reference_longitude=raw.get("reference_longitude"),
             price=PriceConstraint(
                 kind=str(price_raw.get("kind") or ""),
                 target=price_raw.get("target"),
@@ -271,9 +350,372 @@ class SearchSpec:
             preferred_attributes=attributes(raw.get("preferred_attributes")),
             excluded_attributes=attributes(raw.get("excluded_attributes")),
             sort_mode=str(raw.get("sort_mode") or "relevance"),
+            intent=str(raw.get("intent") or "NEW_SEARCH"),
             clarifications_needed=list(raw.get("clarifications_needed") or []),
+            pending_clarification=raw.get("pending_clarification") if isinstance(raw.get("pending_clarification"), dict) else {},
+            unknown_terms=list(raw.get("unknown_terms") or []),
             search_revision=raw.get("search_revision") or 0,
         ).normalized()
+
+
+@dataclass(frozen=True)
+class CatalogConcept:
+    """One safe, catalog-grounded interpretation a search can use.
+
+    ``kind`` is descriptive rather than a database field name.  It lets Finder
+    distinguish a Category, Type, Service, and a general product concept
+    without accepting a model-produced column or query.
+    """
+
+    label: str
+    kind: str
+    aliases: tuple[str, ...] = ()
+    category: str = ""
+    subcategory: str = ""
+    service: str = ""
+
+
+@dataclass
+class ResolvedCatalogRequest:
+    source: str
+    concept: Optional[CatalogConcept] = None
+    confidence: str = ""
+    anchors: list[str] = field(default_factory=list)
+    category_candidates: list[str] = field(default_factory=list)
+    subcategory_candidates: list[str] = field(default_factory=list)
+    service_candidates: list[str] = field(default_factory=list)
+    ambiguity: list[CatalogConcept] = field(default_factory=list)
+    unknown_terms: list[str] = field(default_factory=list)
+    correction_from: str = ""
+
+
+def _phrase_pattern(value: str) -> Optional[re.Pattern[str]]:
+    """Build a unicode word-boundary matcher after Finder normalization.
+
+    SQL can use a deliberately broad pre-filter for performance, but this
+    function is the authoritative identity check.  It is why ``bus`` cannot
+    satisfy ``Business`` and ``car`` cannot satisfy ``carpet``.
+    """
+
+    normalized = normalize_text(value)
+    if not normalized:
+        return None
+    return re.compile(r"(?<!\w)" + re.escape(normalized).replace(r"\ ", r"\s+") + r"(?!\w)", re.UNICODE)
+
+
+def _has_phrase(text: str, phrase: str) -> bool:
+    pattern = _phrase_pattern(phrase)
+    return bool(pattern and pattern.search(normalize_text(text)))
+
+
+def _known_catalog_concepts(db: Session) -> list[CatalogConcept]:
+    """Build a runtime lexicon from SEVOR's actual taxonomy and catalogue.
+
+    The small multilingual core is only an alias layer. Categories, ordinary
+    subcategories, configured third levels, custom services, and live catalog
+    labels are collected dynamically, so a future category becomes searchable
+    without an ``if category == ...`` branch.
+    """
+
+    concepts: list[CatalogConcept] = []
+    seen: set[tuple[str, str, str, str, str]] = set()
+
+    def add(
+        label: Any,
+        kind: str,
+        *,
+        aliases: Iterable[str] = (),
+        category: Any = "",
+        subcategory: Any = "",
+        service: Any = "",
+    ) -> None:
+        name = str(label or "").strip()[:160]
+        if not name:
+            return
+        normalized_name = normalize_text(name)
+        if not normalized_name:
+            return
+        cat = str(category or "").strip()[:120]
+        sub = str(subcategory or "").strip()[:160]
+        svc = str(service or "").strip()[:160]
+        marker = (kind, normalized_name, normalize_text(cat), normalize_text(sub), normalize_text(svc))
+        if marker in seen:
+            return
+        seen.add(marker)
+        values = [name]
+        values.extend(str(value or "").strip()[:160] for value in aliases)
+        unique: list[str] = []
+        normalized_seen: set[str] = set()
+        for value in values:
+            normalized_value = normalize_text(value)
+            if normalized_value and normalized_value not in normalized_seen:
+                normalized_seen.add(normalized_value)
+                unique.append(value)
+        concepts.append(CatalogConcept(name, kind, tuple(unique), cat, sub, svc))
+
+    for canonical, aliases in _CORE_PRODUCT_ALIASES.items():
+        add(canonical, "product", aliases=aliases)
+    for brand, aliases in _KNOWN_BRAND_ALIASES.items():
+        add(brand, "anchor", aliases=aliases)
+    for category, subcategory, service in configured_catalog_rows():
+        add(category, "category", category=category)
+        add(subcategory, "subcategory", category=category, subcategory=subcategory)
+        if normalize_text(service) != "other":
+            add(service, "service", category=category, subcategory=subcategory, service=service)
+    try:
+        rows = (
+            public_listings_query(db)
+            .with_entities(Item.category, Item.subcategory, Item.third_level, Item.custom_third_level, Item.title)
+            .distinct()
+            .all()
+        )
+    except Exception:
+        # The parser remains conservative if a local legacy database has not
+        # received the Finder/taxonomy migration. It must not broaden unknown
+        # prose into a free-text product filter in that situation.
+        rows = []
+    protected_title_tokens = {
+        normalize_text(value)
+        for aliases in (*_CORE_PRODUCT_ALIASES.values(), *_KNOWN_BRAND_ALIASES.values(), *_COLOR_GROUPS.values())
+        for value in aliases
+    }
+    for category, subcategory, service, custom_service, title in rows:
+        add(category, "category", category=category)
+        if subcategory:
+            add(subcategory, "subcategory", category=category, subcategory=subcategory)
+        service_value = custom_service or service
+        if service_value:
+            add(service_value, "service", category=category, subcategory=subcategory, service=service_value)
+        # Title phrases are a discovery aid for a future category whose exact
+        # name does not contain the renter's product word.  Do *not* add every
+        # individual title word: that made common colours and brands compete
+        # with the actual product concept (for example ``red`` or ``Honda``).
+        # Two/three-word phrases retain dynamic discovery for unknown future
+        # catalogue types such as "camping tent" without turning a sentence
+        # into a bag of products.  A genuinely one-word listing title remains
+        # discoverable as a bounded fallback.
+        title_tokens = [
+            token for token in tokens(title)
+            if len(token) >= 3 and token not in _STOP_TOKENS and token not in protected_title_tokens
+        ]
+        if len(title_tokens) == 1:
+            add(title_tokens[0], "product", aliases=(title_tokens[0],))
+        else:
+            for size in (3, 2):
+                for start in range(0, max(0, len(title_tokens) - size + 1)):
+                    phrase = " ".join(title_tokens[start:start + size])
+                    if len(tokens(phrase)) == size:
+                        add(phrase, "product", aliases=(phrase,))
+    return concepts
+
+
+def _known_catalog_terms(concepts: Iterable[CatalogConcept]) -> set[str]:
+    return {
+        normalized
+        for concept in concepts
+        for value in concept.aliases
+        if (normalized := normalize_text(value))
+    }
+
+
+def _recover_spaced_catalog_terms(text: str, known_terms: set[str]) -> str:
+    """Join accidentally spaced characters only when the joined term exists."""
+
+    if not text or not known_terms:
+        return text
+    pattern = re.compile(r"(?<!\w)(?:[A-Za-z0-9]\s+){2,}[A-Za-z0-9](?!\w)")
+
+    def replace(match: re.Match[str]) -> str:
+        compact = re.sub(r"\s+", "", match.group(0))
+        return compact if normalize_text(compact) in known_terms else match.group(0)
+
+    return pattern.sub(replace, text)
+
+
+def _edit_distance(left: str, right: str, *, ceiling: int = 3) -> int:
+    """Small bounded Levenshtein implementation for catalog typo recovery."""
+
+    left, right = normalize_text(left), normalize_text(right)
+    if left == right:
+        return 0
+    if not left or not right or abs(len(left) - len(right)) > ceiling:
+        return ceiling + 1
+    if len(left) > len(right):
+        left, right = right, left
+    previous = list(range(len(left) + 1))
+    for row_index, right_char in enumerate(right, start=1):
+        current = [row_index]
+        smallest = current[0]
+        for column_index, left_char in enumerate(left, start=1):
+            value = min(
+                previous[column_index] + 1,
+                current[column_index - 1] + 1,
+                previous[column_index - 1] + (left_char != right_char),
+            )
+            current.append(value)
+            smallest = min(smallest, value)
+        if smallest > ceiling:
+            return ceiling + 1
+        previous = current
+    return previous[-1]
+
+
+def _catalog_typo_matches(fragment: str, concepts: Iterable[CatalogConcept]) -> list[CatalogConcept]:
+    normalized = normalize_text(fragment)
+    if len(normalized) < 4 or " " in normalized:
+        return []
+    scored: list[tuple[int, float, CatalogConcept]] = []
+    for concept in concepts:
+        for alias in concept.aliases:
+            candidate = normalize_text(alias)
+            if len(candidate) < 4 or " " in candidate:
+                continue
+            distance = _edit_distance(normalized, candidate, ceiling=2)
+            if distance > 2:
+                continue
+            ratio = SequenceMatcher(a=normalized, b=candidate).ratio()
+            if ratio >= 0.72:
+                scored.append((distance, ratio, concept))
+                break
+    scored.sort(key=lambda row: (row[0], -row[1], row[2].kind != "service", len(row[2].label), row[2].label))
+    if not scored:
+        return []
+    best_distance, best_ratio = scored[0][0], scored[0][1]
+    return [
+        concept
+        for distance, ratio, concept in scored
+        if distance == best_distance and abs(ratio - best_ratio) < 0.04
+    ][:4]
+
+
+def _concept_priority(concept: CatalogConcept) -> tuple[int, int, str]:
+    priorities = {"service": 0, "subcategory": 1, "category": 2, "product": 3, "anchor": 4}
+    return priorities.get(concept.kind, 9), -len(normalize_text(concept.label)), concept.label
+
+
+def _apply_concept_to_request(result: ResolvedCatalogRequest, concept: CatalogConcept, *, confidence: str, anchor: str = "") -> None:
+    result.concept = concept
+    result.confidence = confidence
+    if concept.kind == "category":
+        result.category_candidates = [concept.category or concept.label]
+    elif concept.kind == "subcategory":
+        if concept.category:
+            result.category_candidates = [concept.category]
+        result.subcategory_candidates = [concept.subcategory or concept.label]
+    elif concept.kind == "service":
+        if concept.category:
+            result.category_candidates = [concept.category]
+        if concept.subcategory:
+            result.subcategory_candidates = [concept.subcategory]
+        result.service_candidates = [concept.service or concept.label]
+    if anchor:
+        result.anchors = [normalize_text(anchor)]
+    elif concept.kind in {"product", "anchor"}:
+        # Persist the canonical, catalog-backed label rather than the wording
+        # the renter happened to use.  That makes Arabic/French aliases match
+        # an English listing title through the same validated concept.
+        result.anchors = [normalize_text(concept.label)]
+
+
+def _resolve_catalog_request(db: Session, text: str) -> ResolvedCatalogRequest:
+    """Resolve only catalog-backed product/category/service interpretations.
+
+    Unrecognised words deliberately remain unknown; they never become a hard
+    product field. That is the distinction between safe typo recovery and the
+    former "every token is a product" behaviour.
+    """
+
+    concepts = _known_catalog_concepts(db)
+    source = _recover_spaced_catalog_terms(text, _known_catalog_terms(concepts))
+    normalized = normalize_text(source)
+    result = ResolvedCatalogRequest(source=source)
+    if not normalized:
+        return result
+    platform = re.search(r"\bps\s*([45])\b", normalized)
+    disc_or_game = bool(re.search(r"\b(?:cd|disc|disk|game|jeu|لعبة)\b", normalized))
+    if platform and disc_or_game:
+        concept = CatalogConcept("PlayStation game", "product", ("playstation game", f"ps{platform.group(1)}"))
+        _apply_concept_to_request(result, concept, confidence="high", anchor=f"ps{platform.group(1)}")
+        return result
+    exact: list[CatalogConcept] = []
+    matched_anchors: list[str] = []
+    for concept in concepts:
+        if any(_has_phrase(source, alias) for alias in concept.aliases):
+            if concept.kind == "anchor":
+                matched_anchors.append(concept.label)
+            else:
+                exact.append(concept)
+    if exact:
+        exact.sort(key=_concept_priority)
+        unique_labels = {normalize_text(concept.label) for concept in exact}
+        if len(unique_labels) == 1:
+            _apply_concept_to_request(result, exact[0], confidence="high")
+            if exact[0].kind == "service":
+                result.service_candidates = [exact[0].service or exact[0].label]
+            result.anchors = list(dict.fromkeys(result.anchors + [normalize_text(value) for value in matched_anchors]))[:4]
+            return result
+        best = exact[0]
+        same_priority = [candidate for candidate in exact if _concept_priority(candidate)[0] == _concept_priority(best)[0]]
+        if len({normalize_text(candidate.label) for candidate in same_priority}) == 1:
+            _apply_concept_to_request(result, best, confidence="high")
+            result.anchors = list(dict.fromkeys(result.anchors + [normalize_text(value) for value in matched_anchors]))[:4]
+            return result
+        result.ambiguity = same_priority[:4]
+        return result
+    if matched_anchors:
+        # A bare brand is not enough to decide whether the user wants a
+        # camera, television, headphones, etc.  It remains a focused
+        # clarification.  A brand plus independently meaningful constraints
+        # (for example Honda + red + two doors) is still a valid catalogue
+        # search anchored to that brand; the constraints are parsed below and
+        # are never converted into extra products.
+        meaningful_without_brand = [
+            token for token in tokens(normalized)
+            if token not in _STOP_TOKENS
+            and token not in {normalize_text(alias) for concept in concepts if concept.kind == "anchor" for alias in concept.aliases}
+            and not token.isdigit()
+        ]
+        if meaningful_without_brand:
+            label = matched_anchors[0]
+            aliases = next(
+                (concept.aliases for concept in concepts if concept.kind == "anchor" and concept.label == label),
+                (label,),
+            )
+            _apply_concept_to_request(result, CatalogConcept(label, "anchor", aliases), confidence="high")
+            return result
+        result.anchors = [normalize_text(value) for value in dict.fromkeys(matched_anchors)] [:4]
+        result.unknown_terms = list(result.anchors)
+        return result
+    query_tokens = [token for token in re.findall(r"[\w.+-]+", normalized, re.UNICODE) if token]
+    meaningful = [token for token in query_tokens if token not in _STOP_TOKENS and not token.isdigit()]
+    if len(meaningful) == 1 and len(meaningful[0]) >= 2:
+        token = meaningful[0]
+        labels: dict[str, CatalogConcept] = {}
+        for concept in concepts:
+            if any(token in tokens(alias) for alias in concept.aliases):
+                labels.setdefault(normalize_text(concept.label), concept)
+        if len(labels) == 1:
+            _apply_concept_to_request(result, next(iter(labels.values())), confidence="high")
+            return result
+        if 1 < len(labels) <= 4:
+            result.ambiguity = sorted(labels.values(), key=_concept_priority)
+            return result
+    typo_options: dict[str, CatalogConcept] = {}
+    typo_from = ""
+    for token in meaningful:
+        for concept in _catalog_typo_matches(token, concepts):
+            typo_options.setdefault(normalize_text(concept.label), concept)
+            typo_from = token
+    if len(typo_options) == 1:
+        concept = next(iter(typo_options.values()))
+        _apply_concept_to_request(result, concept, confidence="high")
+        result.correction_from = typo_from
+        return result
+    if 1 < len(typo_options) <= 4:
+        result.ambiguity = sorted(typo_options.values(), key=_concept_priority)
+        return result
+    result.unknown_terms = meaningful[:4]
+    return result
 
 
 @dataclass
@@ -292,6 +734,14 @@ def _valid_iso_date(value: Any) -> str:
         return date.fromisoformat(text).isoformat()
     except (TypeError, ValueError):
         return ""
+
+
+def _valid_coordinate(value: Any, minimum: float, maximum: float) -> Optional[float]:
+    try:
+        coordinate = float(value)
+    except (TypeError, ValueError):
+        return None
+    return coordinate if minimum <= coordinate <= maximum else None
 
 
 def normalize_text(value: Any) -> str:
@@ -469,6 +919,7 @@ def extract_explicit_attributes(item: Item) -> list[dict[str, str]]:
             ("shoe_size", r"\b(?:eu|us|uk)\s*(\d{1,2}(?:[.,]\d)?)\b", ""),
             ("dimensions", r"\b(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(m|cm|ft|feet|pied|pieds|م|سم)\b", ""),
             ("quantity", r"\b(?:quantity|qty|quantite|nombre|عدد|كميه|كمية)\s*[:=-]?\s*(\d{1,5})\b", "count"),
+            ("platform", r"\b(ps[45]|xbox(?:\s+series)?|playstation)\b", ""),
         )
         for key, pattern, unit in patterns:
             for match in re.finditer(pattern, text, flags=re.I):
@@ -554,15 +1005,57 @@ def rebuild_listing_index(db: Session) -> dict[str, int]:
     return {"eligible": len(live_ids), "indexed": len(live_ids), "removed": int(stale or 0)}
 
 
-def index_coverage(db: Session) -> dict[str, int]:
-    eligible = int(public_listings_query(db).count())
-    indexed = int(
-        db.query(FinderListingIndex)
-        .join(Item, FinderListingIndex.item_id == Item.id)
-        .filter(Item.is_active == "yes", Item.status == "approved")
-        .count()
-    )
-    return {"eligible": eligible, "indexed": indexed, "pending": max(0, eligible - indexed)}
+def index_health_report(db: Session, *, sample_limit: int = 100) -> dict[str, Any]:
+    """Read-only Finder index health for development/staging diagnostics.
+
+    This does not reindex or touch production data. Operators can inspect the
+    returned missing/stale IDs and category coverage before deciding whether to
+    run the explicit maintenance command.
+    """
+
+    items = public_listings_query(db).order_by(Item.id.asc()).all()
+    live_by_id = {int(item.id): item for item in items}
+    index_rows = db.query(FinderListingIndex).order_by(FinderListingIndex.item_id.asc()).all()
+    by_item: dict[int, list[FinderListingIndex]] = {}
+    for row in index_rows:
+        by_item.setdefault(int(row.item_id), []).append(row)
+    missing = [item_id for item_id in live_by_id if item_id not in by_item]
+    stale = [
+        item_id for item_id, rows in by_item.items()
+        if item_id in live_by_id and any(row.source_fingerprint != listing_fingerprint(live_by_id[item_id]) for row in rows)
+    ]
+    orphaned = [item_id for item_id in by_item if item_id not in live_by_id]
+    duplicates = [item_id for item_id, rows in by_item.items() if len(rows) > 1]
+    category_coverage: dict[str, dict[str, int]] = {}
+    for item in items:
+        category = str(getattr(item, "category", "") or "Uncategorized")
+        row = category_coverage.setdefault(category, {"eligible": 0, "indexed": 0})
+        row["eligible"] += 1
+        if int(item.id) in by_item and int(item.id) not in stale:
+            row["indexed"] += 1
+    return {
+        "eligible": len(live_by_id),
+        "indexed": sum(1 for item_id in live_by_id if item_id in by_item and item_id not in stale),
+        "missing_ids": missing[:sample_limit],
+        "stale_ids": stale[:sample_limit],
+        "orphaned_ids": orphaned[:sample_limit],
+        "duplicate_ids": duplicates[:sample_limit],
+        "category_coverage": category_coverage,
+    }
+
+
+def index_coverage(db: Session) -> dict[str, Any]:
+    report = index_health_report(db, sample_limit=100)
+    return {
+        "eligible": int(report["eligible"]),
+        "indexed": int(report["indexed"]),
+        "pending": max(0, int(report["eligible"]) - int(report["indexed"])),
+        "missing_ids": report["missing_ids"],
+        "stale_ids": report["stale_ids"],
+        "orphaned_ids": report["orphaned_ids"],
+        "duplicate_ids": report["duplicate_ids"],
+        "category_coverage": report["category_coverage"],
+    }
 
 
 def _detect_language(text: str) -> str:
@@ -642,13 +1135,17 @@ def _parse_price(text: str, default_currency: str) -> tuple[PriceConstraint, str
     currency, currency_ambiguous = _currency_from_text(text, default_currency)
     clarifications: list[str] = []
     safe_default = str(default_currency or "").upper()
+    # A bare product must not acquire a fake currency clarification merely
+    # because the signed-in user has a display currency.  Infer it only after
+    # seeing an actual amount/price phrase.
+    has_amount_signal = bool(re.search(r"[0-9]+(?:[.,][0-9]+)?", normalized))
     # If the amount has no code, use the signed-in user's display currency as
     # an explicit, explainable assumption. That prevents a raw numeric CAD/USD
     # comparison while still yielding useful initial results.
-    if not currency and safe_default in SUPPORTED_CURRENCIES:
+    if has_amount_signal and not currency and safe_default in SUPPORTED_CURRENCIES:
         currency = safe_default
         currency_ambiguous = True
-    if currency_ambiguous:
+    if has_amount_signal and currency_ambiguous:
         clarifications.append("currency")
 
     patterns: tuple[tuple[str, str], ...] = (
@@ -706,7 +1203,15 @@ def _known_catalog_locations(db: Session) -> list[str]:
 def _extract_location(text: str, cities: Iterable[str]) -> tuple[str, str]:
     normalized = normalize_text(text)
     matches: list[tuple[str, list[str]]] = []
-    for city in cities:
+    # Real listing cities win.  Well-known aliases are also retained as a
+    # location even when this catalogue currently has no result there, so
+    # ``Montreal`` never becomes a product token merely because the city is
+    # empty today.
+    known_cities = list(dict.fromkeys([str(city).strip() for city in cities if str(city or "").strip()]))
+    for canonical in _CITY_ALIASES:
+        if canonical not in {normalize_text(city) for city in known_cities}:
+            known_cities.append("Montréal" if canonical == "montreal" else canonical.title())
+    for city in known_cities:
         normalized_city = normalize_text(city)
         if not normalized_city:
             continue
@@ -722,6 +1227,24 @@ def _extract_location(text: str, cities: Iterable[str]) -> tuple[str, str]:
         for alias in aliases:
             remaining = re.sub(re.escape(alias), " ", remaining, flags=re.I)
         return city, remaining
+    # A single safe one/two-character correction can resolve a city only when
+    # it is close to a known catalog/alias value.  It is deliberately not a
+    # generic fuzzy location search.
+    words = [word for word in re.findall(r"[\w-]+", normalized, re.UNICODE) if len(word) >= 4]
+    city_aliases: dict[str, str] = {}
+    for city in known_cities:
+        city_aliases[normalize_text(city)] = city
+        for alias in _CITY_ALIASES.get(normalize_text(city), frozenset()):
+            city_aliases[normalize_text(alias)] = city
+    corrections = []
+    for word in words:
+        for alias, city in city_aliases.items():
+            if " " not in alias and _edit_distance(word, alias, ceiling=2) <= 2:
+                corrections.append((city, word))
+    unique = {(city, word) for city, word in corrections}
+    if len({city for city, _ in unique}) == 1 and unique:
+        city, word = next(iter(unique))
+        return city, re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", " ", text, flags=re.I)
     return "", text
 
 
@@ -800,6 +1323,7 @@ def _parse_attributes(text: str) -> tuple[list[FinderAttribute], list[FinderAttr
         ("resolution", r"\b(4k|8k|1080p|720p)\b", ""),
         ("shoe_size", r"\b(eu|us|uk)\s*(\d{1,2}(?:[.,]\d)?)\b", ""),
         ("dimensions", r"\b(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(m|cm|ft|feet|pied|pieds|م|سم)\b", ""),
+        ("platform", r"\b(ps[45]|xbox(?:\s+series)?|playstation)\b", ""),
     )
     for key, pattern, unit in numeric_patterns:
         for match in re.finditer(pattern, normalized, re.I):
@@ -959,6 +1483,12 @@ def _is_rank_explanation_request(normalized: str) -> bool:
 
 
 def _sort_from_text(normalized: str) -> Optional[str]:
+    if re.search(r"\b(?:best\s+value|best\s+deal|meilleur\s+rapport\s+qualite\s*prix|meilleur\s+rapport\s+qualité\s*prix|افضل\s+عرض|أفضل\s+عرض)\b", normalized):
+        return "best_value"
+    if re.search(r"\b(?:highest\s+rated|top\s+rated|best\s+rated|mieux\s+note|mieux\s+noté|الاعلى\s+تقييما|الأعلى\s+تقييماً|الافضل\s+تقييما|الأفضل\s+تقييماً)\b", normalized):
+        return "highest_rated"
+    if re.search(r"\b(?:closest|nearest|near\s+me|pres\s+de\s+moi|près\s+de\s+moi|الاقرب|الأقرب|قريب\s+مني)\b", normalized):
+        return "closest"
     if re.search(r"\b(?:cheapest|lowest price|less expensive|moins cher|moins chere|ارخص|أرخص)\b", normalized):
         return "price_asc"
     if re.search(r"\b(?:highest price|most expensive|plus cher|اغلى|أغلى)\b", normalized):
@@ -967,6 +1497,8 @@ def _sort_from_text(normalized: str) -> Optional[str]:
         return "budget"
     if re.search(r"\b(?:newest|most recent|plus recent|الأحدث|احدث)\b", normalized):
         return "newest"
+    if re.search(r"\b(?:best|meilleur|meilleure|افضل|أفضل)\b", normalized):
+        return "best_match"
     return None
 
 
@@ -1026,6 +1558,104 @@ def _remove_requested_attribute(spec: SearchSpec, normalized: str) -> bool:
     return True
 
 
+def _is_yes(normalized: str) -> bool:
+    return normalized in {"yes", "y", "oui", "ouais", "نعم", "اي", "أجل", "اجل"}
+
+
+def _is_no(normalized: str) -> bool:
+    return normalized in {"no", "n", "non", "لا", "ليس"}
+
+
+def _new_product_scope(previous: SearchSpec, *, keep_location: bool, keep_budget: bool) -> SearchSpec:
+    """Discard incompatible search state for a real product replacement."""
+
+    next_spec = SearchSpec(language=previous.language, intent="NEW_SEARCH")
+    if keep_location:
+        next_spec.location_city = previous.location_city
+    if keep_budget:
+        next_spec.price = PriceConstraint(
+            kind=previous.price.kind,
+            target=previous.price.target,
+            minimum=previous.price.minimum,
+            maximum=previous.price.maximum,
+            currency=previous.price.currency,
+            unit=previous.price.unit,
+        )
+    return next_spec
+
+
+def _has_product_scope(spec: SearchSpec) -> bool:
+    return bool(
+        spec.product_concept
+        or spec.product_terms
+        or spec.category_candidates
+        or spec.subcategory_candidates
+        or spec.service_candidates
+    )
+
+
+def _apply_resolved_request(spec: SearchSpec, resolved: ResolvedCatalogRequest) -> None:
+    """Copy only validated resolver output into the persisted SearchSpec."""
+
+    if resolved.concept:
+        spec.product_concept = resolved.concept.label
+        spec.product_confidence = resolved.confidence
+    if resolved.anchors:
+        spec.product_terms = list(dict.fromkeys(resolved.anchors))[:MAX_PRODUCT_TERMS]
+    if resolved.category_candidates:
+        spec.category_candidates = resolved.category_candidates
+    if resolved.subcategory_candidates:
+        spec.subcategory_candidates = resolved.subcategory_candidates
+    if resolved.service_candidates:
+        spec.service_candidates = resolved.service_candidates
+
+
+def _clarification_question(language: str, options: list[CatalogConcept], unknown_terms: list[str]) -> str:
+    labels = [option.label for option in options[:4]]
+    if labels:
+        choices = " / ".join(labels)
+        if language == "ar":
+            return f"هل تقصد: {choices}؟"
+        if language == "fr":
+            return f"Voulez-vous dire : {choices} ?"
+        return f"Did you mean: {choices}?"
+    if language == "ar":
+        return "لم أفهم ما الذي تريد كراءه. اكتب اسم الشيء الذي تبحث عنه."
+    if language == "fr":
+        return "Je n’ai pas identifié ce que vous cherchez à louer. Écrivez simplement le nom de l’objet."
+    return "I couldn’t identify what you want to rent. Tell me the item name."
+
+
+def _set_pending_clarification(spec: SearchSpec, resolved: ResolvedCatalogRequest) -> None:
+    options = resolved.ambiguity[:4]
+    spec.intent = "CLARIFICATION_RESPONSE"
+    spec.clarifications_needed = ["product"]
+    spec.unknown_terms = list(dict.fromkeys(resolved.unknown_terms))[:4]
+    spec.pending_clarification = {
+        "kind": "product",
+        "question": _clarification_question(spec.language, options, resolved.unknown_terms),
+        "options": [{"label": option.label, "value": option.label} for option in options],
+        "proposed": options[0].label if len(options) == 1 else "",
+    } if options else {
+        "kind": "product",
+        "question": _clarification_question(spec.language, [], resolved.unknown_terms),
+        "options": [],
+        "proposed": "",
+    }
+
+
+def _pending_choice_resolution(db: Session, value: str) -> Optional[ResolvedCatalogRequest]:
+    wanted = normalize_text(value)
+    if not wanted:
+        return None
+    matches = [concept for concept in _known_catalog_concepts(db) if normalize_text(concept.label) == wanted]
+    if not matches:
+        return None
+    result = ResolvedCatalogRequest(source=value)
+    _apply_concept_to_request(result, sorted(matches, key=_concept_priority)[0], confidence="high")
+    return result
+
+
 def apply_user_turn(
     db: Session,
     previous: SearchSpec,
@@ -1039,96 +1669,124 @@ def apply_user_turn(
     deliberately permissive about starting an initial search but strict about
     claimed filters: missing text never becomes a confirmed match.
     """
-    source = str(text or "").strip()[:MAX_FINDER_MESSAGE_CHARS]
-    normalized = normalize_text(source)
-    if not source:
+    raw_source = str(text or "").strip()[:MAX_FINDER_MESSAGE_CHARS]
+    if not raw_source:
         return previous.normalized(), "search"
-    if _is_new_search_request(normalized):
-        prior = SearchSpec.from_dict(previous.to_dict())
-        keep_location, keep_budget = _keep_context_flags(normalized)
-        previous = SearchSpec(language=_detect_language(source))
-        if keep_location:
-            previous.location_city = prior.location_city
-        if keep_budget:
-            previous.price = PriceConstraint(
-                kind=prior.price.kind,
-                target=prior.price.target,
-                minimum=prior.price.minimum,
-                maximum=prior.price.maximum,
-                currency=prior.price.currency,
-                unit=prior.price.unit,
-            )
-    else:
-        previous = SearchSpec.from_dict(previous.to_dict())
-    language = _detect_language(source)
-    previous.language = language
+    concepts = _known_catalog_concepts(db)
+    source = _recover_spaced_catalog_terms(raw_source, _known_catalog_terms(concepts))
+    normalized = normalize_text(source)
+    previous = SearchSpec.from_dict(previous.to_dict())
+    previous.language = _detect_language(raw_source)
+
+    # A pending grounded choice is intentionally handled before ordinary text
+    # parsing. “Yes” applies only the offered option; “No” discards it.
+    if previous.pending_clarification:
+        if _is_yes(normalized):
+            resolved = _pending_choice_resolution(db, str(previous.pending_clarification.get("proposed") or ""))
+            if resolved:
+                previous = _new_product_scope(previous, keep_location=False, keep_budget=False)
+                previous.language = _detect_language(raw_source)
+                _apply_resolved_request(previous, resolved)
+                previous.intent = "CLARIFICATION_RESPONSE"
+                return previous.normalized(), "search"
+        if _is_no(normalized):
+            previous.pending_clarification = {}
+            previous.clarifications_needed = ["product"]
+            previous.intent = "CLARIFICATION_RESPONSE"
+            return previous.normalized(), "clarify"
+        # Any explicit new product wording supersedes a stale pending choice.
+        previous.pending_clarification = {}
+
     if _is_compare_request(normalized):
+        previous.intent = "COMPARE_RESULTS"
         return previous.normalized(), "compare"
     if _is_rank_explanation_request(normalized):
+        previous.intent = "ASK_WHY"
         return previous.normalized(), "rank_explanation"
     if _is_more_request(normalized) and len(tokens(normalized)) <= 5:
+        previous.intent = "MORE_RESULTS"
         return previous.normalized(), "more"
+
+    keep_location, keep_budget = _keep_context_flags(normalized)
+    explicit_reset = _is_new_search_request(normalized)
+    parse_source = _strip_search_control_phrases(source)
+    resolved = _resolve_catalog_request(db, parse_source)
+    prior_concept = normalize_text(previous.product_concept)
+    next_concept = normalize_text(resolved.concept.label) if resolved.concept else ""
+    replacing_product = bool(next_concept) and (
+        explicit_reset
+        or not prior_concept
+        or next_concept != prior_concept
+        # A bare product statement (“Bus”, “Je veux Bus”) starts a clean scope.
+        or len([word for word in tokens(parse_source) if word not in _STOP_TOKENS]) <= 2
+    )
+    if explicit_reset or replacing_product:
+        previous = _new_product_scope(previous, keep_location=keep_location, keep_budget=keep_budget)
+        previous.language = _detect_language(raw_source)
+
+    if resolved.ambiguity:
+        _set_pending_clarification(previous, resolved)
+        return previous.normalized(), "clarify"
+    if resolved.concept:
+        _apply_resolved_request(previous, resolved)
+        previous.intent = "CHANGE_PRODUCT" if replacing_product else "REFINE_SEARCH"
+
     requested_sort = _sort_from_text(normalized)
     assumed_sort_currency = False
     if requested_sort:
         previous.sort_mode = requested_sort
-        if requested_sort in {"price_asc", "price_desc", "budget"} and not previous.price.currency:
+        previous.intent = "CHANGE_SORT"
+        if requested_sort in {"price_asc", "price_desc", "budget", "best_value"} and not previous.price.currency:
             safe_currency = str(display_currency or "").upper()
             if safe_currency in SUPPORTED_CURRENCIES:
                 previous.price.currency = safe_currency
                 assumed_sort_currency = True
     if _remove_requested_attribute(previous, normalized):
         previous.clarifications_needed = []
+        previous.intent = "REMOVE_FILTER"
         return previous.normalized(), "search"
 
-    parse_source = _strip_search_control_phrases(source)
     updated_budget = _budget_update(previous.price, source)
     price, remaining, clarifications = _parse_price(parse_source, display_currency)
     if updated_budget:
         price = updated_budget
-        # This is a context edit, not a new ambiguous-currency request.
         clarifications = []
     if price.kind:
         previous.price = price
+        previous.intent = "CHANGE_PRICE"
     location, remaining = _extract_location(remaining, _known_catalog_locations(db))
     if location:
         previous.location_city = location
+        if not resolved.concept:
+            previous.intent = "CHANGE_LOCATION"
     start_date, end_date = _parse_dates(parse_source)
     if start_date and end_date:
         previous.start_date, previous.end_date = start_date, end_date
     elif len(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", parse_source)) >= 2:
         clarifications = list(dict.fromkeys(clarifications + ["dates"]))
-    # Dates are a structured availability constraint, never item-title terms.
-    # Strip both valid and invalid ISO spans so a malformed/past date cannot
-    # accidentally force a listing title to contain "2027-04-10".
     remaining = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", remaining)
-
-    required, preferred, excluded, remaining = _parse_attributes(remaining)
+    required, preferred, excluded, _ = _parse_attributes(remaining)
     if required:
-        # An explicit follow-up overwrites only matching attribute keys.
         touched = {attribute.key for attribute in required}
         previous.required_attributes = [attribute for attribute in previous.required_attributes if attribute.key not in touched] + required
+        previous.intent = "ADD_FILTER"
     if preferred:
         touched = {attribute.key for attribute in preferred}
         previous.preferred_attributes = [attribute for attribute in previous.preferred_attributes if attribute.key not in touched] + preferred
     if excluded:
         touched = {attribute.key for attribute in excluded}
         previous.excluded_attributes = [attribute for attribute in previous.excluded_attributes if attribute.key not in touched] + excluded
+        previous.intent = "ADD_EXCLUSION"
 
-    categories = [row[0] for row in public_listings_query(db).with_entities(Item.category).distinct().all()]
-    category_candidates = _extract_category_candidates(parse_source, categories)
-    if category_candidates:
-        previous.category_candidates = category_candidates
-
-    new_terms = _product_terms_from_remainder(remaining)
-    # A clear product introduction replaces the prior item search but retains
-    # a location/price only when the wording asks to keep it ("same city...").
-    replace_product = bool(new_terms) and (
-        not previous.product_terms
-        or bool(re.search(r"\b(?:but|instead|search for|looking for|mais|plutot|plutôt|لكن|بدل|ابحث عن|أبحث عن)\b", normalized))
-    )
-    if new_terms:
-        previous.product_terms = new_terms if replace_product else list(dict.fromkeys(previous.product_terms + new_terms))[:MAX_PRODUCT_TERMS]
+    # A new unknown initial request must not become an unconstrained search.
+    # In an existing valid search, preserve understood filters and record the
+    # unrecognised fragment for a transparent answer instead of contaminating
+    # the product state.
+    if not _has_product_scope(previous):
+        _set_pending_clarification(previous, resolved)
+        return previous.normalized(), "clarify"
+    previous.pending_clarification = {}
+    previous.unknown_terms = list(dict.fromkeys(resolved.unknown_terms))[:4]
     previous.clarifications_needed = clarifications
     if assumed_sort_currency:
         previous.clarifications_needed = list(dict.fromkeys(previous.clarifications_needed + ["currency"]))
@@ -1174,22 +1832,41 @@ def _attribute_match(attribute: FinderAttribute, values: list[dict[str, str]]) -
 
 
 def _matches_product_terms(text: str, terms: list[str]) -> bool:
-    doc_tokens = tokens(text)
-    for term in terms:
-        variants = _token_variants(term)
-        if not (variants & doc_tokens):
-            # Preserve model names and phrases that may include a hyphen by
-            # allowing an explicit substring only after token matching fails.
-            if not any(variant and variant in text for variant in variants):
-                return False
-    return True
+    # Never fall back to a raw substring: that former escape hatch made
+    # ``bus`` match ``business`` and ``car`` match ``carpet``. Phrase matching
+    # preserves model names such as PS5 while respecting token boundaries.
+    return all(_has_phrase(text, term) for term in terms if normalize_text(term))
 
 
 def _matches_category(item: Item, candidates: list[str]) -> bool:
     if not candidates:
         return True
-    haystack = normalize_text(" ".join((str(item.category or ""), str(item.subcategory or ""))))
-    return any(normalize_text(candidate) in haystack for candidate in candidates)
+    return any(
+        normalize_text(candidate) == normalize_text(getattr(item, "category", ""))
+        for candidate in candidates
+    )
+
+
+def _matches_subcategory(item: Item, candidates: list[str]) -> bool:
+    if not candidates:
+        return True
+    current = str(getattr(item, "subcategory", "") or "")
+    return any(normalize_text(candidate) == normalize_text(current) for candidate in candidates)
+
+
+def _matches_service(item: Item, candidates: list[str]) -> bool:
+    if not candidates:
+        return True
+    values = (
+        str(getattr(item, "third_level", "") or ""),
+        str(getattr(item, "custom_third_level", "") or ""),
+    )
+    return any(
+        normalize_text(candidate) == normalize_text(value)
+        for candidate in candidates
+        for value in values
+        if value
+    )
 
 
 def _matches_location(item: Item, city: str) -> bool:
@@ -1197,7 +1874,66 @@ def _matches_location(item: Item, city: str) -> bool:
         return True
     wanted = normalize_text(city)
     current = normalize_text(getattr(item, "city", ""))
-    return bool(wanted and current and (wanted in current or current in wanted))
+    return bool(wanted and current and wanted == current)
+
+
+def _core_concepts_in(text: str) -> set[str]:
+    return {
+        canonical
+        for canonical, aliases in _CORE_PRODUCT_ALIASES.items()
+        if any(_has_phrase(text, alias) for alias in aliases)
+    }
+
+
+def _product_identity_match(item: Item, spec: SearchSpec) -> tuple[str, str]:
+    """Return ``exact`` / ``strong`` / ``possible`` / ``rejected`` evidence.
+
+    Structured hierarchy and title are stronger than description. A narrow
+    requested product is rejected when a different narrow product is explicit
+    in its structured hierarchy/title; semantic or description wording cannot
+    override that hard conflict.
+    """
+
+    wanted = normalize_text(spec.product_concept)
+    if not wanted:
+        return "strong", "terms"
+    structured = " ".join(
+        str(getattr(item, field, "") or "")
+        for field in ("category", "subcategory", "third_level", "custom_third_level")
+    )
+    title = str(getattr(item, "title", "") or "")
+    description = str(getattr(item, "description", "") or "")
+    if wanted in _CORE_PRODUCT_ALIASES:
+        if wanted == "vehicle":
+            return ("strong", "structured_vehicle") if _core_concepts_in(structured + " " + title) else ("possible", "description_vehicle")
+        specific = set(_CORE_PRODUCT_ALIASES) - {"vehicle"}
+        explicit = _core_concepts_in(structured + " " + title)
+        conflicts = explicit.intersection(specific - {wanted})
+        if conflicts:
+            return "rejected", "structured_conflict"
+        aliases = _CORE_PRODUCT_ALIASES[wanted]
+        if any(_has_phrase(structured, alias) for alias in aliases):
+            return "exact", "structured"
+        if any(_has_phrase(title, alias) for alias in aliases):
+            return "strong", "title"
+        if any(_has_phrase(description, alias) for alias in aliases):
+            return "possible", "description"
+        return "rejected", "missing_product"
+    if wanted == normalize_text("PlayStation game"):
+        platform = spec.product_terms[0] if spec.product_terms else ""
+        has_platform = bool(platform and _has_phrase(structured + " " + title + " " + description, platform))
+        has_game = any(_has_phrase(structured + " " + title, term) for term in ("game", "jeu", "cd", "disc"))
+        return ("strong", "title_platform") if has_platform and has_game else ("possible", "description_platform") if has_platform else ("rejected", "missing_platform")
+    # A service/category/brand can be confirmed by its structured filter or
+    # exact catalogue anchor. The generic term matcher below remains a hard
+    # requirement, so a missing term is still rejected.
+    if spec.service_candidates or spec.subcategory_candidates or spec.category_candidates:
+        return "exact", "taxonomy"
+    if any(_has_phrase(structured + " " + title, term) for term in spec.product_terms):
+        return "strong", "catalog_anchor"
+    if any(_has_phrase(description, term) for term in spec.product_terms):
+        return "possible", "description_anchor"
+    return "rejected", "missing_product"
 
 
 def _fx_rate(db: Session, base: str, quote: str) -> Optional[float]:
@@ -1303,6 +2039,10 @@ def _item_card(
     search_currency: str,
     availability: str,
     rank_reason: str,
+    rating: Optional[float] = None,
+    review_count: int = 0,
+    distance_km: Optional[float] = None,
+    match_confidence: str = "",
 ) -> dict[str, Any]:
     try:
         price = float(getattr(item, "price_per_day", None) or getattr(item, "price", 0) or 0)
@@ -1327,7 +2067,66 @@ def _item_card(
         "price_in_search_currency": price_converted if price_comparable else None,
         "search_currency": str(search_currency or "").upper() if price_comparable else "",
         "rank_reason": rank_reason,
+        "rating": rating,
+        "review_count": int(review_count or 0),
+        "distance_km": distance_km,
+        "match_confidence": match_confidence,
     }
+
+
+def _review_summaries(db: Session, item_ids: Iterable[int]) -> dict[int, tuple[float, int, float]]:
+    """Return (average, count, confidence-aware score) without N+1 queries."""
+
+    ids = [int(value) for value in item_ids if int(value) > 0]
+    if not ids:
+        return {}
+    cache = db.info.setdefault("finder_review_summary_cache", {})
+    missing = [value for value in ids if value not in cache]
+    if missing:
+        try:
+            has_reviews = sqlalchemy_inspect(db.bind).has_table("item_reviews")
+        except Exception:
+            has_reviews = False
+        if not has_reviews:
+            for value in missing:
+                cache[value] = (0.0, 0, 0.0)
+        else:
+            summaries: dict[int, tuple[float, int, float]] = {}
+            for start in range(0, len(missing), 800):
+                chunk = missing[start:start + 800]
+                rows = (
+                    db.query(ItemReview.item_id, func.avg(ItemReview.stars), func.count(ItemReview.id))
+                    .filter(ItemReview.item_id.in_(chunk))
+                    .group_by(ItemReview.item_id)
+                    .all()
+                )
+                for item_id, average, count in rows:
+                    average_value = float(average or 0)
+                    count_value = int(count or 0)
+                    # A small Bayesian prior avoids a lone 5.0 review outranking
+                    # a durable 4.9/300 signal simply because of raw average.
+                    confidence_score = ((average_value * count_value) + (3.5 * 5)) / (count_value + 5)
+                    summaries[int(item_id)] = (round(average_value, 2), count_value, round(confidence_score, 4))
+            for value in missing:
+                cache[value] = summaries.get(value, (0.0, 0, 0.0))
+    return {value: cache.get(value, (0.0, 0, 0.0)) for value in ids}
+
+
+def _distance_km(item: Item, spec: SearchSpec) -> Optional[float]:
+    if spec.reference_latitude is None or spec.reference_longitude is None:
+        return None
+    latitude = _valid_coordinate(getattr(item, "latitude", None), -90, 90)
+    longitude = _valid_coordinate(getattr(item, "longitude", None), -180, 180)
+    if latitude is None or longitude is None:
+        return None
+    # Haversine uses only user-approved/reference coordinates already present
+    # in the server-owned SearchSpec; Finder never guesses a distance from city
+    # text alone.
+    radius = 6371.0088
+    delta_lat = math.radians(latitude - spec.reference_latitude)
+    delta_lon = math.radians(longitude - spec.reference_longitude)
+    a = math.sin(delta_lat / 2) ** 2 + math.cos(math.radians(spec.reference_latitude)) * math.cos(math.radians(latitude)) * math.sin(delta_lon / 2) ** 2
+    return round(radius * 2 * math.asin(math.sqrt(a)), 2)
 
 
 def _rank_key(candidate: dict[str, Any], spec: SearchSpec) -> tuple[Any, ...]:
@@ -1343,11 +2142,20 @@ def _rank_key(candidate: dict[str, Any], spec: SearchSpec) -> tuple[Any, ...]:
     if spec.sort_mode == "newest":
         created = getattr(item, "created_at", None) or datetime.min
         return (-created.timestamp() if hasattr(created, "timestamp") else 0, int(item.id))
+    if spec.sort_mode == "highest_rated":
+        return (-float(candidate.get("rating_confidence") or 0), -int(candidate.get("review_count") or 0), native_price, int(item.id))
+    if spec.sort_mode == "closest":
+        distance = candidate.get("distance_km")
+        return (distance is None, distance if distance is not None else float("inf"), -candidate["score"], int(item.id))
+    if spec.sort_mode == "best_value":
+        # Higher verified match/rating first, then lower comparable price. The
+        # components are stored on the candidate for a truthful explanation.
+        return (-candidate["score"], -float(candidate.get("rating_confidence") or 0), converted is None, converted if converted is not None else native_price, int(item.id))
     if spec.price.kind == "target" and spec.price.target is not None and converted is not None:
         # This exactly gives 10, 11, 8, 25 for target 10 (difference, then
         # lower price, then stable id), as required by the acceptance case.
         return (abs(converted - spec.price.target), converted, int(item.id))
-    return (-candidate["score"], native_price, int(item.id))
+    return (-candidate["score"], -float(candidate.get("rating_confidence") or 0), -int(candidate.get("review_count") or 0), native_price, int(item.id))
 
 
 def _evaluate_live_item(
@@ -1357,6 +2165,7 @@ def _evaluate_live_item(
     *,
     index: Optional[FinderListingIndex],
     conflicts: set[int],
+    review_summary: tuple[float, int, float] = (0.0, 0, 0.0),
 ) -> dict[str, Any]:
     """Evaluate one current public listing against a validated SearchSpec.
 
@@ -1370,10 +2179,20 @@ def _evaluate_live_item(
     hard_failures: list[str] = []
     matched: list[dict[str, str]] = []
     unconfirmed: list[str] = []
-    if spec.product_terms and not _matches_product_terms(document, spec.product_terms):
+    identity_confidence, identity_source = _product_identity_match(item, spec)
+    if identity_confidence == "rejected":
+        hard_failures.append("product")
+    elif identity_confidence == "possible":
+        hard_failures.append("product_unconfirmed")
+        unconfirmed.append("product:description_only")
+    elif not spec.product_concept and spec.product_terms and not _matches_product_terms(document, spec.product_terms):
         hard_failures.append("product")
     if not _matches_category(item, spec.category_candidates):
         hard_failures.append("category")
+    if not _matches_subcategory(item, spec.subcategory_candidates):
+        hard_failures.append("subcategory")
+    if not _matches_service(item, spec.service_candidates):
+        hard_failures.append("service")
     if not _matches_location(item, spec.location_city):
         hard_failures.append("location")
     for attribute in spec.required_attributes:
@@ -1397,7 +2216,7 @@ def _evaluate_live_item(
     # still need one current conversion basis. Unconvertible listings remain
     # visible after comparable results rather than being falsely ranked by raw
     # amounts from different currencies.
-    if not spec.price.kind and spec.sort_mode in {"price_asc", "price_desc", "budget"}:
+    if not spec.price.kind and spec.sort_mode in {"price_asc", "price_desc", "budget", "best_value"}:
         sort_price = PriceConstraint(currency=spec.price.currency).normalized()
         converted, comparable = _price_in_constraint_currency(db, item, sort_price)
         price_detail = "sort_conversion" if comparable else "conversion_unavailable"
@@ -1428,10 +2247,13 @@ def _evaluate_live_item(
     for attribute in spec.preferred_attributes:
         matched_preference, _ = _attribute_match(attribute, attrs)
         preference_score += 4 if matched_preference else 0
-    text_score = sum(1 for term in spec.product_terms if _token_variants(term) & tokens(document))
+    text_score = sum(1 for term in spec.product_terms if _has_phrase(document, term))
+    identity_score = {"exact": 30, "strong": 24, "possible": 8, "rejected": 0}.get(identity_confidence, 0)
+    rating, review_count, rating_confidence = review_summary
+    distance = _distance_km(item, spec)
     return {
         "item": item,
-        "score": text_score * 10 + preference_score,
+        "score": identity_score + text_score * 10 + preference_score,
         "matched": matched,
         "unconfirmed": unconfirmed,
         "price_converted": converted,
@@ -1439,7 +2261,114 @@ def _evaluate_live_item(
         "availability": availability,
         "failures": hard_failures,
         "price_detail": price_detail,
+        "match_source": identity_source,
+        "match_confidence": identity_confidence,
+        "rating": rating if review_count else None,
+        "review_count": review_count,
+        "rating_confidence": rating_confidence,
+        "distance_km": distance,
     }
+
+
+def _sql_text_conditions(values: Iterable[str]) -> list[Any]:
+    """Broad SQL candidate predicates; exact identity remains server-verified."""
+
+    fields = (Item.title, Item.description, Item.category, Item.subcategory, Item.third_level, Item.custom_third_level)
+    conditions: list[Any] = []
+    for value in values:
+        normalized = normalize_text(value)
+        if not normalized:
+            continue
+        # This is a candidate pre-filter only. The final evaluator uses token
+        # boundaries, so a database LIKE hit on "business" cannot confirm bus.
+        pattern = f"%{normalized}%"
+        conditions.extend(field.ilike(pattern) for field in fields)
+    return conditions
+
+
+def _candidate_query(db: Session, spec: SearchSpec):
+    """Apply eligible structured filters in SQL before ranking/pagination."""
+
+    query = public_listings_query(db)
+    if spec.category_candidates:
+        wanted = [str(value).strip() for value in spec.category_candidates if str(value).strip()]
+        if wanted:
+            query = query.filter(or_(*[func.lower(Item.category) == value.casefold() for value in wanted]))
+    if spec.subcategory_candidates:
+        wanted = [str(value).strip() for value in spec.subcategory_candidates if str(value).strip()]
+        if wanted:
+            query = query.filter(or_(*[func.lower(Item.subcategory) == value.casefold() for value in wanted]))
+    if spec.service_candidates:
+        wanted = [str(value).strip() for value in spec.service_candidates if str(value).strip()]
+        if wanted:
+            query = query.filter(or_(*[
+                func.lower(Item.third_level) == value.casefold() for value in wanted
+            ] + [
+                func.lower(Item.custom_third_level) == value.casefold() for value in wanted
+            ]))
+    if spec.location_city:
+        query = query.filter(func.lower(Item.city) == str(spec.location_city).casefold())
+    # Product aliases narrow candidates in the database first. Fuzzy/semantic
+    # discovery never becomes a confirmed result without the later exact
+    # product-identity validation.
+    values = list(spec.product_terms)
+    canonical = normalize_text(spec.product_concept)
+    if canonical in _CORE_PRODUCT_ALIASES:
+        values.extend(_CORE_PRODUCT_ALIASES[canonical])
+    elif canonical == normalize_text("PlayStation game"):
+        values.extend(("ps4", "ps5", "playstation"))
+    if values:
+        clauses = _sql_text_conditions(values)
+        if clauses:
+            # Each anchor is an AND requirement, while aliases for one core
+            # concept are OR candidates. ``product_terms`` may contain a brand
+            # alongside the product concept; require that brand separately.
+            if canonical in _CORE_PRODUCT_ALIASES:
+                core_aliases = _sql_text_conditions(_CORE_PRODUCT_ALIASES[canonical])
+                if core_aliases:
+                    query = query.filter(or_(*core_aliases))
+                for term in spec.product_terms:
+                    if normalize_text(term) in {normalize_text(value) for value in _CORE_PRODUCT_ALIASES[canonical]}:
+                        continue
+                    term_clauses = _sql_text_conditions((term,))
+                    if term_clauses:
+                        query = query.filter(or_(*term_clauses))
+            else:
+                for term in spec.product_terms:
+                    term_clauses = _sql_text_conditions((term,))
+                    if term_clauses:
+                        query = query.filter(or_(*term_clauses))
+    return query
+
+
+def _indexes_for_items(db: Session, item_ids: Iterable[int]) -> dict[int, FinderListingIndex]:
+    ids = [int(value) for value in item_ids if int(value) > 0]
+    output: dict[int, FinderListingIndex] = {}
+    for start in range(0, len(ids), 800):
+        chunk = ids[start:start + 800]
+        output.update({row.item_id: row for row in db.query(FinderListingIndex).filter(FinderListingIndex.item_id.in_(chunk)).all()})
+    return output
+
+
+def _debug_search_candidate(candidate: dict[str, Any], spec: SearchSpec) -> None:
+    if str(os.getenv("FINDER_DEBUG_SEARCH", "")).strip().lower() not in {"1", "true", "yes"}:
+        return
+    item = candidate["item"]
+    LOGGER.info("finder_search_candidate=%s", json.dumps({
+        "listing_id": int(item.id),
+        "title": str(getattr(item, "title", ""))[:200],
+        "category": str(getattr(item, "category", "")),
+        "subcategory": str(getattr(item, "subcategory", "")),
+        "service": str(getattr(item, "custom_third_level", "") or getattr(item, "third_level", "")),
+        "product_concept": spec.product_concept,
+        "match_source": candidate.get("match_source"),
+        "match_confidence": candidate.get("match_confidence"),
+        "hard_failures": candidate.get("failures"),
+        "price_result": candidate.get("price_detail"),
+        "location_result": "passed" if "location" not in candidate.get("failures", []) else "rejected",
+        "score": candidate.get("score"),
+        "rating_score": candidate.get("rating_confidence"),
+    }, ensure_ascii=False, separators=(",", ":")))
 
 
 def search_rentable_listings(
@@ -1453,17 +2382,14 @@ def search_rentable_listings(
     spec = spec.normalized()
     page_size = max(1, min(int(page_size or MAX_RESULTS_PER_PAGE), MAX_SEARCH_PAGE_SIZE))
     offset = max(0, int(offset or 0))
-    # The real Item values are read in one bounded query.  In a deployment with
-    # a larger catalog, operations must run the provided index command; Finder
-    # marks a cap rather than pretending a partial candidate pool is complete.
-    rows = public_listings_query(db).order_by(Item.id.asc()).limit(MAX_CATALOG_CANDIDATES + 1).all()
-    coverage_limited = len(rows) > MAX_CATALOG_CANDIDATES
-    rows = rows[:MAX_CATALOG_CANDIDATES]
-    index_by_item = {
-        row.item_id: row
-        for row in db.query(FinderListingIndex).filter(FinderListingIndex.item_id.in_([item.id for item in rows] or [-1])).all()
-    }
+    # Eligibility, taxonomy, location and product candidate predicates execute
+    # in the database *before* any limit/pagination. We stream the filtered
+    # candidates for attribute/identity checks so Finder never selects the
+    # first arbitrary 10,000 IDs and calls that the whole marketplace.
+    rows = list(_candidate_query(db, spec).order_by(Item.id.asc()).yield_per(500))
+    index_by_item = _indexes_for_items(db, [item.id for item in rows])
     conflicts = _booking_conflict_item_ids(db, [item.id for item in rows], spec.start_date, spec.end_date)
+    reviews = _review_summaries(db, [item.id for item in rows])
     confirmed: list[dict[str, Any]] = []
     near: list[dict[str, Any]] = []
     unavailable_currency_count = 0
@@ -1474,12 +2400,14 @@ def search_rentable_listings(
             spec,
             index=index_by_item.get(item.id),
             conflicts=conflicts,
+            review_summary=reviews.get(item.id, (0.0, 0, 0.0)),
         )
+        _debug_search_candidate(candidate, spec)
         if not candidate["price_comparable"] and (spec.price.kind or spec.sort_mode in {"price_asc", "price_desc", "budget"}):
             unavailable_currency_count += 1
         if not candidate["failures"]:
             confirmed.append(candidate)
-        elif not any(value in candidate["failures"] for value in ("product", "category", "location")):
+        elif not any(value in candidate["failures"] for value in ("product", "category", "subcategory", "service", "location")):
             near.append(candidate)
 
     confirmed.sort(key=lambda row: _rank_key(row, spec))
@@ -1496,6 +2424,10 @@ def search_rentable_listings(
             search_currency=spec.price.currency,
             availability=row["availability"],
             rank_reason="closest_to_budget" if spec.price.kind == "target" else ("lowest_price" if spec.sort_mode == "price_asc" else "matched_filters"),
+            rating=row.get("rating"),
+            review_count=row.get("review_count", 0),
+            distance_km=row.get("distance_km"),
+            match_confidence=row.get("match_confidence", ""),
         )
         for row in page
     ]
@@ -1512,7 +2444,7 @@ def search_rentable_listings(
             rank_reason="near_match",
         )
         for row in near[:3]
-    ] if not confirmed else []
+    ]
     next_offset = offset + page_size if offset + page_size < len(confirmed) else None
     return FinderSearchResult(
         cards=cards,
@@ -1520,7 +2452,7 @@ def search_rentable_listings(
         total_confirmed=len(confirmed),
         next_offset=next_offset,
         unavailable_currency_count=unavailable_currency_count,
-        coverage_limited=coverage_limited,
+        coverage_limited=False,
     )
 
 
@@ -1609,10 +2541,16 @@ def spec_summary(spec: SearchSpec) -> list[dict[str, str]]:
     """Structured, localizable-ish facts for the UI; never model-written HTML."""
     spec = spec.normalized()
     result: list[dict[str, str]] = []
-    for term in spec.product_terms:
-        result.append({"key": "product", "value": term})
+    if spec.product_concept:
+        result.append({"key": "product", "value": spec.product_concept})
+    elif spec.product_terms:
+        result.append({"key": "product", "value": ", ".join(spec.product_terms[:3])})
     for category in spec.category_candidates:
         result.append({"key": "category", "value": category})
+    for subcategory in spec.subcategory_candidates:
+        result.append({"key": "type", "value": subcategory})
+    for service in spec.service_candidates:
+        result.append({"key": "service", "value": service})
     for attribute in spec.required_attributes:
         result.append({"key": attribute.key, "value": ", ".join(attribute.values) + (f" {attribute.unit}" if attribute.unit else "")})
     for attribute in spec.excluded_attributes:
@@ -1628,6 +2566,25 @@ def spec_summary(spec: SearchSpec) -> list[dict[str, str]]:
     if spec.start_date and spec.end_date:
         result.append({"key": "dates", "value": f"{spec.start_date} → {spec.end_date}"})
     return result[:18]
+
+
+def make_assistant_clarification_message(spec: SearchSpec) -> tuple[str, dict[str, Any]]:
+    """Build a grounded clarification payload; it never triggers a DB search."""
+
+    spec = spec.normalized()
+    clarification = spec.pending_clarification or {}
+    question = str(clarification.get("question") or _clarification_question(spec.language, [], spec.unknown_terms))
+    return question, {
+        "kind": "clarification",
+        "spec": spec.to_dict(),
+        "search_summary": {"labels": [f"{row['key'].replace('_', ' ')}: {row['value']}" for row in spec_summary(spec)]},
+        "result_cards": [],
+        "near_cards": [],
+        "total_confirmed": 0,
+        "next_offset": None,
+        "has_more": False,
+        "clarification": clarification,
+    }
 
 
 def make_assistant_search_message(spec: SearchSpec, result: FinderSearchResult, *, action: str = "search") -> tuple[str, dict[str, Any]]:
@@ -1655,6 +2612,14 @@ def make_assistant_search_message(spec: SearchSpec, result: FinderSearchResult, 
         additions.append(finder_copy(language, "conversion"))
     if result.coverage_limited:
         additions.append(finder_copy(language, "coverage"))
+    if spec.unknown_terms:
+        terms = ", ".join(spec.unknown_terms)
+        if language == "ar":
+            additions.append(f"فهمت الشروط المعروفة، لكنني لم أحدد «{terms}».")
+        elif language == "fr":
+            additions.append(f"J’ai compris les filtres connus, mais je n’ai pas identifié « {terms} ».")
+        else:
+            additions.append(f"I understood the known filters, but I did not identify “{terms}”.")
     if additions:
         text = text + "\n\n" + " ".join(additions)
     metadata = {

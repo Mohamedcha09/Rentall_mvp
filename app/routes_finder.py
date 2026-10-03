@@ -27,6 +27,7 @@ from .finder_service import (
     finder_provider_mode,
     get_listing_details,
     looks_like_support_request,
+    make_assistant_clarification_message,
     make_assistant_search_message,
     parse_compare_positions,
     public_listings_query,
@@ -217,6 +218,7 @@ def _serialize_message(db: Session, message: FinderMessage) -> dict:
     payload["has_more"] = bool(metadata.get("has_more"))
     payload["next_offset"] = metadata.get("next_offset")
     payload["support_url"] = metadata.get("support_url")
+    payload["clarification"] = metadata.get("clarification")
     raw_cards = metadata.get("result_cards")
     if isinstance(raw_cards, list):
         # Old result metadata is not a live price/status source. Rehydrate every
@@ -430,6 +432,16 @@ def finder_message(
     # creating or changing a ticket.
     if support_requested:
         answer, metadata = support_request_response(next_spec.language)
+    elif action == "clarify":
+        # A clarification represents a new unresolved interpretation, not a
+        # continuation of old result cards.  Persist it atomically so a late
+        # browser poll cannot make a previous product look current.
+        conversation.active_revision = int(conversation.active_revision or 0) + 1
+        state.revision = conversation.active_revision
+        next_spec.search_revision = state.revision
+        state.next_offset = -1
+        state.last_result_ids_json = "[]"
+        answer, metadata = make_assistant_clarification_message(next_spec)
     elif action == "rank_explanation":
         answer, metadata = rank_explanation_for_seen_listings(
             db,
