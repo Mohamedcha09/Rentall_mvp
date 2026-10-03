@@ -19,9 +19,9 @@ This distinguishes catalog definition from listings: a branch with zero listings
 
 ## B. Expanded active catalog
 
-The single authoritative active definition is [app/rental_catalog.py](../app/rental_catalog.py). It contains every canonical L1/L2/L3 node and its English/French/Arabic labels; it intentionally avoids a second hand-maintained catalog in templates, validators, or Finder. `Digital Accounts` remains in [app/catalog_taxonomy.py](../app/catalog_taxonomy.py) unchanged as its established 17-L2/346-L3 catalog.
+The single authoritative active definition is [app/rental_catalog.py](../app/rental_catalog.py). It contains every canonical L1/L2/L3 node and its English/French/Arabic labels; it intentionally avoids a second hand-maintained catalog in templates, validators, or Finder. The generated review export is [rental_taxonomy_expanded_inventory.json](rental_taxonomy_expanded_inventory.json), which contains every active path and all three labels. `Digital Accounts` remains in [app/catalog_taxonomy.py](../app/catalog_taxonomy.py) unchanged as its established 17-L2/346-L3 catalog.
 
-After the expansion, central code defines 21 L1 values, 121 L2 values, and 701 L3 values. Of the 121 branches, 23 deliberately remain two-level branches. The 20 non-Digital rental L1 definitions add 104 L2 and 355 L3 values; database net-new totals may be lower where a compatible legacy parent already exists.
+After the expansion, central code defines 21 L1 values, 121 L2 values, and 701 L3 values. Of the 121 branches, 25 deliberately remain two-level branches and 96 use an optional third level. The 20 non-Digital rental L1 definitions add 104 L2 and 355 L3 values; database net-new totals may be lower where a compatible legacy parent already exists.
 
 | Canonical L1 | Français | العربية | L2 / L3 |
 | --- | --- | --- | ---: |
@@ -172,13 +172,14 @@ All database tests used temporary SQLite files, never `app.db`, `database.db`, o
 - `tests.test_item_taxonomy`: 8 passing checks for server validation, forged relationships, Digital Accounts, `Other`, representative rental branches, and legacy blank-L3 compatibility.
 - `tests.test_item_taxonomy_route_flow`: 3 passing isolated migrations/HTTP flows.
 - `tests.test_finder`: 30 passing isolated checks for configured zero-listing branches, lookup-table additions, localized taxonomy matching, and legacy category compatibility.
+- Complete Create-form coverage audit: with all central lookup rows seeded in an isolated SQLite database, the real `_taxonomy_form_payload` exposed exactly 21 L1, 121 L2, and 701 L3 values in English, French, and Arabic. The real resolver accepted all 25 two-level paths and all 701 third-level values; the 96 parent-scoped `Other` choices required and retained a custom name.
 - Combined focused run: 45 tests passed in 17.120 seconds with `DATABASE_URL` explicitly set to an in-memory SQLite URL; no checked-in or production database was targeted.
 - The end-to-end flow runs: migration → Create → persisted Item → Pending → Admin approval → Explore L1/L2/L3 filters → Details → Edit.
 - Route examples include School Buses, Popcorn Machines, a non-Digital `Other` custom value, a two-level Housing branch, Digital Accounts → Amazon Prime Video, and an old untyped Cars listing.
 - Create and Explore are asserted to render seeded zero-listing categories.
 - Jinja templates were parsed successfully after the changes.
 
-Not executed: a live browser/device visual run at 320/360/375/390/430 px, a physical iPhone test, deployment, or any production mutation. The new in-form search controls are native, keyboard-accessible `<input type="search">` filters and are shown only when a select has more than 12 choices; they were covered through rendered route HTML, not a live device screenshot.
+Not executed: a live browser/device visual run at 320/360/375/390/430 px, a physical iPhone test, deployment, or any production mutation. The browser surfaces available in this workspace were Render/production tabs only, so they were deliberately not opened under this local-only scope. The new in-form search controls are native, keyboard-accessible `<input type="search">` filters and are shown only when a select has more than 12 choices; they were covered through rendered route HTML, not a live device screenshot.
 
 ## H. Local operator instructions
 

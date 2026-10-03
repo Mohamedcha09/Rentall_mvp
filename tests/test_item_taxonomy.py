@@ -130,6 +130,68 @@ class ItemTaxonomyCatalogTests(unittest.TestCase):
             ["Lift Pass", OTHER_VALUE],
         )
 
+    def test_create_payload_exposes_every_configured_path_in_every_supported_language(self):
+        """The actual Create-form payload must not omit a configured node.
+
+        The HTML form serializes this exact server-produced payload.  Build
+        lookup-like rows for the entire central tree and compare every L1/L2/L3
+        value in English, French, and Arabic so a future catalog expansion
+        cannot land only in Explore or only in the validator.
+        """
+        categories = []
+        subcategories = []
+        next_category_id = 1
+        next_subcategory_id = 1000
+        for category_name, branches in CATEGORY_TREE.items():
+            category_id = next_category_id
+            next_category_id += 1
+            categories.append(SimpleNamespace(id=category_id, name=category_name))
+            for subcategory_name in branches:
+                subcategories.append(
+                    SimpleNamespace(
+                        id=next_subcategory_id,
+                        category_id=category_id,
+                        name=subcategory_name,
+                    )
+                )
+                next_subcategory_id += 1
+
+        expected_category_names = set(CATEGORY_TREE)
+        expected_subcategory_count = sum(len(branches) for branches in CATEGORY_TREE.values())
+        expected_third_level_count = sum(
+            len(third_levels)
+            for branches in CATEGORY_TREE.values()
+            for third_levels in branches.values()
+        )
+
+        for language in ("en", "fr", "ar"):
+            payload = catalog_tree_payload(categories, subcategories, language)
+            by_category = {category["name"]: category for category in payload["categories"]}
+            self.assertEqual(set(by_category), expected_category_names)
+            self.assertEqual(
+                sum(len(category["subcategories"]) for category in payload["categories"]),
+                expected_subcategory_count,
+            )
+            self.assertEqual(
+                sum(
+                    len(subcategory["third_levels"])
+                    for category in payload["categories"]
+                    for subcategory in category["subcategories"]
+                ),
+                expected_third_level_count,
+            )
+            for category_name, branches in CATEGORY_TREE.items():
+                payload_branches = {
+                    branch["name"]: branch
+                    for branch in by_category[category_name]["subcategories"]
+                }
+                self.assertEqual(set(payload_branches), set(branches))
+                for subcategory_name, expected_third_levels in branches.items():
+                    self.assertEqual(
+                        [level["name"] for level in payload_branches[subcategory_name]["third_levels"]],
+                        list(expected_third_levels),
+                    )
+
     def test_display_uses_custom_name_only_for_explicit_other(self):
         item = SimpleNamespace(
             category=DIGITAL_ACCOUNTS_CATEGORY,

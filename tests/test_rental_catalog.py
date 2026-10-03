@@ -7,6 +7,8 @@ orphaned branches, a fourth level, or locale-specific identities.
 """
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
 import unittest
 
 from app.rental_catalog import (
@@ -116,6 +118,27 @@ class RentalCatalogTopologyTests(unittest.TestCase):
         self.assertIn("Popcorn Equipment", by_category["Food & Concession Equipment"][1])
         self.assertNotIn("School Buses", by_category["Vehicles"][1])
         self.assertNotIn("Popcorn Machines", by_category["Food & Concession Equipment"][1])
+
+    def test_additive_migration_snapshot_matches_the_active_l1_l2_contract(self):
+        """A category cannot be available only in code and absent from Create.
+
+        Create/Explore receive L1/L2 choices from lookup rows.  The migration
+        therefore has an intentionally immutable copy of the current seed
+        contract; compare it here so a catalog edit cannot silently leave the
+        database-backed form behind.
+        """
+        migration_path = (
+            Path(__file__).resolve().parents[1]
+            / "db_migrations"
+            / "versions"
+            / "20261004_expand_rental_catalog.py"
+        )
+        spec = importlib.util.spec_from_file_location("rental_catalog_migration", migration_path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        self.assertEqual(rental_seed_rows(), migration.CATEGORY_SEED)
 
     def _assert_value_has_all_labels(self, value) -> None:
         labels = value.labels()
