@@ -9,7 +9,7 @@ Alembic upgrade.
 `items.third_level` is not a lookup-table value in this application.  Level 3
 is defined by the deployed central catalog code.  The deployed source must
 therefore include the catalog/Create/Edit changes, `app/database.py`, and the
-two bridge migration files before the database write is performed.
+scoped bridge migration files before the database write is performed.
 
 The app now accepts `DATABASE_URL`, `DATABASE_URL_FULL`, or `DATABASE_URI`.
 On a Render runtime it refuses to fall back silently to local SQLite when all
@@ -27,7 +27,8 @@ three are absent.
    - `app/rental_catalog.py` and `app/catalog_taxonomy.py`
    - `app/items.py` and the Create/Edit templates
    - `db_migrations/versions/20261004_taxonomy_production_bridge.py`
-   - `db_migrations/versions/20261004_merge_taxonomy_bridge.py`
+   - `db_migrations/versions/20261005_research_taxonomy_production_bridge.py`
+   - `db_migrations/versions/20261005_merge_research_taxonomy.py`
    - `scripts/render_taxonomy_preflight.py`
 
 ## Render Web Shell commands
@@ -37,7 +38,7 @@ connection string.
 
 ```bash
 cd ~/project/src
-test -f db_migrations/versions/20261004_taxonomy_production_bridge.py
+test -f db_migrations/versions/20261005_research_taxonomy_production_bridge.py
 PYTHONPATH="$PWD" python scripts/render_taxonomy_preflight.py --require-revision msg_attach_storage_20260927
 ```
 
@@ -49,22 +50,22 @@ revision, a missing lookup table/lookup column, or a different backend.
 After the backup and successful preflight, run exactly this scoped migration:
 
 ```bash
-SEVOR_TAXONOMY_BRIDGE_STRICT=1 PYTHONPATH="$PWD" alembic upgrade taxonomy_bridge_20261004
+SEVOR_TAXONOMY_BRIDGE_STRICT=1 PYTHONPATH="$PWD" alembic upgrade research_bridge_20261005
 ```
 
 Then verify without writing:
 
 ```bash
-PYTHONPATH="$PWD" python scripts/render_taxonomy_preflight.py --require-revision taxonomy_bridge_20261004 --require-catalog
+PYTHONPATH="$PWD" python scripts/render_taxonomy_preflight.py --require-revision research_bridge_20261005 --require-catalog
 PYTHONPATH="$PWD" alembic current
 PYTHONPATH="$PWD" alembic heads
 ```
 
 Expected post-write facts:
 
-- `alembic current`: `taxonomy_bridge_20261004`
-- repository `heads`: `merge_taxonomy_20261004`
-- 21 resolved Level-1 parents and all 121 Level-2 rows
+- `alembic current`: `research_bridge_20261005`
+- repository `heads`: `merge_research_taxonomy_20261005`
+- 22 resolved Level-1 parents and all 135 Level-2 rows
 - `items.category`, `items.subcategory`, `items.third_level`, and
   `items.custom_third_level` exist
 

@@ -140,6 +140,18 @@ class RentalCatalogTopologyTests(unittest.TestCase):
             / "versions"
             / "20261005_expand_research_rental_catalog.py"
         )
+        direct_research_bridge_path = (
+            Path(__file__).resolve().parents[1]
+            / "db_migrations"
+            / "versions"
+            / "20261005_research_taxonomy_production_bridge.py"
+        )
+        final_merge_path = (
+            Path(__file__).resolve().parents[1]
+            / "db_migrations"
+            / "versions"
+            / "20261005_merge_research_taxonomy.py"
+        )
 
         def load_migration(module_name: str, migration_path: Path):
             spec = importlib.util.spec_from_file_location(module_name, migration_path)
@@ -151,7 +163,17 @@ class RentalCatalogTopologyTests(unittest.TestCase):
 
         baseline = load_migration("rental_catalog_migration", baseline_migration_path)
         research = load_migration("research_catalog_migration", research_migration_path)
+        direct_research_bridge = load_migration(
+            "research_catalog_direct_bridge", direct_research_bridge_path
+        )
+        final_merge = load_migration("research_catalog_final_merge", final_merge_path)
         self.assertEqual(research.down_revision, "merge_taxonomy_20261004")
+        self.assertEqual(direct_research_bridge.down_revision, "taxonomy_bridge_20261004")
+        self.assertEqual(direct_research_bridge.CATEGORY_SEED, research.CATEGORY_SEED)
+        self.assertEqual(
+            final_merge.down_revision,
+            ("research_catalog_20261005", "research_bridge_20261005"),
+        )
 
         merged: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = list(baseline.CATEGORY_SEED)
         positions = {row[0]: index for index, row in enumerate(merged)}

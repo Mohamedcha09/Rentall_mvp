@@ -5,8 +5,14 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from dotenv import load_dotenv
 load_dotenv()
-# Render يمرّر DATABASE_URL تلقائيًا من خدمة PostgreSQL
-DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_URL_FULL")
+# Render deployments may use either of these linked-database variable names.
+# Keep Alembic aligned with app.database so an explicit taxonomy migration
+# cannot accidentally select a different connection source than the app.
+DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("DATABASE_URL_FULL")
+    or os.getenv("DATABASE_URI")
+)
 
 config = context.config
 if DATABASE_URL:

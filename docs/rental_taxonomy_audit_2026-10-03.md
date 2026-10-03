@@ -198,7 +198,7 @@ Not executed: a live browser/device visual run at 320/360/375/390/430 px, a phys
 
 1. Review the uncommitted local changes and the baseline/report files. Do not stage, commit, push, deploy, or point a local process at a production `DATABASE_URL` as part of this task.
 2. On an isolated development or staging database only, inspect the existing `categories` and `subcategories` rows for case-insensitive duplicates before applying the migration. Resolve ambiguity manually; the migration intentionally aborts instead of merging it.
-3. With an explicitly isolated database URL, run `alembic upgrade head` and confirm `merge_taxonomy_20261004` is the resulting local/staging revision. For the observed production base, use the separate scoped bridge runbook rather than `head`.
+3. With an explicitly isolated database URL, run `alembic upgrade head` and confirm `merge_research_taxonomy_20261005` is the resulting local/staging revision. For the observed production base, use the separate scoped bridge runbook rather than `head`.
 4. Repeat the focused test commands from the test evidence section using an isolated environment.
 5. Before any separate production rollout, take an approved backup and perform a read-only inventory comparison. Production rollout is outside this task and was not attempted.
 

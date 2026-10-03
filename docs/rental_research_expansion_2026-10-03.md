@@ -116,12 +116,19 @@ instant booking. Digital Accounts remains present and unchanged.
 
 ## Migration and operator step
 
-`db_migrations/versions/20261005_expand_research_rental_catalog.py` is a
-forward-only, immutable L1/L2 delta with revision
-`research_catalog_20261005` after `merge_taxonomy_20261004`. It uses only
-missing-row inserts, rejects ambiguous lookup rows, does not import the live
-catalog at migration runtime, and never deletes, renames, reorders, or
-reclassifies listings.
+`db_migrations/versions/20261005_expand_research_rental_catalog.py` is the
+forward-only, immutable L1/L2 delta for the normal local/staging lineage. It
+uses only missing-row inserts, rejects ambiguous lookup rows, does not import
+the live catalog at migration runtime, and never deletes, renames, reorders,
+or reclassifies listings.
+
+For the observed Render production base, use the separate immutable branch
+`20261005_research_taxonomy_production_bridge.py` and target
+`research_bridge_20261005`; it applies the base taxonomy bridge plus this
+same research delta without traversing the unrelated Finder lineage. The
+repository converges later at `merge_research_taxonomy_20261005`. See
+`render_taxonomy_bridge_runbook.md` for the backup, preflight, write, and
+verification sequence. No production command was executed during this work.
 
 For a **separately chosen isolated development/test database only**, after
 reviewing the code, run:
