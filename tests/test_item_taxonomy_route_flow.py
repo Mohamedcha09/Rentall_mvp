@@ -187,8 +187,16 @@ def listing_image():
 with TestClient(main_module.app) as client:
     assert client.get("/_test_taxonomy_route_login/user").status_code == 200
 
-    # The real creation page includes a persisted Category id even though
+    # The same seeded lookup source reaches Explore and Create even though
     # there are still zero Digital Accounts listings.
+    empty_explore = client.get("/items?category=Digital%20Accounts")
+    assert empty_explore.status_code == 200, empty_explore.text[:1000]
+    assert "Movies &amp; Streaming" in empty_explore.text
+    assert "Sports" in empty_explore.text
+    assert "No items found" in empty_explore.text
+
+    # The real creation page includes a persisted Category id rather than a
+    # presentation-only option with no parent record for server validation.
     create = client.get("/owner/items/new")
     assert create.status_code == 200, create.text[:1000]
     assert f'value="Digital Accounts" data-id="{ids["digital"]}"' in create.text
