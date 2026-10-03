@@ -240,15 +240,6 @@
     background:linear-gradient(135deg,rgba(247,244,255,.96),rgba(242,250,255,.96));
   }
   .messages-filter--finder .bi{ color:#6650d8; font-size:1rem; }
-  .messages-filter--secondary{
-    min-height:38px;
-    padding-inline:11px;
-    color:#625b76;
-    background:rgba(255,255,255,.66);
-    box-shadow:none;
-    font-size:.78rem;
-  }
-  .messages-filter--secondary .messages-filter__dot{ width:6px; height:6px; }
   .messages-filter__logo{ width:24px; height:24px; object-fit:contain; border-radius:50%; }
   .messages-filter__count{
     display:inline-grid;
@@ -264,15 +255,6 @@
     font-weight:800;
     font-variant-numeric:tabular-nums;
   }
-  .messages-filter__dot{
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#7158e5;
-    box-shadow:0 0 0 4px rgba(113,88,229,.1);
-  }
-  .messages-filter[aria-pressed="true"] .messages-filter__dot{ background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.16); }
-
   .messages-conversations{ display:grid; gap:10px; min-width:0; }
   .messages-support-start{ min-width:0; margin:0; }
   .messages-support-start[hidden]{ display:none; }
@@ -530,7 +512,6 @@
     body[data-path="/messages"] .paypal-callout{ gap:9px; padding-inline:12px; font-size:.83rem; }
     body[data-path="/messages"] .paypal-callout .btn{ padding-inline:10px; font-size:.72rem; }
     .messages-filter{ min-height:42px; padding-inline:10px; font-size:.8rem; }
-    .messages-filter--secondary{ min-height:36px; padding-inline:8px; font-size:.73rem; }
     .messages-conversation{ grid-template-columns:64px minmax(0,1fr) auto; gap:10px; padding:8px; border-radius:18px; }
     .messages-conversation__media{ width:64px; height:64px; }
     .messages-conversation__item-image,
@@ -555,20 +536,15 @@
 {% endblock %}
 
 {% block content %}
-{% set unread_state = namespace(conversations=0, direct_total=0, support_total=0) %}
+{% set unread_state = namespace(support_total=0) %}
 {% for thread in threads %}
   {% set thread_unread_count = thread.unread_count|default(0)|int %}
-  {% if thread_unread_count > 0 %}
-    {% set unread_state.conversations = unread_state.conversations + 1 %}
-    {% set unread_state.direct_total = unread_state.direct_total + thread_unread_count %}
-    {% if thread.is_support_thread %}
-      {% set unread_state.support_total = unread_state.support_total + thread_unread_count %}
-    {% endif %}
+  {% if thread_unread_count > 0 and thread.is_support_thread %}
+    {% set unread_state.support_total = unread_state.support_total + thread_unread_count %}
   {% endif %}
 {% endfor %}
 {% for ticket in chatbot_tickets %}
   {% if ticket.unread_for_user|default(false) %}
-    {% set unread_state.conversations = unread_state.conversations + 1 %}
     {# Support tickets expose a real unread state, but not a per-message total. #}
     {% set unread_state.support_total = unread_state.support_total + 1 %}
   {% endif %}
@@ -612,7 +588,6 @@
         <span>Sevor Finder</span>
       </a>
     </div>
-    <button class="messages-filter messages-filter--secondary" type="button" data-filter="unread" aria-pressed="false" aria-label="Show unread conversations"><span>Unread</span>{% if unread_state.conversations > 0 %}<span class="messages-filter__dot" aria-hidden="true"></span>{% endif %}</button>
   </div>
 
   <div class="messages-conversations" id="threadsContainer">
@@ -740,7 +715,6 @@
     const emptyCopyFor = (filter, query) => {
       if (query) return ['No conversations found.', 'Try another name or listing title.'];
       if (filter === 'support') return ['No support conversations yet.', 'Your SEVOR support conversations will appear here.'];
-      if (filter === 'unread') return ['You are all caught up.', 'There are no unread conversations right now.'];
       return ['No messages yet.', 'Your conversations will appear here.'];
     };
 
@@ -749,14 +723,11 @@
       let visibleCount = 0;
       rows.forEach((row) => {
         const kind = row.dataset.kind || 'normal';
-        const unread = row.dataset.unread === '1';
         // “All” is the peer-to-peer inbox. Support/chatbot tickets remain
         // intentionally contained in the dedicated SEVOR Support filter.
-        const matchesFilter = activeFilter === 'all'
-          ? kind === 'normal'
-          : activeFilter === 'support'
-            ? kind === 'support'
-            : unread;
+        const matchesFilter = activeFilter === 'support'
+          ? kind === 'support'
+          : kind === 'normal';
         const matchesQuery = !query || (row.dataset.search || '').includes(query);
         const shouldShow = matchesFilter && matchesQuery;
         row.hidden = !shouldShow;

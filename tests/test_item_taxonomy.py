@@ -303,13 +303,14 @@ finally:
 
 
 class ItemTaxonomyIntegrationSurfaceTests(unittest.TestCase):
-    def test_explore_route_renders_configured_branch_without_digital_listings(self):
-        """Exercise the real /items route and Jinja template, not a helper.
+    def test_rendered_taxonomy_routes_cover_empty_explore_create_edit_and_admin(self):
+        """Exercise real rendered routes and Jinja templates, not helpers.
 
         The lookup tables intentionally start with no Digital Accounts rows.
         Explore must still expose the centrally configured browse branch with
-        no fake listing; forms remain database-backed and are covered by the
-        migration/validation tests above.
+        no fake listing. The same isolated database is then seeded to prove
+        the database-backed create, edit and admin pages render all hierarchy
+        shapes without using a real developer or production database.
         """
         with tempfile.TemporaryDirectory(prefix="sevor-explore-taxonomy-") as temp_dir:
             database_path = Path(temp_dir) / "explore.sqlite3"
@@ -350,12 +351,18 @@ conn.commit()
 conn.close()
 
 from fastapi.testclient import TestClient
+from fastapi import Request
 import app.main as main_module
 from app.database import SessionLocal
-from app.models import Category
+from app.models import Category, Item, Subcategory, User
 
 # Keep the route test offline and deterministic.
 main_module._fx_schedule_daily_sync = lambda: None
+
+@main_module.app.get("/_test_taxonomy_login/{role}")
+def _test_taxonomy_login(role: str, request: Request):
+    request.session["user"] = {"id": 901, "role": role, "status": "approved"}
+    return {"ok": True}
 
 db = SessionLocal()
 try:
@@ -379,6 +386,84 @@ with TestClient(main_module.app) as client:
     assert sports.status_code == 200, sports.text[:1000]
     assert "beIN Sports" in sports.text
     assert "DAZN" in sports.text
+
+    # Seed only the isolated test DB, then exercise the actual create/edit and
+    # admin HTML routes.  This mirrors the result of the additive migration;
+    # it does not write the developer's app.db.
+    db = SessionLocal()
+    try:
+        owner = User(
+            id=901, first_name="Taxonomy", last_name="Owner",
+            email="taxonomy-owner@example.test", phone="1", password_hash="x",
+            role="user", status="approved",
+        )
+        digital = Category(name="Digital Accounts")
+        baby = Category(name="Baby & Kids")
+        db.add_all([owner, digital, baby])
+        db.flush()
+        sports_type = Subcategory(category_id=digital.id, name="Sports")
+        movies_type = Subcategory(category_id=digital.id, name="Movies & Streaming")
+        seats = Subcategory(category_id=baby.id, name="Car Seats")
+        db.add_all([sports_type, movies_type, seats])
+        db.add_all([
+            Item(
+                id=900, owner_id=owner.id, title="Pending sports access", city="Montréal",
+                currency="CAD", price=10, price_per_day=10,
+                category="Digital Accounts", subcategory="Sports",
+                third_level="beIN Sports", status="pending", is_active="yes",
+            ),
+            Item(
+                id=904, owner_id=owner.id, title="Published sports access", city="Montréal",
+                currency="CAD", price=10, price_per_day=10,
+                category="Digital Accounts", subcategory="Sports",
+                third_level="beIN Sports", status="approved", is_active="yes",
+            ),
+            Item(
+                id=902, owner_id=owner.id, title="Car seat", city="Montréal",
+                currency="CAD", price=10, price_per_day=10,
+                category="Baby & Kids", subcategory="Car Seats",
+                status="pending", is_active="yes",
+            ),
+            Item(
+                id=903, owner_id=owner.id, title="Custom streaming access", city="Montréal",
+                currency="CAD", price=10, price_per_day=10,
+                category="Digital Accounts", subcategory="Movies & Streaming",
+                third_level="Other", custom_third_level="NewStreamingPlatform",
+                status="pending", is_active="yes",
+            ),
+        ])
+        db.commit()
+    finally:
+        db.close()
+
+    assert client.get("/_test_taxonomy_login/user").status_code == 200
+    create = client.get("/owner/items/new")
+    assert create.status_code == 200, create.text[:1000]
+    assert "Digital Accounts" in create.text
+    assert "beIN Sports" in create.text
+    assert "Car Seats" in create.text
+
+    edit = client.get("/owner/items/900/edit")
+    assert edit.status_code == 200, edit.text[:1000]
+    assert "thirdLevelSelect" in edit.text
+    assert "beIN Sports" in edit.text
+
+    filtered = client.get(
+        "/items?category=Digital%20Accounts&sub=Sports&service=beIN%20Sports"
+    )
+    assert filtered.status_code == 200, filtered.text[:1000]
+    assert "Published sports access" in filtered.text, filtered.text[:4000]
+    assert "Custom streaming access" not in filtered.text, filtered.text[:4000]
+
+    assert client.get("/_test_taxonomy_login/admin").status_code == 200
+    admin = client.get("/admin/items/pending")
+    assert admin.status_code == 200, admin.text[:1000]
+    for expected in (
+        "Digital Accounts", "Sports", "beIN Sports", "Baby &amp; Kids",
+        "Car Seats", "NewStreamingPlatform", "Service / Platform",
+        "/admin/items/900/approve", "/admin/items/900/delete",
+    ):
+        assert expected in admin.text, expected
 '''
             environment = os.environ.copy()
             environment["DATABASE_URL"] = f"sqlite:///{database_path.as_posix()}"

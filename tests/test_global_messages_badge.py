@@ -32,6 +32,19 @@ class GlobalMessagesBadgeTemplateTests(unittest.TestCase):
         self.assertNotIn("data-direct-unread-total", inbox)
         self.assertNotIn("background:#ee5368", inbox)
 
+    def test_inbox_has_no_unread_filter_but_keeps_message_unread_state(self):
+        """The Messages screen no longer offers a separate Unread tab."""
+        inbox = (REPOSITORY_ROOT / "app" / "templates" / "inbox.html").read_text(encoding="utf-8")
+
+        self.assertNotIn('data-filter="unread"', inbox)
+        self.assertNotIn("Show unread conversations", inbox)
+        self.assertNotIn("messages-filter--secondary", inbox)
+
+        # Removing the filter must not remove the actual unread state used by
+        # conversation rows, support counts, and the shared tab-bar badge.
+        self.assertIn("data-unread=", inbox)
+        self.assertIn("messages-filter__count", inbox)
+
 
 if __name__ == "__main__":
     unittest.main()
