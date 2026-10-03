@@ -72,7 +72,7 @@ try:
     assert "subcategory" in columns
     assert connection.execute(
         "SELECT version_num FROM alembic_version"
-    ).fetchone()[0] == "item_subcategory_taxonomy_20261002"
+    ).fetchone()[0] == "item_subcat_taxonomy_20261002"
     index = connection.execute(
         "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
         ("ix_items_category_subcategory_third_level",),
@@ -170,7 +170,7 @@ try:
     item_columns = {row[1] for row in connection.execute("PRAGMA table_info('items')")}
     assert {"subcategory", "third_level", "custom_third_level"}.issubset(item_columns)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-    assert revision == "item_subcategory_taxonomy_20261002", revision
+    assert revision == "item_subcat_taxonomy_20261002", revision
     digital = connection.execute(
         "SELECT id FROM categories WHERE name = ?", ("Digital Accounts",)
     ).fetchone()

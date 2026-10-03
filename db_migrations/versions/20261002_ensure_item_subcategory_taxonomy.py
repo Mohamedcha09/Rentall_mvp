@@ -1,6 +1,6 @@
 """ensure the persisted second taxonomy level exists
 
-Revision ID: item_subcategory_taxonomy_20261002
+Revision ID: item_subcat_taxonomy_20261002
 Revises: item_taxonomy_20261002
 Create Date: 2026-10-02
 
@@ -14,7 +14,9 @@ from alembic import context, op
 import sqlalchemy as sa
 
 
-revision = "item_subcategory_taxonomy_20261002"
+# PostgreSQL deployments retain Alembic's historical VARCHAR(32) revision
+# column, so this identifier intentionally remains within that limit.
+revision = "item_subcat_taxonomy_20261002"
 down_revision = "item_taxonomy_20261002"
 branch_labels = None
 depends_on = None
