@@ -661,7 +661,7 @@
     <nav class="explore-subcategories" aria-label="{{ current_category }} subcategories">
       {% for sub in subcategories %}
         <a class="explore-subcategory" {% if current_sub == sub.name %}aria-current="page"{% endif %}
-           href="/items?category={{ current_category|urlencode }}&amp;sub={{ sub.name|urlencode }}&amp;seller={{ (current_seller or 'all')|urlencode }}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">{{ sub.name }}</a>
+           href="/items?category={{ current_category|urlencode }}&amp;sub={{ sub.name|urlencode }}&amp;seller={{ (current_seller or 'all')|urlencode }}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">{{ taxonomy_label(sub.name, taxonomy_language) }}</a>
       {% endfor %}
     </nav>
   {% endif %}
@@ -670,7 +670,7 @@
     <nav class="explore-subcategories" aria-label="{{ current_sub }} services">
       {% for service in third_levels %}
         <a class="explore-subcategory" {% if current_service == service.name %}aria-current="page"{% endif %}
-           href="/items?category={{ current_category|urlencode }}&amp;sub={{ current_sub|urlencode }}&amp;service={{ service.name|urlencode }}&amp;seller={{ (current_seller or 'all')|urlencode }}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">{{ service.name }}</a>
+           href="/items?category={{ current_category|urlencode }}&amp;sub={{ current_sub|urlencode }}&amp;service={{ service.name|urlencode }}&amp;seller={{ (current_seller or 'all')|urlencode }}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">{{ taxonomy_label(service.name, taxonomy_language) }}</a>
       {% endfor %}
     </nav>
   {% endif %}

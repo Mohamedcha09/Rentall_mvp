@@ -194,6 +194,7 @@ class FinderTests(unittest.TestCase):
                     User(id=701, first_name="Finder", last_name="Owner", email="finder-owner@example.test", phone="1", password_hash="x", role="user", status="active", is_verified=True),
                     User(id=702, first_name="Finder", last_name="Other", email="finder-other@example.test", phone="2", password_hash="x", role="user", status="active", is_verified=True),
                     User(id=703, first_name="Listing", last_name="Owner", email="listing-owner@example.test", phone="3", password_hash="x", role="user", status="active", is_verified=True),
+                    User(id=704, first_name="Finder", last_name="Clarify", email="finder-clarify@example.test", phone="4", password_hash="x", role="user", status="active", is_verified=True),
                 ]
             )
             # Four explicit two-door Honda listings establish exact target-price
@@ -227,6 +228,25 @@ class FinderTests(unittest.TestCase):
                     # CAD is an allowed currency but no CAD/USD rate is seeded.
                     # It must not slip through a USD constraint on raw number alone.
                     Item(id=723, owner_id=703, title="CAD Honda", description="Honda red 2 doors", city="Lyon", currency="CAD", price=9, price_per_day=9, category="vehicles", status="approved", is_active="yes"),
+                    # Product-identity regression data.  These deliberately
+                    # contain the old substring traps: ``bus``/``business``
+                    # and ``car``/``carpet``.  Finder must use taxonomy and
+                    # token boundaries, not merely a broad text substring.
+                    Item(id=730, owner_id=703, title="Airport Bus", description="32-seat bus for group transport.", city="Montréal", currency="CAD", price=80, price_per_day=80, category="vehicles", subcategory="buses", status="approved", is_active="yes"),
+                    Item(id=731, owner_id=703, title="Montreal City Car", description="Compact car for daily rental.", city="Montréal", currency="CAD", price=45, price_per_day=45, category="vehicles", subcategory="cars", status="approved", is_active="yes"),
+                    Item(id=732, owner_id=703, title="Commercial vacuum", description="Business & Work Gear vacuum rental.", city="Montréal", currency="CAD", price=25, price_per_day=25, category="Business & Work Gear", subcategory="Commercial Vacuums", status="approved", is_active="yes"),
+                    Item(id=733, owner_id=703, title="Red carpet", description="Event carpet rental, not a vehicle.", city="Montréal", currency="CAD", price=15, price_per_day=15, category="Furniture", subcategory="Rugs", status="approved", is_active="yes"),
+                    Item(id=734, owner_id=703, title="PS4 game disc", description="PlayStation 4 game CD/disc rental.", city="Montréal", currency="CAD", price=8, price_per_day=8, category="Electronics", subcategory="Games", status="approved", is_active="yes"),
+                    Item(id=735, owner_id=703, title="Netflix access", description="Streaming rental access.", city="Montréal", currency="CAD", price=10, price_per_day=10, category="Digital Accounts", subcategory="Movies & Streaming", third_level="Netflix", status="approved", is_active="yes"),
+                    Item(id=736, owner_id=703, title="NOW streaming access", description="NOW streaming rental access.", city="Montréal", currency="CAD", price=8, price_per_day=8, category="Digital Accounts", subcategory="Movies & Streaming", third_level="NOW", status="approved", is_active="yes"),
+                    # A category not named in Finder's core aliases proves
+                    # that two-word live listing titles remain discoverable
+                    # through the dynamic catalogue path.
+                    Item(id=737, owner_id=703, title="Foldaway projection screen", description="Portable projection screen for events.", city="Montréal", currency="CAD", price=18, price_per_day=18, category="Event Innovations", subcategory="Projection Screens", status="approved", is_active="yes"),
+                    # A title may mention a product while the structured
+                    # category proves the listing is about something else.
+                    # This must never become a confirmed Bus result.
+                    Item(id=738, owner_id=703, title="Bus travel guide", description="A book about bus trips.", city="Montréal", currency="CAD", price=5, price_per_day=5, category="Books", subcategory="Travel Guides", status="approved", is_active="yes"),
                 ]
             )
             db.add(FxRate(base="EUR", quote="USD", effective_date=date.today(), rate=1.2))
@@ -471,6 +491,296 @@ class FinderTests(unittest.TestCase):
             self.assertIn("sony", updated.product_terms)
             self.assertEqual(updated.location_city, "Montréal")
             self.assertEqual(updated.price.maximum, 30)
+        finally:
+            db.close()
+
+    def test_catalog_identity_rejects_bus_business_and_car_carpet_leakage(self) -> None:
+        """A product word is not a raw substring and is not a broad vehicle.
+
+        The fixture intentionally has public ``Business & Work Gear`` and
+        ``carpet`` rows alongside an actual bus and cars.  This exercises the
+        real Finder query/ranker after the parser has resolved the product
+        concept, rather than testing a helper in isolation.
+        """
+        db = SessionLocal()
+        try:
+            bus_spec, action = apply_user_turn(db, SearchSpec(), "Bus", display_currency="CAD")
+            self.assertEqual(action, "search")
+            self.assertEqual(bus_spec.product_concept.casefold(), "bus")
+            bus_ids = _card_ids(search_rentable_listings(db, bus_spec, page_size=20))
+            self.assertIn(730, bus_ids)
+            self.assertNotIn(731, bus_ids, "a car cannot be a confirmed bus")
+            self.assertNotIn(732, bus_ids, "bus must not match business")
+            self.assertNotIn(733, bus_ids, "a carpet cannot be a confirmed bus")
+
+            car_spec, action = apply_user_turn(db, SearchSpec(), "voiture", display_currency="CAD")
+            self.assertEqual(action, "search")
+            self.assertEqual(car_spec.product_concept.casefold(), "car")
+            car_ids = _card_ids(search_rentable_listings(db, car_spec, page_size=20))
+            self.assertIn(731, car_ids)
+            self.assertNotIn(730, car_ids, "a bus cannot be a confirmed car")
+            self.assertNotIn(733, car_ids, "car must not match carpet")
+            self.assertNotIn(732, car_ids, "car must not match unrelated business equipment")
+        finally:
+            db.close()
+
+    def test_structured_taxonomy_beats_title_mentions_and_digital_account_is_not_support(self) -> None:
+        """A public Book about buses is not transport; catalog accounts stay Finder."""
+        db = SessionLocal()
+        try:
+            spec, action = apply_user_turn(db, SearchSpec(), "Bus", display_currency="CAD")
+            self.assertEqual(action, "search")
+            found = _card_ids(search_rentable_listings(db, spec, page_size=20))
+            self.assertIn(730, found)
+            self.assertNotIn(738, found, "a Book title must not override structured category")
+        finally:
+            db.close()
+        for message in ("Netflix account", "Spotify account", "digital account Netflix", "accounting software rental"):
+            with self.subTest(message=message):
+                self.assertFalse(looks_like_support_request(message))
+        self.assertTrue(looks_like_support_request("I cannot log in to my account"))
+
+    def test_ps4_location_parse_and_new_product_turn_replace_garbage_state(self) -> None:
+        """Known screenshot regression: a phrase is not a list of products."""
+        db = SessionLocal()
+        try:
+            parsed, action = apply_user_turn(db, SearchSpec(), "Cd ps4 Montréal", display_currency="CAD")
+            self.assertEqual(action, "search")
+            self.assertEqual(parsed.product_concept, "PlayStation game")
+            self.assertEqual(parsed.product_terms, ["ps4"])
+            self.assertEqual(parsed.location_city, "Montréal")
+            self.assertNotIn("cd", parsed.product_terms)
+            self.assertNotIn("montreal", [term.casefold() for term in parsed.product_terms])
+            self.assertTrue(any(attribute.key == "platform" and attribute.values == ["ps4"] for attribute in parsed.required_attributes))
+            self.assertIn(734, _card_ids(search_rentable_listings(db, parsed, page_size=20)))
+
+            # Simulate a durable state saved by the former buggy parser.  A
+            # fresh product request must be able to escape it without keeping
+            # stale platform/category/price/attribute filters.
+            broken_history = SearchSpec(
+                language="fr",
+                product_terms=["cs", "ps4", "cd", "paris", "veux"],
+                product_concept="PlayStation game",
+                category_candidates=["Electronics"],
+                subcategory_candidates=["Games"],
+                location_city="Montréal",
+                price=PriceConstraint(kind="maximum", maximum=30, currency="CAD"),
+                required_attributes=[FinderAttribute("platform", "equals", ["ps4"])],
+                sort_mode="price_asc",
+            ).normalized()
+            replaced, action = apply_user_turn(db, broken_history, "Je veux Bus", display_currency="CAD")
+            self.assertEqual(action, "search")
+            self.assertEqual(replaced.product_concept.casefold(), "bus")
+            self.assertEqual(replaced.product_terms, ["bus"])
+            self.assertEqual(replaced.category_candidates, [])
+            self.assertEqual(replaced.subcategory_candidates, [])
+            self.assertEqual(replaced.required_attributes, [])
+            self.assertEqual(replaced.location_city, "")
+            self.assertEqual(replaced.price.kind, "")
+            self.assertEqual(replaced.sort_mode, "relevance")
+            self.assertEqual(_card_ids(search_rentable_listings(db, replaced, page_size=20)), [730])
+        finally:
+            db.close()
+
+    def test_spacing_typo_and_digital_catalog_recovery_are_catalog_grounded(self) -> None:
+        """Safe recovery must resolve actual catalog concepts, never tokens."""
+        db = SessionLocal()
+        try:
+            cases = (
+                ("b u s", "bus", [730]),
+                ("b     u     s", "bus", [730]),
+                ("vouture", "car", [731]),
+                ("voiturr", "car", [731]),
+                ("netflx", "Netflix", [735]),
+                ("n e t f l i x", "Netflix", [735]),
+            )
+            for text, expected_concept, expected_ids in cases:
+                with self.subTest(text=text):
+                    spec, action = apply_user_turn(db, SearchSpec(), text, display_currency="CAD")
+                    self.assertEqual(action, "search")
+                    self.assertEqual(spec.product_concept.casefold(), expected_concept.casefold())
+                    found = _card_ids(search_rentable_listings(db, spec, page_size=20))
+                    for item_id in expected_ids:
+                        self.assertIn(item_id, found)
+        finally:
+            db.close()
+
+    def test_now_and_max_tokens_do_not_override_the_actual_product_or_price(self) -> None:
+        """Catalog service names must not steal a product/price phrase.
+
+        ``Max`` and ``NOW`` are real service labels in the digital catalogue,
+        so this is stricter than a stop-word assertion: product identity and
+        the numeric price clause must retain their intended meanings.
+        """
+        db = SessionLocal()
+        try:
+            camera, action = apply_user_turn(db, SearchSpec(), "camera max 30 CAD", display_currency="CAD")
+            self.assertEqual(action, "search")
+            self.assertEqual(camera.product_concept.casefold(), "camera")
+            self.assertEqual(camera.service_candidates, [])
+            self.assertEqual(camera.price.kind, "maximum")
+            self.assertEqual(camera.price.maximum, 30)
+            self.assertEqual(camera.price.currency, "CAD")
+
+            for text in ("Now a car", "car now"):
+                with self.subTest(text=text):
+                    car, action = apply_user_turn(db, SearchSpec(), text, display_currency="CAD")
+                    self.assertEqual(action, "search")
+                    self.assertEqual(car.product_concept.casefold(), "car")
+                    self.assertEqual(car.service_candidates, [])
+
+            now, action = apply_user_turn(db, SearchSpec(), "NOW", display_currency="CAD")
+            self.assertEqual(action, "search")
+            self.assertEqual(now.service_candidates, ["NOW"])
+            self.assertEqual(now.category_candidates, ["Digital Accounts"])
+            self.assertIn(736, _card_ids(search_rentable_listings(db, now, page_size=20)))
+        finally:
+            db.close()
+
+    def test_price_phrase_plus_de_is_not_pagination_and_refinement_keeps_same_product_scope(self) -> None:
+        """A price refinement takes precedence over the short ``plus`` control."""
+        db = SessionLocal()
+        try:
+            initial, action = apply_user_turn(
+                db,
+                SearchSpec(),
+                "Bus Montréal maximum 100 CAD",
+                display_currency="CAD",
+            )
+            self.assertEqual(action, "search")
+            self.assertEqual(initial.product_concept.casefold(), "bus")
+            self.assertEqual(initial.location_city, "Montréal")
+            self.assertEqual(initial.price.kind, "maximum")
+
+            minimum, action = apply_user_turn(db, initial, "plus de 20 CAD", display_currency="CAD")
+            self.assertEqual(action, "search")
+            self.assertEqual(minimum.product_concept.casefold(), "bus")
+            self.assertEqual(minimum.location_city, "Montréal")
+            self.assertEqual(minimum.price.kind, "minimum")
+            self.assertEqual(minimum.price.minimum, 20)
+            self.assertEqual(minimum.price.currency, "CAD")
+
+            refined, action = apply_user_turn(db, minimum, "32 seats", display_currency="CAD")
+            self.assertEqual(action, "search")
+            self.assertEqual(refined.product_concept.casefold(), "bus")
+            self.assertEqual(refined.location_city, "Montréal")
+            self.assertEqual(refined.price.kind, "minimum")
+            self.assertTrue(any(
+                attribute.key == "seat_count" and attribute.values == ["32"]
+                for attribute in refined.required_attributes
+            ))
+        finally:
+            db.close()
+
+    def test_dynamic_live_title_phrase_discovers_future_category_without_a_branch(self) -> None:
+        """A future public category becomes searchable through its live title."""
+        db = SessionLocal()
+        try:
+            spec, action = apply_user_turn(
+                db,
+                SearchSpec(),
+                "Find a foldaway projection screen in Montréal",
+                display_currency="CAD",
+            )
+            self.assertEqual(action, "search")
+            self.assertEqual(spec.product_concept.casefold(), "foldaway projection screen")
+            self.assertIn(737, _card_ids(search_rentable_listings(db, spec, page_size=20)))
+        finally:
+            db.close()
+
+    def test_ambiguous_and_unknown_short_queries_clarify_without_unconstrained_search(self) -> None:
+        """Ambiguity must be a grounded question, not random inventory."""
+        db = SessionLocal()
+        try:
+            prime, action = apply_user_turn(db, SearchSpec(), "prime", display_currency="CAD")
+            self.assertEqual(action, "clarify")
+            self.assertFalse(prime.product_terms)
+            prime_labels = {option["label"] for option in prime.pending_clarification["options"]}
+            self.assertIn("Amazon Prime", prime_labels)
+            self.assertIn("Amazon Prime Video", prime_labels)
+
+            playstation, action = apply_user_turn(db, SearchSpec(), "ps", display_currency="CAD")
+            self.assertEqual(action, "clarify")
+            self.assertFalse(playstation.product_terms)
+            self.assertTrue(playstation.pending_clarification["options"], "PS needs grounded PlayStation choices")
+            self.assertTrue(any("playstation" in option["label"].casefold() for option in playstation.pending_clarification["options"]))
+
+            bein, action = apply_user_turn(db, SearchSpec(), "bein", display_currency="CAD")
+            self.assertEqual(action, "clarify")
+            bein_labels = {option["label"] for option in bein.pending_clarification["options"]}
+            self.assertIn("beIN", bein_labels)
+            self.assertIn("beIN Sports", bein_labels)
+
+            unknown, action = apply_user_turn(db, SearchSpec(), "hdjdjsjs", display_currency="CAD")
+            self.assertEqual(action, "clarify")
+            self.assertFalse(unknown.product_terms)
+            self.assertEqual(unknown.pending_clarification["options"], [])
+            self.assertIn("hdjdjsjs", unknown.unknown_terms)
+        finally:
+            db.close()
+
+    def test_route_persists_clarification_payload_then_resolves_a_grounded_choice(self) -> None:
+        """Clarifications are Finder-owned messages with a revision barrier."""
+        client = TestClient(main_module.app, base_url="http://testserver.local")
+        token = _login(client, 704)
+        first = client.post(
+            "/api/finder/message",
+            json={"body": "prime", "client_message_id": "finder-clarify-0001", "csrf_token": token},
+        )
+        self.assertEqual(first.status_code, 200, first.text)
+        first_payload = first.json()
+        self.assertEqual(first_payload["conversation"]["revision"], 1)
+        assistant = first_payload["messages"][-1]
+        self.assertEqual(assistant["sender_role"], "assistant")
+        self.assertEqual(assistant.get("result_cards"), [])
+        clarification = assistant.get("clarification")
+        self.assertIsInstance(clarification, dict)
+        self.assertEqual(clarification.get("kind"), "product")
+        self.assertIn("Amazon Prime Video", {option["label"] for option in clarification.get("options", [])})
+
+        selected = client.post(
+            "/api/finder/message",
+            json={
+                "body": "Amazon Prime Video",
+                "conversation_id": first_payload["conversation"]["id"],
+                "client_message_id": "finder-clarify-0002",
+                "csrf_token": token,
+                "search_revision": first_payload["conversation"]["revision"],
+            },
+        )
+        self.assertEqual(selected.status_code, 200, selected.text)
+        selected_payload = selected.json()
+        self.assertEqual(selected_payload["conversation"]["revision"], 2)
+        resolved = selected_payload["messages"][-1]
+        self.assertIsNone(resolved.get("clarification"))
+        labels = resolved.get("search_summary", {}).get("labels", [])
+        self.assertTrue(any("Amazon Prime Video" in label for label in labels))
+
+    def test_pending_product_choice_preserves_explicit_city_and_budget(self) -> None:
+        """Clarifying a product cannot discard filters from the same turn."""
+        db = SessionLocal()
+        try:
+            pending, action = apply_user_turn(
+                db,
+                SearchSpec(),
+                "prime Montréal maximum 20 CAD",
+                display_currency="CAD",
+            )
+            self.assertEqual(action, "clarify")
+            self.assertEqual(pending.location_city, "Montréal")
+            self.assertEqual(pending.price.kind, "maximum")
+            self.assertEqual(pending.price.maximum, 20)
+            resolved, action = apply_user_turn(
+                db,
+                pending,
+                "Amazon Prime Video",
+                display_currency="CAD",
+            )
+            self.assertEqual(action, "search")
+            self.assertEqual(resolved.service_candidates, ["Amazon Prime Video"])
+            self.assertEqual(resolved.location_city, "Montréal")
+            self.assertEqual(resolved.price.kind, "maximum")
+            self.assertEqual(resolved.price.maximum, 20)
         finally:
             db.close()
 

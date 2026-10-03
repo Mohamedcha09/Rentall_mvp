@@ -303,6 +303,106 @@ finally:
 
 
 class ItemTaxonomyIntegrationSurfaceTests(unittest.TestCase):
+    def test_explore_route_renders_configured_branch_without_digital_listings(self):
+        """Exercise the real /items route and Jinja template, not a helper.
+
+        The lookup tables intentionally start with no Digital Accounts rows.
+        Explore must still expose the centrally configured browse branch with
+        no fake listing; forms remain database-backed and are covered by the
+        migration/validation tests above.
+        """
+        with tempfile.TemporaryDirectory(prefix="sevor-explore-taxonomy-") as temp_dir:
+            database_path = Path(temp_dir) / "explore.sqlite3"
+            script = r'''
+import os
+import sqlite3
+import sys
+from pathlib import Path
+
+site_packages = os.environ.get("SEVOR_TEST_SITE_PACKAGES", "")
+if site_packages:
+    sys.path.insert(0, site_packages)
+
+path = Path(os.environ["EXPLORE_TAXONOMY_TEST_DB"])
+conn = sqlite3.connect(path)
+conn.executescript("""
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY, first_name VARCHAR(100), last_name VARCHAR(100),
+  email VARCHAR(200), phone VARCHAR(50), password_hash VARCHAR(255),
+  role VARCHAR(20), status VARCHAR(20), created_at TIMESTAMP, updated_at TIMESTAMP,
+  is_verified BOOLEAN, verified_at TIMESTAMP, badge_admin BOOLEAN,
+  is_deposit_manager BOOLEAN, is_mod BOOLEAN, is_support BOOLEAN,
+  avatar_path VARCHAR(500), account_type VARCHAR(30)
+);
+CREATE TABLE items (
+  id INTEGER PRIMARY KEY, owner_id INTEGER NOT NULL, title VARCHAR(200) NOT NULL,
+  description TEXT, website_url VARCHAR(2048), city VARCHAR(120), currency VARCHAR(3),
+  price NUMERIC, status VARCHAR(20), admin_feedback TEXT, reviewed_at TIMESTAMP,
+  latitude REAL, longitude REAL, price_per_day INTEGER, category VARCHAR(80),
+  subcategory VARCHAR(120), third_level VARCHAR(160),
+  custom_third_level VARCHAR(200), image_path VARCHAR(500), is_active VARCHAR(10),
+  created_at TIMESTAMP
+);
+CREATE TABLE categories (id INTEGER PRIMARY KEY, name VARCHAR(80) NOT NULL UNIQUE);
+CREATE TABLE subcategories (id INTEGER PRIMARY KEY, category_id INTEGER NOT NULL, name VARCHAR(120) NOT NULL);
+""")
+conn.commit()
+conn.close()
+
+from fastapi.testclient import TestClient
+import app.main as main_module
+from app.database import SessionLocal
+from app.models import Category
+
+# Keep the route test offline and deterministic.
+main_module._fx_schedule_daily_sync = lambda: None
+
+db = SessionLocal()
+try:
+    assert db.query(Category).filter(Category.name == "Digital Accounts").count() == 0
+finally:
+    db.close()
+
+with TestClient(main_module.app) as client:
+    root = client.get("/items")
+    assert root.status_code == 200, root.text[:1000]
+    assert "Digital Accounts" in root.text
+    assert "category=Digital+Accounts" in root.text or "category=Digital%20Accounts" in root.text
+
+    category = client.get("/items?category=Digital%20Accounts")
+    assert category.status_code == 200, category.text[:1000]
+    assert "Movies &amp; Streaming" in category.text
+    assert "Sports" in category.text
+    assert "No items found" in category.text
+
+    sports = client.get("/items?category=Digital%20Accounts&sub=Sports")
+    assert sports.status_code == 200, sports.text[:1000]
+    assert "beIN Sports" in sports.text
+    assert "DAZN" in sports.text
+'''
+            environment = os.environ.copy()
+            environment["DATABASE_URL"] = f"sqlite:///{database_path.as_posix()}"
+            environment["EXPLORE_TAXONOMY_TEST_DB"] = str(database_path)
+            environment["SECRET_KEY"] = "explore-taxonomy-test-only"
+            environment["COOKIE_DOMAIN"] = "testserver.local"
+            environment["HTTPS_ONLY_COOKIES"] = "0"
+            environment["SITE_URL"] = ""
+            site_packages = _project_site_packages()
+            if site_packages:
+                environment["SEVOR_TEST_SITE_PACKAGES"] = site_packages
+                environment["PYTHONPATH"] = os.pathsep.join(
+                    part for part in (site_packages, environment.get("PYTHONPATH", "")) if part
+                )
+            completed = subprocess.run(
+                [sys.executable, "-c", script],
+                cwd=REPOSITORY_ROOT,
+                env=environment,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+
     def test_create_edit_explore_search_detail_and_admin_use_the_shared_hierarchy(self):
         templates = REPOSITORY_ROOT / "app" / "templates"
         new_form = (templates / "items_new.html").read_text(encoding="utf-8")

@@ -117,6 +117,7 @@
     .sf-result__notice{margin-top:5px;color:#837b94;font-size:10px;font-weight:650;line-height:1.3}
     .sf-result__link{margin-top:auto;padding-top:7px;color:#5840cd;text-decoration:none;font-size:11px;font-weight:820}.sf-result__link:hover{text-decoration:underline}
     .sf-result__more{justify-self:start;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800}
+    .sf-clarification{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px;margin-inline-start:37px;min-width:0}.sf-clarification__choice{max-width:100%;padding:8px 11px;overflow:hidden;color:#4d3fa6;text-overflow:ellipsis;white-space:nowrap;border:1px solid rgba(117,72,247,.22);border-radius:999px;background:rgba(243,240,255,.9);box-shadow:0 4px 12px rgba(64,64,151,.06);font-size:12px;font-weight:800;cursor:pointer}.sf-clarification__choice:hover{border-color:rgba(85,91,210,.48);background:#fff}.sf-clarification__choice:focus-visible{outline:3px solid rgba(53,137,245,.34);outline-offset:2px}
     .sf-examples{margin:21px 0 0}.sf-section-title{margin:0 0 10px;color:#1a2751;font-size:13px;font-weight:850;letter-spacing:.01em}.sf-example-list{display:flex;gap:8px;overflow-x:auto;padding:0 1px 4px;scrollbar-width:none}.sf-example-list::-webkit-scrollbar{display:none}.sf-example{flex:0 0 auto;min-height:36px;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:730;white-space:nowrap}.sf-example svg{width:14px;height:14px;margin-inline-end:5px;vertical-align:-2px;color:#7452ef}
     .sf-loading{display:none;align-items:flex-end;gap:8px;margin:10px 0 0}.sf-loading.is-visible{display:flex}.sf-loading-bubble{display:inline-flex;align-items:center;min-height:37px;padding:0 14px;border:1px solid var(--sf-line);border-radius:17px 17px 17px 6px;background:#fff;color:#64708e;font-size:12px;font-weight:750}.sf-loading-dot{display:inline-block;width:6px;height:6px;margin-inline-end:7px;border-radius:50%;background:#5d69e8;box-shadow:0 0 0 4px rgba(93,105,232,.12)}
     .sf-composer-wrap{z-index:2;flex:0 0 auto;padding:10px clamp(13px,3vw,28px) max(12px,env(safe-area-inset-bottom));border-top:1px solid rgba(85,91,160,.12);background:rgba(250,251,255,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
@@ -124,7 +125,7 @@
     .sf-input{width:100%;min-width:0;max-height:112px;min-height:25px;padding:7px 0;resize:none;color:var(--sf-navy);background:transparent;border:0;outline:0;font-size:16px;line-height:1.38}.sf-input::placeholder{color:#929bb2}.sf-send{width:39px;height:39px;flex:0 0 39px;display:grid;place-items:center;border:0;border-radius:50%;color:#fff;background:linear-gradient(135deg,var(--sf-purple),var(--sf-blue) 60%,var(--sf-cyan));box-shadow:0 7px 15px rgba(73,102,238,.25);cursor:pointer}.sf-send:disabled,.sf-input:disabled{cursor:not-allowed;opacity:.48}
     .sf-composer-meta{display:flex;justify-content:space-between;gap:10px;padding:7px 4px 0;color:#7f88a3;font-size:11px;font-weight:650}.sf-status-note{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sf-error{display:none;margin:9px 2px 0;color:#ad3750;font-size:12px;font-weight:670}.sf-error.is-visible{display:block}
     @media (min-width:768px){.sf-shell{border-inline:1px solid rgba(85,91,160,.08);box-shadow:0 0 60px rgba(68,85,157,.05)}.sf-result{grid-template-columns:86px minmax(0,1fr)}.sf-result__image{width:86px;height:86px}}
-    @media (max-width:360px){.sf-header{padding-inline:13px;gap:8px}.sf-scroll{padding-inline:12px}.sf-header-name{font-size:15px}.sf-new-search{padding-inline:8px;font-size:11px}.sf-bubble-wrap{max-width:86%}.sf-results,.sf-search-summary{margin-inline-start:0}.sf-result{grid-template-columns:66px minmax(0,1fr);gap:9px}.sf-result__image{width:66px;height:66px}.sf-result__title{font-size:13px}}
+    @media (max-width:360px){.sf-header{padding-inline:13px;gap:8px}.sf-scroll{padding-inline:12px}.sf-header-name{font-size:15px}.sf-new-search{padding-inline:8px;font-size:11px}.sf-bubble-wrap{max-width:86%}.sf-results,.sf-search-summary,.sf-clarification{margin-inline-start:0}.sf-result{grid-template-columns:66px minmax(0,1fr);gap:9px}.sf-result__image{width:66px;height:66px}.sf-result__title{font-size:13px}}
     @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
   </style>
 </head>
@@ -209,14 +210,21 @@
       let sending = false;
       let lastMessageId = 0;
       let pollTimer = null;
+      let polling = false;
+      let sendGeneration = 0;
+      // A Finder page can receive the initial history after the visitor has
+      // already started a fresh conversation.  Keep that older response from
+      // replacing the newer view; server revisions handle mutations within a
+      // conversation, while this token covers a change of conversation.
+      let viewGeneration = 0;
 
       const locale = (navigator.language || "en").toLowerCase();
       const texts = locale.startsWith("ar") ? {
-        title:"اعثر على ما تريد كراءه.", copy:"صف ما تريد كراءه وسأبحث في SEVOR.", placeholder:"صف ما تريد كراءه…", searching:"أبحث في SEVOR…", newSearch:"بحث جديد", examples:"جرّب بحثًا", note:"تستخدم عمليات البحث إعلانات SEVOR العامة الحالية.", finder:"Sevor Finder", results:"فتح الإعلان", more:"عرض المزيد", error:"تعذر إتمام البحث. حاول مرة أخرى.", signIn:"سجّل الدخول لحفظ بحثك في Sevor Finder.", assistant:"Sevor Finder", support:"دعم SEVOR", unconfirmed:"غير مؤكد في الإعلان: ", availability:"التوفر يحتاج تأكيدًا", available:"متاح للتواريخ المطلوبة", converted:"سعر المقارنة: "
+        title:"اعثر على ما تريد كراءه.", copy:"صف ما تريد كراءه وسأبحث في SEVOR.", placeholder:"صف ما تريد كراءه…", searching:"أبحث في SEVOR…", newSearch:"بحث جديد", examples:"جرّب بحثًا", note:"تستخدم عمليات البحث إعلانات SEVOR العامة الحالية.", finder:"Sevor Finder", results:"فتح الإعلان", more:"عرض المزيد", error:"تعذر إتمام البحث. حاول مرة أخرى.", signIn:"سجّل الدخول لحفظ بحثك في Sevor Finder.", assistant:"Sevor Finder", support:"دعم SEVOR", unconfirmed:"غير مؤكد في الإعلان: ", availability:"التوفر يحتاج تأكيدًا", available:"متاح للتواريخ المطلوبة", converted:"سعر المقارنة: ", rating:"التقييم", distance:"المسافة", yes:"نعم", no:"لا"
       } : locale.startsWith("fr") ? {
-        title:"Trouvez ce que vous voulez louer.", copy:"Décrivez ce que vous voulez louer et je chercherai dans SEVOR.", placeholder:"Décrivez ce que vous voulez louer…", searching:"Recherche dans SEVOR…", newSearch:"Nouvelle recherche", examples:"Essayer une recherche", note:"Les recherches utilisent les annonces publiques SEVOR actuelles.", finder:"Sevor Finder", results:"Ouvrir l’annonce", more:"Afficher plus", error:"La recherche n’a pas pu être effectuée. Réessayez.", signIn:"Connectez-vous pour enregistrer votre recherche dans Sevor Finder.", assistant:"Sevor Finder", support:"Support SEVOR", unconfirmed:"Non confirmé dans l’annonce : ", availability:"Disponibilité à confirmer", available:"Disponible pour les dates demandées", converted:"Base de comparaison : "
+        title:"Trouvez ce que vous voulez louer.", copy:"Décrivez ce que vous voulez louer et je chercherai dans SEVOR.", placeholder:"Décrivez ce que vous voulez louer…", searching:"Recherche dans SEVOR…", newSearch:"Nouvelle recherche", examples:"Essayer une recherche", note:"Les recherches utilisent les annonces publiques SEVOR actuelles.", finder:"Sevor Finder", results:"Ouvrir l’annonce", more:"Afficher plus", error:"La recherche n’a pas pu être effectuée. Réessayez.", signIn:"Connectez-vous pour enregistrer votre recherche dans Sevor Finder.", assistant:"Sevor Finder", support:"Support SEVOR", unconfirmed:"Non confirmé dans l’annonce : ", availability:"Disponibilité à confirmer", available:"Disponible pour les dates demandées", converted:"Base de comparaison : ", rating:"Note", distance:"Distance", yes:"Oui", no:"Non"
       } : {
-        title:"Find what you want to rent.", copy:"Describe what you want to rent and I’ll search SEVOR.", placeholder:"Describe what you want to rent…", searching:"Searching SEVOR…", newSearch:"New search", examples:"Try a search", note:"Searches use current public SEVOR listings.", finder:"Sevor Finder", results:"Open listing", more:"Show more", error:"The search could not be completed. Please try again.", signIn:"Please sign in to save a Sevor Finder search.", assistant:"Sevor Finder", support:"SEVOR Support", unconfirmed:"Not confirmed in the listing: ", availability:"Availability needs confirmation", available:"Available for the requested dates", converted:"Comparison basis: "
+        title:"Find what you want to rent.", copy:"Describe what you want to rent and I’ll search SEVOR.", placeholder:"Describe what you want to rent…", searching:"Searching SEVOR…", newSearch:"New search", examples:"Try a search", note:"Searches use current public SEVOR listings.", finder:"Sevor Finder", results:"Open listing", more:"Show more", error:"The search could not be completed. Please try again.", signIn:"Please sign in to save a Sevor Finder search.", assistant:"Sevor Finder", support:"SEVOR Support", unconfirmed:"Not confirmed in the listing: ", availability:"Availability needs confirmation", available:"Available for the requested dates", converted:"Comparison basis: ", rating:"Rating", distance:"Distance", yes:"Yes", no:"No"
       };
 
       function create(tag, className, text) {
@@ -259,7 +267,7 @@
       }
       function resultFacts(card) {
         const facts = Array.isArray(card.matched_attributes) ? card.matched_attributes : (Array.isArray(card.facts) ? card.facts : []);
-        return facts.map((fact) => {
+        const output = facts.map((fact) => {
           if (typeof fact === "string") return fact.trim();
           if (!fact || typeof fact !== "object") return "";
           const value = typeof fact.label === "string" ? fact.label : typeof fact.value === "string" ? fact.value : "";
@@ -267,7 +275,13 @@
           const key = typeof fact.key === "string" && fact.key !== "text" ? fact.key.replace(/_/g, " ") : "";
           const unit = typeof fact.unit === "string" && fact.unit ? ` ${fact.unit}` : "";
           return key ? `${key}: ${value}${unit}` : `${value}${unit}`;
-        }).filter(Boolean).slice(0, 5);
+        }).filter(Boolean);
+        const rating = Number(card && card.rating);
+        const reviews = Number(card && card.review_count);
+        if (Number.isFinite(rating) && reviews > 0) output.push(`${texts.rating}: ${rating.toFixed(1)} (${reviews})`);
+        const distance = Number(card && card.distance_km);
+        if (Number.isFinite(distance) && distance >= 0) output.push(`${texts.distance}: ${distance.toFixed(1)} km`);
+        return output.slice(0, 5);
       }
       function priceLabel(card) {
         if (typeof card.price_label === "string" && card.price_label.trim()) return card.price_label;
@@ -340,6 +354,30 @@
         }
         messagesEl.append(wrap);
       }
+      function renderClarification(value) {
+        if (!value || typeof value !== "object") return;
+        const options = Array.isArray(value.options) ? value.options.filter((option) => option && typeof option === "object" && typeof option.value === "string" && typeof option.label === "string") : [];
+        const proposed = typeof value.proposed === "string" ? value.proposed.trim() : "";
+        if (!options.length && !proposed) return;
+        const wrap = create("div", "sf-clarification");
+        if (proposed && options.length === 1) {
+          const yes = create("button", "sf-clarification__choice", `${texts.yes}, ${options[0].label}`);
+          yes.type = "button";
+          yes.addEventListener("click", () => sendMessage(texts.yes));
+          const no = create("button", "sf-clarification__choice", texts.no);
+          no.type = "button";
+          no.addEventListener("click", () => sendMessage(texts.no));
+          wrap.append(yes, no);
+        } else {
+          options.slice(0, 4).forEach((option) => {
+            const choice = create("button", "sf-clarification__choice", option.label);
+            choice.type = "button";
+            choice.addEventListener("click", () => sendMessage(option.value));
+            wrap.append(choice);
+          });
+        }
+        if (wrap.childElementCount) messagesEl.append(wrap);
+      }
       function renderMessage(message, optimistic = false) {
         if (!message || (message.id && rendered.has(message.id))) return;
         if (message.client_message_id && pending.has(message.client_message_id)) { pending.get(message.client_message_id).remove(); pending.delete(message.client_message_id); }
@@ -354,6 +392,7 @@
         if (time) bubbleWrap.append(create("div", "sf-message-time", time));
         row.append(bubbleWrap); messagesEl.append(row);
         if (message.search_summary) renderSummary(message.search_summary);
+        renderClarification(message.clarification);
         renderCards(message.result_cards || message.results, Boolean(message.has_more || message.next_page));
         renderCards(message.near_cards, false);
         if (typeof message.support_url === "string" && message.support_url === "/chatbot") {
@@ -372,8 +411,14 @@
         document.documentElement.dir = code === "ar" ? "rtl" : "ltr";
       }
       function hydrate(payload, reset = false) {
+        const incomingConversation = payload && payload.conversation ? payload.conversation : null;
+        if (!reset && incomingConversation && conversation && incomingConversation.id === conversation.id) {
+          const incomingRevision = Number(incomingConversation.revision);
+          const currentRevision = Number(conversation.revision);
+          if (Number.isFinite(incomingRevision) && Number.isFinite(currentRevision) && incomingRevision < currentRevision) return;
+        }
         if (reset) { rendered.clear(); pending.clear(); messagesEl.replaceChildren(); lastMessageId = 0; hasPersistedMessages = false; }
-        conversation = payload && payload.conversation ? payload.conversation : conversation;
+        conversation = incomingConversation || conversation;
         if (conversation && conversation.language) applyConversationLanguage(conversation.language);
         const incoming = payload && Array.isArray(payload.messages) ? payload.messages : [];
         if (incoming.length) hasPersistedMessages = true;
@@ -395,9 +440,31 @@
         }
         return data;
       }
-      async function createConversation() {
+      function asksForClosest(body) {
+        const value = String(body || "").toLowerCase();
+        return /\b(?:closest|nearest|near\s+me|pres\s+de\s+moi|près\s+de\s+moi)\b|(?:الاقرب|الأقرب|قريب\s+مني)/.test(value);
+      }
+      async function approvedApproximateReference(body) {
+        if (!asksForClosest(body) || !navigator.geolocation) return null;
+        return new Promise((resolve) => {
+          let settled = false;
+          const finish = (value) => { if (!settled) { settled = true; resolve(value); } };
+          const timer = window.setTimeout(() => finish(null), 7000);
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              window.clearTimeout(timer);
+              const latitude = Number(position && position.coords && position.coords.latitude);
+              const longitude = Number(position && position.coords && position.coords.longitude);
+              finish(Number.isFinite(latitude) && Number.isFinite(longitude) ? {latitude, longitude} : null);
+            },
+            () => { window.clearTimeout(timer); finish(null); },
+            {enableHighAccuracy:false, timeout:6500, maximumAge:300000},
+          );
+        });
+      }
+      async function createConversation(viewToken = viewGeneration) {
         const payload = await api("/api/finder/conversation", {method:"POST", body:JSON.stringify({csrf_token:csrfToken})});
-        hydrate(payload, true);
+        if (viewToken === viewGeneration) hydrate(payload, true);
         return payload;
       }
       async function sendMessage(raw, retryId = null) {
@@ -406,7 +473,13 @@
         if (body.length > 2400) { setError(texts.error); return; }
         if (!loggedIn) { setError(texts.signIn); return; }
         const id = retryId || clientId();
+        const generation = ++sendGeneration;
+        // If startup history is still in flight, the message endpoint creates
+        // the first real Finder conversation.  Its eventual response must win
+        // over the empty/stale startup payload.
+        if (!conversation || !conversation.id) viewGeneration += 1;
         setError(""); setSending(true);
+        const reference = await approvedApproximateReference(body);
         renderMessage({sender_role:"user", body, client_message_id:id, created_at:new Date().toISOString()}, true);
         inputEl.value = ""; autoResize(); scrollLatest(true);
         try {
@@ -417,9 +490,11 @@
             csrf_token:csrfToken,
             // The server rejects an out-of-date tab instead of allowing a
             // delayed request to overwrite a newer search revision.
-            search_revision:conversation && Number.isFinite(Number(conversation.revision)) ? Number(conversation.revision) : null
+            search_revision:conversation && Number.isFinite(Number(conversation.revision)) ? Number(conversation.revision) : null,
+            reference_latitude:reference ? reference.latitude : null,
+            reference_longitude:reference ? reference.longitude : null
           })});
-          hydrate(payload);
+          if (generation === sendGeneration) hydrate(payload);
         } catch (error) {
           // A different tab/search revision won first. Rehydrate before a
           // retry so the next request carries the current server revision.
@@ -439,14 +514,23 @@
       async function startNew() {
         if (!loggedIn || sending) { if (!loggedIn) setError(texts.signIn); return; }
         setError(""); setSending(true);
-        try { await createConversation(); inputEl.focus(); }
+        const viewToken = ++viewGeneration;
+        try { await createConversation(viewToken); inputEl.focus(); }
         catch (error) { setError(error.message || texts.error); }
         finally { setSending(false); }
       }
       async function poll() {
-        if (!conversation || !conversation.id || document.hidden || sending) return;
-        try { hydrate(await api(`/api/finder/conversation?conversation_id=${encodeURIComponent(conversation.id)}&after_id=${lastMessageId}`)); }
+        if (!conversation || !conversation.id || document.hidden || sending || polling) return;
+        const conversationId = conversation.id;
+        const revision = Number(conversation.revision);
+        polling = true;
+        try {
+          const payload = await api(`/api/finder/conversation?conversation_id=${encodeURIComponent(conversationId)}&after_id=${lastMessageId}`);
+          const incoming = payload && payload.conversation;
+          if (!sending && conversation && conversation.id === conversationId && (!incoming || !Number.isFinite(Number(incoming.revision)) || !Number.isFinite(revision) || Number(incoming.revision) >= revision)) hydrate(payload);
+        }
         catch (_) { /* Keep the existing search visible through transient network errors. */ }
+        finally { polling = false; }
       }
       async function initialise() {
         document.getElementById("sf-back").addEventListener("click", () => { if (history.length > 1) history.back(); else location.href = "/messages"; });
@@ -467,10 +551,11 @@
         document.getElementById("sf-header-status-text").textContent = locale.startsWith("ar") ? "ابحث في إعلانات SEVOR الحقيقية" : locale.startsWith("fr") ? "Recherchez des locations SEVOR réelles" : "Search real SEVOR rentals";
         applyConversationLanguage(locale);
         if (!loggedIn) { setError(texts.signIn); return; }
+        const initialViewToken = viewGeneration;
         try {
           const query = initialConversationId ? `?conversation_id=${encodeURIComponent(initialConversationId)}` : "";
           const payload = await api(`/api/finder/conversation${query}`);
-          hydrate(payload, true);
+          if (initialViewToken === viewGeneration) hydrate(payload, true);
         } catch (error) { setError(error.message || texts.error); }
         pollTimer = window.setInterval(poll, 12000);
       }

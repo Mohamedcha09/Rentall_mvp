@@ -58,6 +58,12 @@ class FinderMessagePayload(BaseModel):
     client_message_id: Optional[str] = None
     csrf_token: Optional[str] = None
     search_revision: Optional[int] = None
+    # The browser sends these only after the renter explicitly asks for a
+    # nearest-first search and grants location permission. Finder rounds and
+    # stores only this conversation-scoped approximate reference—not a device
+    # history or a listing filter supplied by the model.
+    reference_latitude: Optional[float] = None
+    reference_longitude: Optional[float] = None
 
 
 class FinderNewConversationPayload(BaseModel):
@@ -400,6 +406,20 @@ def finder_message(
     db.flush()
 
     previous_spec = _spec_for(state, conversation.language)
+    if (payload.reference_latitude is None) != (payload.reference_longitude is None):
+        raise HTTPException(status_code=422, detail="Both approximate location coordinates are required.")
+    if payload.reference_latitude is not None and payload.reference_longitude is not None:
+        location_spec = SearchSpec(
+            reference_latitude=payload.reference_latitude,
+            reference_longitude=payload.reference_longitude,
+        ).normalized()
+        if location_spec.reference_latitude is None or location_spec.reference_longitude is None:
+            raise HTTPException(status_code=422, detail="Approximate location coordinates are invalid.")
+        # Retain a coarse user-approved reference (roughly 100 m), enough for
+        # distance ordering without retaining needless precision in Finder
+        # conversation state.
+        previous_spec.reference_latitude = round(location_spec.reference_latitude, 3)
+        previous_spec.reference_longitude = round(location_spec.reference_longitude, 3)
     support_requested = looks_like_support_request(body)
     provider_used = False
     if support_requested:
@@ -419,6 +439,7 @@ def finder_message(
         categories = [row[0] for row in public_listings_query(db).with_entities(Item.category).distinct().all()]
         locations = [row[0] for row in public_listings_query(db).with_entities(Item.city).filter(Item.city.isnot(None), Item.city != "").distinct().all()]
         next_spec, provider_used = enrich_spec_with_provider(
+            db,
             next_spec,
             user_text=body,
             catalog_categories=categories,

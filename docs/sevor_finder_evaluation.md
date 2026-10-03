@@ -30,3 +30,15 @@ boundary.  It has no provider key and therefore does not claim a live LLM
 evaluation.  A provider-on review must be run separately in an authorized
 staging environment after `SEVOR_FINDER_PROVIDER_PARSE=1` and provider
 credentials are configured.
+
+Recent service regressions additionally cover `bus`/`business`,
+`car`/`carpet`, PS4 + Montréal state recovery, safe typo/spacing recovery,
+Digital Accounts ambiguity, product replacement, and delayed-client revision
+handling.
+
+The 120+ request fixture is a coverage and holdout inventory, not a claim that
+every natural-language entry has been validated against production inventory.
+Before release, run the HTTP/service suite against an authorized staging
+database with representative approved listings, save returned IDs and
+structured SearchSpecs, and manually review precision, category leakage, price
+order, and no-result cases.

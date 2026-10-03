@@ -33,6 +33,8 @@ from .catalog_taxonomy import (
     CATEGORY_TREE,
     TaxonomyValidationError,
     catalog_tree_payload,
+    explore_category_choices,
+    explore_subcategory_choices,
     listing_hierarchy,
     normalize_language,
     resolve_listing_hierarchy,
@@ -439,8 +441,11 @@ def items_list(
     seller: str = None,
     service: str = None,
 ):
-    # Load DB categories
+    # Persisted lookup rows remain authoritative for submissions. Explore is
+    # also a discovery surface, so it projects centrally configured branches
+    # before they have their first approved listing.
     categories_db = db.query(Category).order_by(Category.name.asc()).all()
+    categories_for_explore = explore_category_choices(categories_db)
 
     # =======================
     # LOAD SUBCATEGORIES CORRECTLY
@@ -455,6 +460,7 @@ def items_list(
                 .order_by(Subcategory.name.asc())
                 .all()
             )
+    subcategories_for_explore = explore_subcategory_choices(category, subcategories_db)
 
     # =======================
     # NEW: seller filter (all | company | individual)
@@ -605,10 +611,10 @@ def items_list(
             "title": "Items",
             "items": items,
             "items_view": items_view,
-            "categories": categories_db,
+            "categories": categories_for_explore,
             "current_category": current_category,
             "current_seller": seller,  # ✅ NEW
-            "subcategories": subcategories_db,
+            "subcategories": subcategories_for_explore,
             "current_sub": sub,
             "third_levels": third_levels,
             "current_service": selected_service,
