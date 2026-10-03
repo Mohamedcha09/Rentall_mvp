@@ -171,6 +171,8 @@ All database tests used temporary SQLite files, never `app.db`, `database.db`, o
 - `tests.test_rental_catalog`: 4 passing checks for no missing parent, no duplicate sibling, depth at most 3, translation presence, aliases, and L1/L2 seed contract.
 - `tests.test_item_taxonomy`: 8 passing checks for server validation, forged relationships, Digital Accounts, `Other`, representative rental branches, and legacy blank-L3 compatibility.
 - `tests.test_item_taxonomy_route_flow`: 3 passing isolated migrations/HTTP flows.
+- `tests.test_finder`: 30 passing isolated checks for configured zero-listing branches, lookup-table additions, localized taxonomy matching, and legacy category compatibility.
+- Combined focused run: 45 tests passed in 17.120 seconds with `DATABASE_URL` explicitly set to an in-memory SQLite URL; no checked-in or production database was targeted.
 - The end-to-end flow runs: migration → Create → persisted Item → Pending → Admin approval → Explore L1/L2/L3 filters → Details → Edit.
 - Route examples include School Buses, Popcorn Machines, a non-Digital `Other` custom value, a two-level Housing branch, Digital Accounts → Amazon Prime Video, and an old untyped Cars listing.
 - Create and Explore are asserted to render seeded zero-listing categories.
@@ -187,3 +189,7 @@ Not executed: a live browser/device visual run at 320/360/375/390/430 px, a phys
 5. Before any separate production rollout, take an approved backup and perform a read-only inventory comparison. Production rollout is outside this task and was not attempted.
 
 No Git write command, Render deployment, production migration, production restart, or production reindex was performed.
+
+## I. Out-of-scope observation
+
+The focused test run emitted `python-dotenv could not parse statement starting at line 18` while reading the existing local `.env`. It did not expose a value and did not prevent the isolated taxonomy tests from passing. It is unrelated to taxonomy and was intentionally not changed.
