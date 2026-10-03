@@ -22,7 +22,7 @@ from app.catalog_taxonomy import DIGITAL_ACCOUNTS_CATEGORY, DIGITAL_ACCOUNTS_SER
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 ALEMBIC_CONFIG = REPOSITORY_ROOT / "alembic.ini"
 MIGRATIONS_PATH = REPOSITORY_ROOT / "db_migrations"
-EXPECTED_HEAD = "item_taxonomy_20261002"
+EXPECTED_HEAD = "item_subcat_taxonomy_20261002"
 STORAGE_COLUMNS = (
     "storage_backend",
     "storage_key",
@@ -63,7 +63,7 @@ class MessageAttachmentStorageMigrationTests(unittest.TestCase):
                     row[1]
                     for row in connection.execute("PRAGMA table_info('items')")
                 }
-                self.assertTrue({"third_level", "custom_third_level"}.issubset(item_columns))
+                self.assertTrue({"subcategory", "third_level", "custom_third_level"}.issubset(item_columns))
                 self.assertLessEqual(len(EXPECTED_HEAD), 32)
                 self.assertEqual(
                     connection.execute("SELECT version_num FROM alembic_version").fetchone()[0],
