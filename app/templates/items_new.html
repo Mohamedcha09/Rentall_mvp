@@ -791,6 +791,7 @@
 {% endblock %}
 
 {% block content %}
+{% set form_values = form_values | default({}, true) %}
 <article class="listing-create" aria-labelledby="listingCreateTitle">
   <header class="listing-create__header">
     <a class="listing-create__back" href="/owner/items" aria-label="Back to My listings">
@@ -811,6 +812,9 @@
   </nav>
 
   <form method="post" enctype="multipart/form-data" id="newItemForm" class="listing-create__form" aria-label="Create a listing">
+    {% if form_error %}
+      <p class="listing-create__error" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>{{ form_error }}</span></p>
+    {% endif %}
     <section class="listing-create__section" aria-labelledby="listingAboutTitle">
       <header class="listing-create__section-heading">
         <span class="listing-create__section-index">01</span>
@@ -834,6 +838,7 @@
             aria-describedby="titleHelp titleError"
             data-error-target="titleError"
             data-error-message="Enter a clear title for your item."
+            value="{{ form_values.get('title', '') }}"
           >
           <div class="listing-create__field-meta">
             <span id="titleHelp">A specific name helps renters understand the item quickly.</span>
@@ -854,9 +859,8 @@
             data-error-message="Choose a category."
           >
             <option value="">{{ taxonomy_payload['labels']['select_category'] }}</option>
-            {% for cat in categories %}
-              {% set catalog_category = taxonomy_payload.categories | selectattr('id', 'equalto', cat.id) | list | first %}
-              <option value="{{ cat.name }}" data-id="{{ cat.id }}">{{ catalog_category.label if catalog_category else cat.name }}</option>
+            {% for catalog_category in taxonomy_payload.categories %}
+              <option value="{{ catalog_category.name }}" data-id="{{ catalog_category.id }}"{% if catalog_category.name == form_values.get('category', '') %} selected{% endif %}>{{ catalog_category.label }}</option>
             {% endfor %}
           </select>
           <p class="listing-create__error" id="categoryError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
@@ -927,7 +931,7 @@
             aria-describedby="descriptionHelp descriptionError"
             data-error-target="descriptionError"
             data-error-message="Add a short description for your item."
-          ></textarea>
+          >{{ form_values.get('description', '') }}</textarea>
           <div class="listing-create__helper-row"><span id="descriptionHelp">Mention condition, what’s included, and anything renters should know.</span></div>
           <p class="listing-create__error" id="descriptionError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
         </div>
@@ -939,6 +943,7 @@
             type="text"
             name="website_url"
             id="websiteUrlNew"
+            value="{{ form_values.get('website_url', '') }}"
             placeholder="https://example.com"
             autocomplete="url"
             inputmode="url"
@@ -948,7 +953,7 @@
           >
           <div class="listing-create__helper-row"><span id="websiteHelpNew">Add your website, or leave it blank if you do not have one.</span></div>
           <label class="listing-create__check" for="noWebsiteNew">
-            <input class="listing-create__check-input" type="checkbox" name="no_website" value="true" id="noWebsiteNew">
+          <input class="listing-create__check-input" type="checkbox" name="no_website" value="true" id="noWebsiteNew"{% if form_values.get('no_website', false) %} checked{% endif %}>
             <span aria-hidden="true"></span>
             <span>I don’t have a website</span>
           </label>
@@ -973,8 +978,9 @@
             <input
               class="listing-create__control"
               type="text"
-              name="city"
-              id="cityNew"
+            name="city"
+            id="cityNew"
+            value="{{ form_values.get('city', '') }}"
               placeholder="Type the city / area…"
               autocomplete="off"
               maxlength="120"
@@ -1005,8 +1011,8 @@
         </div>
         <div class="listing-create__helper-row"><span id="locationHelp">Pick a city from the list or use your current location. Coordinates are saved automatically when available.</span></div>
         <div id="radiusHelp" class="visually-hidden">The current location radius defaults to 25 kilometres.</div>
-        <input type="hidden" name="latitude" id="latNew">
-        <input type="hidden" name="longitude" id="lngNew">
+        <input type="hidden" name="latitude" id="latNew" value="{{ form_values.get('latitude', '') }}">
+        <input type="hidden" name="longitude" id="lngNew" value="{{ form_values.get('longitude', '') }}">
         <p class="listing-create__error" id="cityError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
       </div>
     </section>
@@ -1029,7 +1035,7 @@
               type="number"
               name="price"
               id="priceNew"
-              value="0"
+              value="{{ form_values.get('price', '0') }}"
               min="0"
               step="0.01"
               inputmode="decimal"
@@ -1055,9 +1061,9 @@
             data-error-target="currencyError"
             data-error-message="Choose a currency."
           >
-            <option value="CAD">CAD</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
+            <option value="CAD"{% if form_values.get('currency', 'CAD') == 'CAD' %} selected{% endif %}>CAD</option>
+            <option value="USD"{% if form_values.get('currency', '') == 'USD' %} selected{% endif %}>USD</option>
+            <option value="EUR"{% if form_values.get('currency', '') == 'EUR' %} selected{% endif %}>EUR</option>
           </select>
           <div class="listing-create__helper-row"><span id="currencyHelp">Required for this listing.</span></div>
           <p class="listing-create__error" id="currencyError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
@@ -1168,6 +1174,14 @@
   const taxonomy = {{ taxonomy_payload | tojson }};
   const taxonomyCategories = Array.isArray(taxonomy.categories) ? taxonomy.categories : [];
   const taxonomyLabels = taxonomy.labels || {};
+  // A failed server-side validation re-renders this form. Restore a selected
+  // branch only if it still exists below its configured parent; forged values
+  // remain rejected by the server and are not reconstructed in the UI.
+  const initialTaxonomy = {
+    subcategoryId: {{ form_values.get('subcategory_id', '') | tojson }},
+    thirdLevel: {{ form_values.get('third_level', '') | tojson }},
+    customThirdLevel: {{ form_values.get('custom_third_level', '') | tojson }},
+  };
 
   const MAX_CLIENT_IMAGES = 10;
   const allowedImageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
@@ -1286,7 +1300,7 @@
     }
   }
 
-  function updateThirdLevels() {
+  function updateThirdLevels(preserve = false) {
     const category = selectedCategory();
     const subcategory = category?.subcategories?.find((sub) => String(sub.id) === String(subSelect?.value || ''));
     const levels = Array.isArray(subcategory?.third_levels) ? subcategory.third_levels : [];
@@ -1301,9 +1315,16 @@
     thirdLevelSelect.required = true;
     thirdLevelSelect.setAttribute('aria-disabled', 'false');
     if (thirdLevelHelp) thirdLevelHelp.textContent = taxonomyLabels.service_help || 'Choose the service or platform for this type.';
+    if (preserve && levels.some((level) => level.name === initialTaxonomy.thirdLevel)) {
+      thirdLevelSelect.value = initialTaxonomy.thirdLevel;
+      updateCustomThirdLevel();
+      if (thirdLevelSelect.value === 'Other') {
+        customThirdLevelInput.value = initialTaxonomy.customThirdLevel;
+      }
+    }
   }
 
-  function updateSubcategories() {
+  function updateSubcategories(preserve = false) {
     if (!catSelect || !subSelect) return;
     const category = selectedCategory();
     const subcategories = Array.isArray(category?.subcategories) ? category.subcategories : [];
@@ -1334,12 +1355,16 @@
     subSelect.disabled = false;
     subSelect.required = true;
     subSelect.setAttribute('aria-disabled', 'false');
+    if (preserve && subcategories.some((subcategory) => String(subcategory.id) === String(initialTaxonomy.subcategoryId))) {
+      subSelect.value = String(initialTaxonomy.subcategoryId);
+    }
+    updateThirdLevels(preserve);
   }
 
-  catSelect?.addEventListener('change', updateSubcategories);
-  subSelect?.addEventListener('change', updateThirdLevels);
+  catSelect?.addEventListener('change', () => updateSubcategories(false));
+  subSelect?.addEventListener('change', () => updateThirdLevels(false));
   thirdLevelSelect?.addEventListener('change', updateCustomThirdLevel);
-  updateSubcategories();
+  updateSubcategories(true);
 
   function setLocationStatus(message, state) {
     if (!locationStatus) return;

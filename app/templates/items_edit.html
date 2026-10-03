@@ -231,6 +231,7 @@ img.edit-thumb {
 {% endblock %}
 
 {% block content %}
+{% set form_values = form_values | default({}, true) %}
 
 <h2>Edit Item</h2>
 
@@ -250,21 +251,23 @@ img.edit-thumb {
 {# 🔥🔥🔥 نهاية الإضافة #}
 
 <form method="post" enctype="multipart/form-data">
+  {% if form_error %}
+    <div class="alert alert-danger" role="alert">{{ form_error }}</div>
+  {% endif %}
 
   <!-- Title -->
   <div class="mb-3">
     <label class="form-label">Title</label>
-    <input type="text" name="title" class="form-control" value="{{ item.title }}" required>
+    <input type="text" name="title" class="form-control" value="{{ form_values.get('title', item.title) }}" required>
   </div>
 
   <!-- Category -->
   <div class="mb-3">
     <label class="form-label">{{ taxonomy_payload['labels']['category'] }}</label>
     <select class="form-select" id="catSelect" name="category" required>
-      {% for cat in categories %}
-        {% set catalog_category = taxonomy_payload.categories | selectattr('id', 'equalto', cat.id) | list | first %}
-        <option value="{{ cat.name }}" data-id="{{ cat.id }}" {% if cat.name == item.category %}selected{% endif %}>
-          {{ catalog_category.label if catalog_category else cat.name }}
+      {% for catalog_category in taxonomy_payload.categories %}
+        <option value="{{ catalog_category.name }}" data-id="{{ catalog_category.id }}" {% if catalog_category.name == form_values.get('category', item.category) %}selected{% endif %}>
+          {{ catalog_category.label }}
         </option>
       {% endfor %}
     </select>
@@ -274,12 +277,7 @@ img.edit-thumb {
   <div class="mb-3">
     <label class="form-label" id="subSelectLabel">{{ taxonomy_payload['labels']['subcategory'] }}</label>
     <select class="form-select" id="subSelect" name="subcategory_id">
-      {% for sc in subcategories %}
-        <option value="{{ sc.id }}"
-          {% if sc.name == item.subcategory %}selected{% endif %}>
-          {{ sc.name }}
-        </option>
-      {% endfor %}
+      <option value="">{{ taxonomy_payload['labels']['select_category_first'] }}</option>
     </select>
   </div>
 
@@ -300,7 +298,7 @@ img.edit-thumb {
   <!-- Description -->
   <div class="mb-3">
     <label class="form-label">Description</label>
-    <textarea name="description" class="form-control" rows="4" required>{{ item.description }}</textarea>
+    <textarea name="description" class="form-control" rows="4" required>{{ form_values.get('description', item.description) }}</textarea>
   </div>
 
   <div class="mb-3">
@@ -312,7 +310,7 @@ img.edit-thumb {
       name="website_url"
       id="websiteUrlEdit"
       class="form-control"
-      value="{{ item.website_url or '' }}"
+      value="{{ form_values.get('website_url', item.website_url or '') }}"
       placeholder="https://example.com"
       autocomplete="url"
       inputmode="url"
@@ -329,7 +327,7 @@ img.edit-thumb {
         name="no_website"
         value="true"
         id="noWebsiteEdit"
-        {% if not item.website_url %}checked{% endif %}
+        {% if form_values.get('no_website', not item.website_url) %}checked{% endif %}
       >
       <label class="form-check-label" for="noWebsiteEdit">I don't have a website</label>
     </div>
@@ -345,26 +343,26 @@ img.edit-thumb {
     <div class="col-md-6 mb-3">
       <label class="form-label">City</label>
       <input type="text" name="city" class="form-control"
-             value="{{ item.city }}" autocomplete="off" required>
+             value="{{ form_values.get('city', item.city) }}" autocomplete="off" required>
 
-      <input type="hidden" name="latitude" value="{{ item.latitude }}">
-      <input type="hidden" name="longitude" value="{{ item.longitude }}">
+      <input type="hidden" name="latitude" value="{{ form_values.get('latitude', item.latitude or '') }}">
+      <input type="hidden" name="longitude" value="{{ form_values.get('longitude', item.longitude or '') }}">
     </div>
 
     <!-- Price -->
     <div class="col-md-3 mb-3">
       <label class="form-label">Price / day</label>
       <input type="number" name="price" class="form-control"
-             value="{{ item.price_per_day }}" min="0" step="0.01" required>
+             value="{{ form_values.get('price', item.price_per_day) }}" min="0" step="0.01" required>
     </div>
 
     <!-- Currency -->
     <div class="col-md-3 mb-3">
       <label class="form-label">Currency</label>
       <select class="form-select" name="currency">
-        <option value="CAD" {% if item.currency == 'CAD' %}selected{% endif %}>CAD</option>
-        <option value="USD" {% if item.currency == 'USD' %}selected{% endif %}>USD</option>
-        <option value="EUR" {% if item.currency == 'EUR' %}selected{% endif %}>EUR</option>
+        <option value="CAD" {% if form_values.get('currency', item.currency) == 'CAD' %}selected{% endif %}>CAD</option>
+        <option value="USD" {% if form_values.get('currency', item.currency) == 'USD' %}selected{% endif %}>USD</option>
+        <option value="EUR" {% if form_values.get('currency', item.currency) == 'EUR' %}selected{% endif %}>EUR</option>
       </select>
     </div>
   </div>
@@ -437,9 +435,10 @@ document.getElementById('imgInput').addEventListener('change', function(){
     const categories = Array.isArray(taxonomy.categories) ? taxonomy.categories : [];
     const labels = taxonomy.labels || {};
     const initial = {
-        subcategory: {{ (item.subcategory or '') | tojson }},
-        thirdLevel: {{ (item.third_level or '') | tojson }},
-        customThirdLevel: {{ (item.custom_third_level or '') | tojson }},
+        subcategoryId: {{ form_values.get('subcategory_id', '') | tojson }},
+        subcategory: {{ form_values.get('subcategory', item.subcategory or '') | tojson }},
+        thirdLevel: {{ form_values.get('third_level', item.third_level or '') | tojson }},
+        customThirdLevel: {{ form_values.get('custom_third_level', item.custom_third_level or '') | tojson }},
     };
 
     if (!categorySelect || !subcategorySelect || !thirdSelect || !thirdField || !customField || !customInput) return;
@@ -525,7 +524,9 @@ document.getElementById('imgInput').addEventListener('change', function(){
         subcategorySelect.required = true;
         subcategorySelect.setAttribute('aria-disabled', 'false');
         if (preserve) {
-            const selected = subcategories.find((subcategory) => subcategory.name === initial.subcategory);
+            const selected = initial.subcategoryId
+                ? subcategories.find((subcategory) => String(subcategory.id) === String(initial.subcategoryId))
+                : subcategories.find((subcategory) => subcategory.name === initial.subcategory);
             if (selected) subcategorySelect.value = String(selected.id);
         }
         updateThird(preserve);

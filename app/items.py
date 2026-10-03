@@ -33,8 +33,6 @@ from .catalog_taxonomy import (
     CATEGORY_TREE,
     TaxonomyValidationError,
     catalog_tree_payload,
-    explore_category_choices,
-    explore_subcategory_choices,
     listing_hierarchy,
     normalize_language,
     resolve_listing_hierarchy,
@@ -58,6 +56,68 @@ def _taxonomy_form_payload(db: Session, request: Request) -> dict:
     return catalog_tree_payload(categories, subcategories, _taxonomy_language(request))
 
 
+def _render_item_new_form(
+    request: Request,
+    db: Session,
+    *,
+    form_values: dict | None = None,
+    form_error: str | None = None,
+    website_error: bool = False,
+    status_code: int = 200,
+):
+    """Render Create Listing from the one persisted taxonomy payload.
+
+    Category and subcategory lookup rows are deliberately not created during a
+    GET. The additive migration owns that bootstrap, while this payload is the
+    single source used both by the visible selects and their progressive JS.
+    """
+    taxonomy_payload = _taxonomy_form_payload(db, request)
+    return request.app.templates.TemplateResponse(
+        request=request,
+        name="items_new.html",
+        context={
+            "request": request,
+            "title": "Add Item",
+            "taxonomy_payload": taxonomy_payload,
+            "taxonomy_language": _taxonomy_language(request),
+            "session_user": request.session.get("user"),
+            "account_limited": is_account_limited(request),
+            "website_error": website_error,
+            "form_values": form_values or {},
+            "form_error": form_error,
+        },
+        status_code=status_code,
+    )
+
+
+def _render_item_edit_form(
+    request: Request,
+    db: Session,
+    item: Item,
+    *,
+    form_values: dict | None = None,
+    form_error: str | None = None,
+    website_error: bool = False,
+    status_code: int = 200,
+):
+    """Render Edit Listing with the same taxonomy payload as Create Listing."""
+    return request.app.templates.TemplateResponse(
+        request=request,
+        name="items_edit.html",
+        context={
+            "request": request,
+            "item": item,
+            "taxonomy_payload": _taxonomy_form_payload(db, request),
+            "taxonomy_language": _taxonomy_language(request),
+            "session_user": request.session.get("user"),
+            "website_error": website_error,
+            "form_values": form_values or {},
+            "form_error": form_error,
+        },
+        status_code=status_code,
+    )
+
+
 def _set_owner_items_notice(request: Request, kind: str, text: str) -> None:
     """Store a route-private My Listings notice for the following redirect."""
     request.session[_OWNER_ITEMS_NOTICE_KEY] = {
@@ -79,12 +139,6 @@ def _consume_owner_items_notice(request: Request):
         "kind": "success" if notice.get("kind") == "success" else "error",
         "text": text,
     }
-
-
-def _owner_edit_is_locked(item: Item, session_user: dict) -> bool:
-    """Published listings are immutable for owners; preserve existing admin authority."""
-    is_admin = str((session_user or {}).get("role") or "").lower() == "admin"
-    return not is_admin and str(getattr(item, "status", "") or "").lower() == "approved"
 
 
 def _owner_listing_delete_blockers(db: Session, item_id: int) -> list[str]:
@@ -441,11 +495,13 @@ def items_list(
     seller: str = None,
     service: str = None,
 ):
-    # Persisted lookup rows remain authoritative for submissions. Explore is
-    # also a discovery surface, so it projects centrally configured branches
-    # before they have their first approved listing.
+    # Explore uses the exact persisted lookup source as Create/Edit/POST.
+    # The additive taxonomy migration seeds configured categories independently
+    # of listing count, so a newly seeded branch remains visible with zero
+    # listings without inventing a browse-only category that the form cannot
+    # submit or validate.
     categories_db = db.query(Category).order_by(Category.name.asc()).all()
-    categories_for_explore = explore_category_choices(categories_db)
+    categories_for_explore = categories_db
 
     # =======================
     # LOAD SUBCATEGORIES CORRECTLY
@@ -460,7 +516,7 @@ def items_list(
                 .order_by(Subcategory.name.asc())
                 .all()
             )
-    subcategories_for_explore = explore_subcategory_choices(category, subcategories_db)
+    subcategories_for_explore = subcategories_db
 
     # =======================
     # NEW: seller filter (all | company | individual)
@@ -807,45 +863,15 @@ def item_edit_get(
     if not item or item.owner_id != u["id"]:
         return RedirectResponse(url="/owner/items", status_code=303)
 
-    if _owner_edit_is_locked(item, u):
-        _set_owner_items_notice(
-            request,
-            "error",
-            "Published listings can’t be edited. You can still view the listing or remove it when deletion is safe.",
-        )
-        return RedirectResponse(url="/owner/items", status_code=303)
-
-    categories = db.query(Category).order_by(Category.name.asc()).all()
-    subcategories = (
-        db.query(Subcategory)
-        .filter(Subcategory.category_id == db.query(Category.id)
-        .filter(Category.name == item.category))
-        .all()
-    )
-    taxonomy_payload = _taxonomy_form_payload(db, request)
-
-    return request.app.templates.TemplateResponse(
-        request=request,
-        name="items_edit.html",
-        context={
-            "request": request,
-            "item": item,
-            "categories": categories,
-            "subcategories": subcategories,
-            "taxonomy_payload": taxonomy_payload,
-            "taxonomy_language": _taxonomy_language(request),
-            "session_user": u,
-            "website_error": website_error,
-        }
-    )
+    return _render_item_edit_form(request, db, item, website_error=website_error)
 
 
 @router.post("/owner/items/{item_id}/edit")
 def item_edit_post(
     request: Request, item_id: int, db: Session = Depends(get_db),
-    title: str = Form(...),
-    category: str = Form(...),
-    subcategory_id: int = Form(None),
+    title: str = Form(""),
+    category: str = Form(""),
+    subcategory_id: str | None = Form(None),
     third_level: str = Form(""),
     custom_third_level: str = Form(""),
     description: str = Form(""),
@@ -866,20 +892,34 @@ def item_edit_post(
     if not it or it.owner_id != u["id"]:
         return RedirectResponse(url="/owner/items", status_code=303)
 
-    if _owner_edit_is_locked(it, u):
-        _set_owner_items_notice(
-            request,
-            "error",
-            "Published listings can’t be edited. You can still view the listing or remove it when deletion is safe.",
+    form_values = {
+        "title": title,
+        "category": category,
+        "subcategory_id": subcategory_id or "",
+        "third_level": third_level,
+        "custom_third_level": custom_third_level,
+        "description": description,
+        "city": city,
+        "website_url": website_url,
+        "no_website": no_website,
+        "price": price,
+        "currency": currency,
+        "latitude": latitude,
+        "longitude": longitude,
+    }
+    if not str(title or "").strip():
+        return _render_item_edit_form(
+            request, db, it, form_values=form_values,
+            form_error="Enter a title for your listing.", status_code=422,
         )
-        return RedirectResponse(url="/owner/items", status_code=303)
 
     try:
         normalized_website_url = None if no_website else _normalize_website_url(website_url)
     except ValueError:
-        return RedirectResponse(
-            url=f"/owner/items/{item_id}/edit?website_error=1",
-            status_code=303,
+        return _render_item_edit_form(
+            request, db, it, form_values=form_values,
+            form_error="Enter a complete website URL or select that you do not have one.",
+            website_error=True, status_code=422,
         )
 
     try:
@@ -891,7 +931,10 @@ def item_edit_post(
             custom_third_level=custom_third_level,
         )
     except TaxonomyValidationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+        return _render_item_edit_form(
+            request, db, it, form_values=form_values,
+            form_error=str(exc), status_code=422,
+        )
 
     # Update main fields
     it.title = title
@@ -1005,36 +1048,18 @@ def item_new_get(
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    # The payload is a server-produced view of the shared category tree.  It
-    # keeps levels 2/3 in one source instead of duplicating service lists in JS.
-    categories_db = db.query(Category).order_by(Category.name.asc()).all()
-    taxonomy_payload = _taxonomy_form_payload(db, request)
-
-    return request.app.templates.TemplateResponse(
-        request=request,
-        name="items_new.html",
-        context={
-            "request": request,
-            "title": "Add Item",
-            "categories": categories_db,
-            "taxonomy_payload": taxonomy_payload,
-            "taxonomy_language": _taxonomy_language(request),
-            "session_user": request.session.get("user"),
-            "account_limited": is_account_limited(request),
-            "website_error": website_error,
-        }
-    )
+    return _render_item_new_form(request, db, website_error=website_error)
 @router.post("/owner/items/new")
 def item_new_post(
     request: Request,
     db: Session = Depends(get_db),
 
     # Form fields
-    subcategory_id: int | None = Form(None),
+    subcategory_id: str | None = Form(None),
     third_level: str = Form(""),
     custom_third_level: str = Form(""),
-    title: str = Form(...),
-    category: str = Form(...),
+    title: str = Form(""),
+    category: str = Form(""),
     description: str = Form(""),
     city: str = Form(""),
     website_url: str = Form(""),
@@ -1043,7 +1068,7 @@ def item_new_post(
     price: str = Form("0"),
     currency: str = Form("CAD"),
 
-    images: list[UploadFile] = File(...),
+    images: list[UploadFile] | None = File(None),
 
     latitude: str = Form(""),
     longitude: str = Form(""),
@@ -1054,10 +1079,42 @@ def item_new_post(
 
     u = request.session.get("user")
 
+    form_values = {
+        "title": title,
+        "category": category,
+        "subcategory_id": subcategory_id or "",
+        "third_level": third_level,
+        "custom_third_level": custom_third_level,
+        "description": description,
+        "city": city,
+        "website_url": website_url,
+        "no_website": no_website,
+        "price": price,
+        "currency": currency,
+        "latitude": latitude,
+        "longitude": longitude,
+    }
+    required_values = (
+        (title, "Enter a title for your listing."),
+        (category, "Choose a category."),
+        (description, "Add a description for your listing."),
+        (city, "Choose a city or area."),
+    )
+    for value, message in required_values:
+        if not str(value or "").strip():
+            return _render_item_new_form(
+                request, db, form_values=form_values,
+                form_error=message, status_code=422,
+            )
+
     try:
         normalized_website_url = None if no_website else _normalize_website_url(website_url)
     except ValueError:
-        return RedirectResponse(url="/owner/items/new?website_error=1", status_code=303)
+        return _render_item_new_form(
+            request, db, form_values=form_values,
+            form_error="Enter a complete website URL or select that you do not have one.",
+            website_error=True, status_code=422,
+        )
 
     lat = _to_float_or_none(latitude)
     lng = _to_float_or_none(longitude)
@@ -1086,11 +1143,23 @@ def item_new_post(
     except TaxonomyValidationError as exc:
         # Do not trust a manually altered form payload.  This validates both
         # child-parent relationships and the configured third-level branch.
-        raise HTTPException(status_code=422, detail=str(exc))
+        return _render_item_new_form(
+            request, db, form_values=form_values,
+            form_error=str(exc), status_code=422,
+        )
 
     # ------------------------------
     # MULTI IMAGES UPLOAD HANDLING
     # ------------------------------
+    images = images or []
+    if not any(image and image.filename and _ext_ok(image.filename) for image in images):
+        return _render_item_new_form(
+            request,
+            db,
+            form_values=form_values,
+            form_error="Choose at least one JPG, PNG, or WebP image.",
+            status_code=422,
+        )
     image_urls_list = []
     fallback_image = None  # first image
 

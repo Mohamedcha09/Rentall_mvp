@@ -13,7 +13,6 @@ no route needs a category-specific branch.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Iterable
 
 
@@ -125,50 +124,6 @@ DIGITAL_ACCOUNTS_SERVICES: dict[str, tuple[str, ...]] = {
 CATEGORY_TREE: dict[str, dict[str, tuple[str, ...]]] = {
     DIGITAL_ACCOUNTS_CATEGORY: DIGITAL_ACCOUNTS_SERVICES,
 }
-
-
-@dataclass(frozen=True)
-class TaxonomyDisplayChoice:
-    """A configured browse choice which has no legacy lookup row yet.
-
-    It is deliberately presentation-only: create and edit keep validating
-    submitted database ids.  This lets Explore show a configured category
-    before it has an approved listing, without doing a write during a GET.
-    """
-
-    name: str
-
-
-def _choice_name(row: Any) -> str:
-    return str(getattr(row, "name", "") or "").strip()
-
-
-def explore_category_choices(database_categories: Iterable[Any]) -> list[Any]:
-    """Keep persisted choices and append any configured browse branches.
-
-    The configured names come from the same tree that supplies level three;
-    nothing is hard-coded in an Explore template.  Existing rows retain their
-    order and identity, while an unseeded configured category remains visible
-    and selectable for browse-only filtering.
-    """
-
-    rows = list(database_categories)
-    known = {_choice_name(row).casefold() for row in rows if _choice_name(row)}
-    for name in CATEGORY_TREE:
-        if name.casefold() not in known:
-            rows.append(TaxonomyDisplayChoice(name=name))
-    return rows
-
-
-def explore_subcategory_choices(category_name: str | None, database_subcategories: Iterable[Any]) -> list[Any]:
-    """Expose configured level-two browse choices without inventing DB ids."""
-
-    rows = list(database_subcategories)
-    known = {_choice_name(row).casefold() for row in rows if _choice_name(row)}
-    for name in CATEGORY_TREE.get(str(category_name or ""), {}):
-        if name.casefold() not in known:
-            rows.append(TaxonomyDisplayChoice(name=name))
-    return rows
 
 # Presentation names are data too.  Routes only ask whether a branch has a
 # third level; they never special-case Digital Accounts.  A future configured

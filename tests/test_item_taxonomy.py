@@ -125,6 +125,7 @@ class ItemTaxonomyBackendValidationTests(unittest.TestCase):
 import os
 import sqlite3
 import sys
+from io import BytesIO
 from pathlib import Path
 
 site_packages = os.environ.get("SEVOR_TEST_SITE_PACKAGES", "")
@@ -158,6 +159,7 @@ import app.items as item_routes
 # Listing-index work is covered independently.  This isolates the real form
 # handlers' taxonomy persistence from Finder's public-listing lifecycle.
 item_routes.sync_listing_index = lambda *_args, **_kwargs: None
+item_routes.cloudinary.uploader.upload = lambda *_args, **_kwargs: {"secure_url": "https://example.test/taxonomy.png"}
 
 class Request:
     session = {"user": {"id": 41, "role": "user", "status": "approved"}}
@@ -227,7 +229,7 @@ try:
         no_website=True,
         price="10",
         currency="CAD",
-        images=[],
+        images=[type("TestImage", (), {"filename": "taxonomy.png", "file": BytesIO(b"png")})()],
         latitude="",
         longitude="",
     )
@@ -307,10 +309,11 @@ class ItemTaxonomyIntegrationSurfaceTests(unittest.TestCase):
         """Exercise real rendered routes and Jinja templates, not helpers.
 
         The lookup tables intentionally start with no Digital Accounts rows.
-        Explore must still expose the centrally configured browse branch with
-        no fake listing. The same isolated database is then seeded to prove
-        the database-backed create, edit and admin pages render all hierarchy
-        shapes without using a real developer or production database.
+        All surfaces must consistently omit that unseeded branch rather than
+        rendering a browse-only choice that Create cannot validate. The same
+        isolated database is then seeded to prove the database-backed create,
+        edit and admin pages render all hierarchy shapes without using a real
+        developer or production database.
         """
         with tempfile.TemporaryDirectory(prefix="sevor-explore-taxonomy-") as temp_dir:
             database_path = Path(temp_dir) / "explore.sqlite3"
@@ -373,19 +376,7 @@ finally:
 with TestClient(main_module.app) as client:
     root = client.get("/items")
     assert root.status_code == 200, root.text[:1000]
-    assert "Digital Accounts" in root.text
-    assert "category=Digital+Accounts" in root.text or "category=Digital%20Accounts" in root.text
-
-    category = client.get("/items?category=Digital%20Accounts")
-    assert category.status_code == 200, category.text[:1000]
-    assert "Movies &amp; Streaming" in category.text
-    assert "Sports" in category.text
-    assert "No items found" in category.text
-
-    sports = client.get("/items?category=Digital%20Accounts&sub=Sports")
-    assert sports.status_code == 200, sports.text[:1000]
-    assert "beIN Sports" in sports.text
-    assert "DAZN" in sports.text
+    assert "Digital Accounts" not in root.text
 
     # Seed only the isolated test DB, then exercise the actual create/edit and
     # admin HTML routes.  This mirrors the result of the additive migration;
