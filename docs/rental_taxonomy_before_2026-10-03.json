@@ -1,0 +1,41 @@
+{
+  "snapshot_date": "2026-10-03",
+  "scope": "Local, non-production taxonomy audit",
+  "catalog_definition": {
+    "l1_source": "runtime categories lookup table",
+    "l2_source": "runtime subcategories lookup table",
+    "l3_source": "app/catalog_taxonomy.py:CATEGORY_TREE",
+    "configured_l1": ["Digital Accounts"],
+    "configured_l2_count": 17,
+    "configured_l3_count": 346
+  },
+  "local_lookup_tables": {
+    "app.db": {"categories": 0, "subcategories": 0},
+    "database.db": {"categories": 0, "subcategories": 0}
+  },
+  "local_listing_inventory": {
+    "app.db_legacy_categories": {
+      "vehicle": 5,
+      "tools": 2,
+      "electronics": 2,
+      "housing": 1
+    },
+    "database.db_legacy_categories": {
+      "vehicle": 4,
+      "furniture": 1,
+      "electronics": 1
+    },
+    "note": "No local historical listing had persisted L2/L3 data in the inspected SQLite snapshots. This is listing inventory, not a claim about the deployed catalog."
+  },
+  "schema_observations": {
+    "categories": ["id primary key", "name unique"],
+    "subcategories": ["id primary key", "category_id foreign key", "name"],
+    "subcategory_parent_name_unique": false,
+    "items": ["category", "subcategory", "third_level", "custom_third_level"],
+    "taxonomy_slugs_active_flags_sort_fields": false
+  },
+  "limits": [
+    "No production database was accessed.",
+    "The local lookup tables were empty, so a complete pre-expansion ordinary rental tree cannot be inferred truthfully from this checkout."
+  ]
+}

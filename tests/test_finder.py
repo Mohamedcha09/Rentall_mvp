@@ -448,6 +448,24 @@ class FinderTests(unittest.TestCase):
                         status="approved",
                         is_active="yes",
                     ),
+                    # The stored L1 intentionally uses a compatibility alias.
+                    # General search must resolve French central taxonomy labels
+                    # to this legacy row without changing the persisted value.
+                    Item(
+                        id=762,
+                        owner_id=703,
+                        title="School transport rental",
+                        description="Approved school bus rental.",
+                        city="Montréal",
+                        currency="CAD",
+                        price=120,
+                        price_per_day=120,
+                        category="vehicle",
+                        subcategory="Buses",
+                        third_level="School Buses",
+                        status="approved",
+                        is_active="yes",
+                    ),
                 ]
             )
             db.commit()
@@ -460,12 +478,30 @@ class FinderTests(unittest.TestCase):
             db.close()
 
         client = TestClient(main_module.app, base_url="http://testserver.local")
-        by_service = client.get("/api/search", params={"q": "beIN"})
-        self.assertEqual(by_service.status_code, 200)
-        self.assertIn(760, {row["id"] for row in by_service.json()["items"]})
-        by_custom_value = client.get("/api/search", params={"q": "NewStreaming"})
-        self.assertEqual(by_custom_value.status_code, 200)
-        self.assertIn(761, {row["id"] for row in by_custom_value.json()["items"]})
+        try:
+            by_service = client.get("/api/search", params={"q": "beIN"})
+            self.assertEqual(by_service.status_code, 200)
+            self.assertIn(760, {row["id"] for row in by_service.json()["items"]})
+            by_custom_value = client.get("/api/search", params={"q": "NewStreaming"})
+            self.assertEqual(by_custom_value.status_code, 200)
+            self.assertIn(761, {row["id"] for row in by_custom_value.json()["items"]})
+            by_french_service = client.get("/api/search", params={"q": "Autobus scolaires"})
+            self.assertEqual(by_french_service.status_code, 200)
+            self.assertIn(762, {row["id"] for row in by_french_service.json()["items"]})
+            # Autocomplete is capped at eight rows; the full search endpoint
+            # proves that the canonical French L1 label also reaches the
+            # legacy singular stored category beyond that small live limit.
+            by_french_category = client.get("/search", params={"q": "Véhicules"})
+            self.assertEqual(by_french_category.status_code, 200)
+            self.assertIn("School transport rental", by_french_category.text)
+        finally:
+            cleanup = SessionLocal()
+            try:
+                cleanup.query(FinderListingIndex).filter(FinderListingIndex.item_id == 762).delete()
+                cleanup.query(Item).filter(Item.id == 762).delete()
+                cleanup.commit()
+            finally:
+                cleanup.close()
 
     def test_finder_learns_empty_configured_branches_and_lookup_taxonomy(self) -> None:
         """Finder reads the central tree plus L1/L2 lookup rows, not listings.

@@ -39,6 +39,14 @@ from .rental_catalog import RENTAL_CATEGORY_ALIASES
 LOGGER = logging.getLogger(__name__)
 
 
+_CATEGORY_COMPATIBILITY_BY_CANONICAL: dict[str, tuple[str, ...]] = {}
+for _alias, _canonical in RENTAL_CATEGORY_ALIASES.items():
+    existing = list(_CATEGORY_COMPATIBILITY_BY_CANONICAL.get(_canonical, (_canonical,)))
+    if _alias.casefold() not in {value.casefold() for value in existing}:
+        existing.append(_alias)
+    _CATEGORY_COMPATIBILITY_BY_CANONICAL[_canonical] = tuple(existing)
+
+
 def _category_compatibility_values(value: Any) -> tuple[str, ...]:
     """Return canonical and legacy-stored values for one rental category.
 
@@ -49,16 +57,14 @@ def _category_compatibility_values(value: Any) -> tuple[str, ...]:
     """
     raw = str(value or "").strip()
     canonical = canonical_rental_category(raw)
+    configured = _CATEGORY_COMPATIBILITY_BY_CANONICAL.get(canonical, (canonical,))
     values: list[str] = []
-    for candidate in (raw, canonical):
+    seen: set[str] = set()
+    for candidate in (raw, *configured):
         candidate = str(candidate or "").strip()
-        if candidate and candidate.casefold() not in {entry.casefold() for entry in values}:
+        if candidate and candidate.casefold() not in seen:
             values.append(candidate)
-    for alias, target in RENTAL_CATEGORY_ALIASES.items():
-        if target != canonical:
-            continue
-        if alias.casefold() not in {entry.casefold() for entry in values}:
-            values.append(alias)
+            seen.add(candidate.casefold())
     return tuple(values)
 
 
@@ -944,7 +950,11 @@ def _resolve_catalog_request(db: Session, text: str) -> ResolvedCatalogRequest:
             if concept.kind in {"category", "subcategory", "service"}
             and any(normalize_text(alias) == normalized for alias in concept.aliases)
         ]
-        if whole_taxonomy_matches:
+        # Preserve the established clarification behavior for a one-word
+        # service family such as ``beIN`` versus ``beIN Sports``.  A longer
+        # translated/type phrase is the case where the precise hierarchy is
+        # unambiguously more informative than its embedded generic product.
+        if whole_taxonomy_matches and len(_meaningful_resolver_tokens(source)) > 1:
             whole_taxonomy_matches.sort(key=_concept_priority)
             labels = {normalize_text(concept.label) for concept in whole_taxonomy_matches}
             if len(labels) == 1:
