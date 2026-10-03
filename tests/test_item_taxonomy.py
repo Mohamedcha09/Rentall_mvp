@@ -681,6 +681,8 @@ with TestClient(main_module.app) as client:
             self.assertIn("third_levels", template)
             self.assertIn("level2_placeholder", template)
             self.assertIn("level3_placeholder", template)
+            self.assertIn("const selectedValue = select.value", template)
+            self.assertIn("const keepSelected = option.value === selectedValue", template)
         self.assertIn("&amp;service=", explore)
         self.assertIn("third_levels", explore)
         self.assertIn("item_hierarchy", detail)
@@ -693,6 +695,10 @@ with TestClient(main_module.app) as client:
         self.assertIn("_taxonomy_search_values", search)
         for field in ("Item.category,", "Item.subcategory,", "Item.third_level,", "Item.custom_third_level,"):
             self.assertIn(field, search)
+        self.assertIn("taxonomy_payload['labels']['choose_type']", new_form)
+        self.assertIn("taxonomy_payload['labels']['enter_custom_type']", new_form)
+        self.assertIn('for="catSelect"', edit_form)
+        self.assertIn('for="subSelect"', edit_form)
 
 
 if __name__ == "__main__":
