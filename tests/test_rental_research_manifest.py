@@ -92,7 +92,16 @@ class RentalResearchManifestTests(unittest.TestCase):
         """The review JSON must not become a second stale catalog copy."""
         document = json.loads(INVENTORY_PATH.read_text(encoding="utf-8"))
         self.assertEqual(document["source_of_truth"], "app/catalog_taxonomy.py::CATEGORY_TREE")
-        self.assertEqual(document["tree"], CATEGORY_TREE)
+        # JSON has arrays while the runtime catalog deliberately uses tuples for
+        # immutable third-level branches.  Compare the same serialized shape.
+        runtime_tree = {
+            category: {
+                subcategory: list(third_levels)
+                for subcategory, third_levels in subcategories.items()
+            }
+            for category, subcategories in CATEGORY_TREE.items()
+        }
+        self.assertEqual(document["tree"], runtime_tree)
         self.assertEqual(
             document["counts"],
             {
