@@ -7,7 +7,27 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 # =========================================================
 # 1) Read the database URL + automatically normalize Postgres driver
 # =========================================================
-DB_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+DB_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("DATABASE_URL_FULL")
+    or os.getenv("DATABASE_URI")
+)
+
+# A Render service must never silently create an ephemeral SQLite database
+# merely because its linked PostgreSQL value is exposed under a different
+# supported environment-variable name.  Local development remains convenient
+# when no deployment marker is present.
+if not DB_URL:
+    render_runtime = any(
+        os.getenv(name)
+        for name in ("RENDER", "RENDER_SERVICE_ID", "RENDER_EXTERNAL_URL")
+    )
+    if render_runtime:
+        raise RuntimeError(
+            "No production database URL is configured. Set DATABASE_URL or "
+            "DATABASE_URL_FULL; refusing the SQLite fallback on Render."
+        )
+    DB_URL = "sqlite:///./app.db"
 
 # psycopg (v3) is the recommended driver for SQLAlchemy with Postgres
 # Automatically convert any legacy format to postgresql+psycopg://
