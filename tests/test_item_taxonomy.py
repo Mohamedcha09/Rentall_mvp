@@ -23,6 +23,7 @@ from app.catalog_taxonomy import (
     OTHER_VALUE,
     catalog_tree_payload,
     listing_hierarchy,
+    taxonomy_label,
 )
 
 
@@ -80,6 +81,28 @@ class ItemTaxonomyCatalogTests(unittest.TestCase):
         self.assertEqual(digital["label"], "الحسابات الرقمية")
         self.assertIn("beIN Sports", [row["name"] for row in digital["subcategories"][0]["third_levels"]])
         self.assertEqual(digital["level2_placeholder"], "اختر النوع الرقمي")
+
+    def test_generic_taxonomy_concepts_translate_without_changing_internal_values(self):
+        """FR/AR labels must never create locale-specific database values."""
+        categories = [SimpleNamespace(id=1, name=DIGITAL_ACCOUNTS_CATEGORY)]
+        subcategories = [
+            SimpleNamespace(id=11, category_id=1, name="Movies & Streaming"),
+            SimpleNamespace(id=12, category_id=1, name="Sports"),
+            SimpleNamespace(id=13, category_id=1, name="Gaming"),
+        ]
+        french = catalog_tree_payload(categories, subcategories, "fr")["categories"][0]
+        arabic = catalog_tree_payload(categories, subcategories, "ar")["categories"][0]
+        french_by_name = {row["name"]: row["label"] for row in french["subcategories"]}
+        arabic_by_name = {row["name"]: row["label"] for row in arabic["subcategories"]}
+
+        self.assertEqual(french["name"], DIGITAL_ACCOUNTS_CATEGORY)
+        self.assertEqual(arabic["name"], DIGITAL_ACCOUNTS_CATEGORY)
+        self.assertEqual(french_by_name["Movies & Streaming"], "Films et streaming")
+        self.assertEqual(arabic_by_name["Sports"], "الرياضة")
+        self.assertEqual(arabic_by_name["Gaming"], "ألعاب الفيديو")
+        # Brands are identifiers/presentation names, not translated concepts.
+        self.assertEqual(taxonomy_label("beIN Sports", "fr"), "beIN Sports")
+        self.assertEqual(taxonomy_label("Netflix", "ar"), "Netflix")
 
     def test_another_configured_three_level_category_uses_generic_type_without_route_code(self):
         categories = [SimpleNamespace(id=30, name="Seasonal Passes")]

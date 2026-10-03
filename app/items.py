@@ -26,17 +26,17 @@ from .models import (
     Order,
     Report,
 )
-from .utils import CATEGORIES, category_label
+from .utils import category_label
 from .utils_badges import get_user_badges
 from .models import Category, Subcategory
 from .catalog_taxonomy import (
-    CATEGORY_TREE,
     TaxonomyValidationError,
     catalog_tree_payload,
     listing_hierarchy,
     normalize_language,
     resolve_listing_hierarchy,
     taxonomy_label,
+    third_levels_for,
 )
 from .finder_service import remove_listing_index, sync_listing_index
 
@@ -549,7 +549,7 @@ def items_list(
         if sub:
             q = q.filter(Item.subcategory == sub)
 
-            allowed_services = CATEGORY_TREE.get(category, {}).get(sub, ())
+            allowed_services = third_levels_for(category, sub)
             selected_service = (service or request.query_params.get("service") or "").strip()
             if selected_service and selected_service in allowed_services:
                 q = q.filter(Item.third_level == selected_service)
@@ -564,7 +564,7 @@ def items_list(
 
     third_levels = [
         {"name": value}
-        for value in CATEGORY_TREE.get(category or "", {}).get(sub or "", ())
+        for value in third_levels_for(category, sub)
     ]
 
     # City filtering

@@ -287,6 +287,89 @@ _VALUE_LABELS: dict[str, dict[str, str]] = {
         "fr": "Comptes numériques",
         "ar": "الحسابات الرقمية",
     },
+    # These are taxonomy concepts rather than brands, so they are localized
+    # for the picker, Explore and review screens.  The canonical English
+    # values above remain what is submitted and stored in the database.
+    "Movies & Streaming": {
+        "en": "Movies & Streaming",
+        "fr": "Films et streaming",
+        "ar": "الأفلام والبث",
+    },
+    "Sports": {
+        "en": "Sports",
+        "fr": "Sports",
+        "ar": "الرياضة",
+    },
+    "Gaming": {
+        "en": "Gaming",
+        "fr": "Jeux vidéo",
+        "ar": "ألعاب الفيديو",
+    },
+    "Music & Audio": {
+        "en": "Music & Audio",
+        "fr": "Musique et audio",
+        "ar": "الموسيقى والصوت",
+    },
+    "AI Tools": {
+        "en": "AI Tools",
+        "fr": "Outils d’IA",
+        "ar": "أدوات الذكاء الاصطناعي",
+    },
+    "Software & Productivity": {
+        "en": "Software & Productivity",
+        "fr": "Logiciels et productivité",
+        "ar": "البرامج والإنتاجية",
+    },
+    "Design / Photo / Video": {
+        "en": "Design / Photo / Video",
+        "fr": "Design / photo / vidéo",
+        "ar": "التصميم / الصور / الفيديو",
+    },
+    "Cloud & Storage": {
+        "en": "Cloud & Storage",
+        "fr": "Cloud et stockage",
+        "ar": "السحابة والتخزين",
+    },
+    "Education": {
+        "en": "Education",
+        "fr": "Éducation",
+        "ar": "التعليم",
+    },
+    "News & Reading": {
+        "en": "News & Reading",
+        "fr": "Actualités et lecture",
+        "ar": "الأخبار والقراءة",
+    },
+    "Social & Creator": {
+        "en": "Social & Creator",
+        "fr": "Réseaux sociaux et créateurs",
+        "ar": "التواصل الاجتماعي وصنّاع المحتوى",
+    },
+    "Business & Marketing": {
+        "en": "Business & Marketing",
+        "fr": "Entreprise et marketing",
+        "ar": "الأعمال والتسويق",
+    },
+    "Hosting & Developer": {
+        "en": "Hosting & Developer",
+        "fr": "Hébergement et développement",
+        "ar": "الاستضافة والتطوير",
+    },
+    "VPN & Security": {
+        "en": "VPN & Security",
+        "fr": "VPN et sécurité",
+        "ar": "VPN والأمان",
+    },
+    "Regional TV & Entertainment": {
+        "en": "Regional TV & Entertainment",
+        "fr": "TV régionale et divertissement",
+        "ar": "التلفزيون الإقليمي والترفيه",
+    },
+    "General": {
+        "en": "General",
+        "fr": "Général",
+        "ar": "عام",
+    },
     OTHER_VALUE: {
         "en": "Other",
         "fr": "Autre",
@@ -312,6 +395,23 @@ def taxonomy_label(value: Any, language: str | None = None) -> str:
         return ""
     language = normalize_language(language)
     return _VALUE_LABELS.get(raw, {}).get(language, raw)
+
+
+def third_levels_for(
+    category_name: str | None,
+    subcategory_name: str | None,
+) -> tuple[str, ...]:
+    """Return configured level-three values for one canonical branch.
+
+    Explore, the form payload and server-side validation all call this helper
+    instead of independently traversing ``CATEGORY_TREE``.  Parent category
+    and subcategory values still come from the persisted lookup tables, while
+    this central catalog owns optional child-service membership.
+    """
+    return CATEGORY_TREE.get(str(category_name or ""), {}).get(
+        str(subcategory_name or ""),
+        (),
+    )
 
 
 def category_level_labels(category_name: str | None, language: str | None = None) -> dict[str, str]:
@@ -365,9 +465,9 @@ def catalog_tree_payload(categories: Iterable[Any], subcategories: Iterable[Any]
         # The config is keyed by the canonical Category/Subcategory names.  We
         # attach the level-three options only when that pair has them, so all
         # ordinary database categories remain strictly two-level.
-        configured_third_levels = CATEGORY_TREE.get(category_name, {}).get(
+        configured_third_levels = third_levels_for(
+            category_name,
             str(getattr(sub, "name", "") or ""),
-            (),
         )
         subs_by_category.setdefault(category_id, []).append(
             {
@@ -484,7 +584,7 @@ def resolve_listing_hierarchy(
         raise TaxonomyValidationError("Choose a valid subcategory.")
 
     canonical_subcategory = str(getattr(subcategory, "name", "") or "").strip() or None
-    valid_third_levels = CATEGORY_TREE.get(category_name, {}).get(canonical_subcategory or "", ())
+    valid_third_levels = third_levels_for(category_name, canonical_subcategory)
     submitted_third = str(third_level or "").strip()
     submitted_custom = str(custom_third_level or "").strip()
 
@@ -519,6 +619,6 @@ def resolve_listing_hierarchy(
 def configured_catalog_rows() -> Iterable[tuple[str, str, str]]:
     """Yield category, subcategory and optional third level from central data."""
     for category, second_levels in CATEGORY_TREE.items():
-        for subcategory, third_levels in second_levels.items():
-            for third_level in third_levels:
+        for subcategory in second_levels:
+            for third_level in third_levels_for(category, subcategory):
                 yield category, subcategory, third_level

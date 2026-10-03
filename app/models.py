@@ -202,7 +202,7 @@ class Item(Base):
 
     price_per_day = Column(Integer, nullable=False, default=0)
     category      = Column(String(50), nullable=False, default="other")
-    subcategory = col_or_literal("items", "subcategory", String(80), nullable=True)
+    subcategory = col_or_literal("items", "subcategory", String(120), nullable=True)
     # A generic optional third taxonomy level.  Existing two-level listings
     # remain valid because both fields are nullable.  The meaning (service,
     # platform, model family, etc.) comes from the central category tree.
