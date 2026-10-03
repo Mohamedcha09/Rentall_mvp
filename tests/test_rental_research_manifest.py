@@ -21,6 +21,7 @@ from app.routes_search import _taxonomy_search_values
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPOSITORY_ROOT / "docs" / "rental_research_coverage_2026-10-03.json"
+INVENTORY_PATH = REPOSITORY_ROOT / "docs" / "rental_research_expanded_inventory_2026-10-03.json"
 
 # Exact cardinalities supplied in the research brief.  Keeping this separate
 # from the JSON catches a missing or duplicated source reference even when a
@@ -86,6 +87,24 @@ class RentalResearchManifestTests(unittest.TestCase):
             self.assertTrue(list(row["source_urls"]), row)
             self.assertTrue(str(row["reason"]).strip(), row)
             self.assertTrue(str(row["test_reference_or_blocker"]).strip(), row)
+
+    def test_exported_inventory_is_the_current_central_tree(self) -> None:
+        """The review JSON must not become a second stale catalog copy."""
+        document = json.loads(INVENTORY_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(document["source_of_truth"], "app/catalog_taxonomy.py::CATEGORY_TREE")
+        self.assertEqual(document["tree"], CATEGORY_TREE)
+        self.assertEqual(
+            document["counts"],
+            {
+                "level1": len(CATEGORY_TREE),
+                "level2": sum(len(branches) for branches in CATEGORY_TREE.values()),
+                "level3": sum(
+                    len(third_levels)
+                    for branches in CATEGORY_TREE.values()
+                    for third_levels in branches.values()
+                ),
+            },
+        )
 
     def test_active_manifest_paths_resolve(self) -> None:
         """A report row is not accepted unless its runtime target exists."""

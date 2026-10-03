@@ -3,6 +3,13 @@
 Date: 2026-10-03  
 Scope: local repository only; no production database, deployment, restart, reindex, or Git write was performed.
 
+> Historical baseline note: this document records the catalog state before the
+> subsequent 47-family research extension. Its 21 / 121 / 701 totals are kept
+> as the comparison baseline. See
+> [rental_research_expansion_2026-10-03.md](rental_research_expansion_2026-10-03.md)
+> and [rental_research_expanded_inventory_2026-10-03.json](rental_research_expanded_inventory_2026-10-03.json)
+> for the current post-extension state.
+
 ## A. Current inventory before the change
 
 The recorded baseline is [rental_taxonomy_before_2026-10-03.json](rental_taxonomy_before_2026-10-03.json).
