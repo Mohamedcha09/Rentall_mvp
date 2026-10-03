@@ -263,7 +263,7 @@ img.edit-thumb {
 
   <!-- Category -->
   <div class="mb-3">
-    <label class="form-label">{{ taxonomy_payload['labels']['category'] }}</label>
+    <label class="form-label" for="catSelect">{{ taxonomy_payload['labels']['category'] }}</label>
     <input class="form-control mb-2" type="search" id="categoryTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_categories'] }}" placeholder="{{ taxonomy_payload['labels']['filter_categories'] }}">
     <select class="form-select" id="catSelect" name="category" required>
       {% for catalog_category in taxonomy_payload.categories %}
@@ -276,7 +276,7 @@ img.edit-thumb {
 
   <!-- Subcategory -->
   <div class="mb-3">
-    <label class="form-label" id="subSelectLabel">{{ taxonomy_payload['labels']['subcategory'] }}</label>
+    <label class="form-label" id="subSelectLabel" for="subSelect">{{ taxonomy_payload['labels']['subcategory'] }}</label>
     <input class="form-control mb-2" type="search" id="subcategoryTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_subcategories'] }}" placeholder="{{ taxonomy_payload['labels']['filter_subcategories'] }}">
     <select class="form-select" id="subSelect" name="subcategory_id">
       <option value="">{{ taxonomy_payload['labels']['select_category_first'] }}</option>
@@ -460,11 +460,15 @@ document.getElementById('imgInput').addEventListener('change', function(){
     function filterTaxonomyOptions(input, select) {
         if (!input || !select) return;
         const query = input.value.trim().toLocaleLowerCase();
+        const selectedValue = select.value;
         Array.from(select.options).forEach((option) => {
             if (!option.value) return;
             const matches = !query || option.textContent.toLocaleLowerCase().includes(query);
-            option.hidden = !matches;
-            option.disabled = !matches;
+            // A selected native option must remain enabled so changing a
+            // search query cannot silently remove it from FormData.
+            const keepSelected = option.value === selectedValue;
+            option.hidden = !matches && !keepSelected;
+            option.disabled = !matches && !keepSelected;
         });
     }
 

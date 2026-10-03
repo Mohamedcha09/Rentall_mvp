@@ -857,7 +857,7 @@
             required
             aria-describedby="categoryError"
             data-error-target="categoryError"
-            data-error-message="Choose a category."
+            data-error-message="{{ taxonomy_payload['labels']['choose_category'] }}"
           >
             <option value="">{{ taxonomy_payload['labels']['select_category'] }}</option>
             {% for catalog_category in taxonomy_payload.categories %}
@@ -878,7 +878,7 @@
             aria-disabled="true"
             aria-describedby="subcategoryHelp subcategoryError"
             data-error-target="subcategoryError"
-            data-error-message="Choose a subcategory."
+            data-error-message="{{ taxonomy_payload['labels']['choose_subcategory'] }}"
           >
             <option value="">{{ taxonomy_payload['labels']['select_category_first'] }}</option>
           </select>
@@ -897,7 +897,7 @@
             aria-disabled="true"
             aria-describedby="thirdLevelHelp thirdLevelError"
             data-error-target="thirdLevelError"
-            data-error-message="Choose a valid service."
+            data-error-message="{{ taxonomy_payload['labels']['choose_type'] }}"
           >
             <option value="">{{ taxonomy_payload['labels']['select_level2_first'] }}</option>
           </select>
@@ -917,7 +917,7 @@
             aria-disabled="true"
             autocomplete="off"
             data-error-target="customThirdLevelError"
-            data-error-message="Enter the service name."
+            data-error-message="{{ taxonomy_payload['labels']['enter_custom_type'] }}"
           >
           <div class="listing-create__helper-row"><span>{{ taxonomy_payload['labels']['custom_service_help'] }}</span></div>
           <p class="listing-create__error" id="customThirdLevelError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
@@ -1275,11 +1275,16 @@
   function filterTaxonomyOptions(input, select) {
     if (!input || !select) return;
     const query = input.value.trim().toLocaleLowerCase();
+    const selectedValue = select.value;
     Array.from(select.options).forEach((option) => {
       if (!option.value) return;
       const matches = !query || option.textContent.toLocaleLowerCase().includes(query);
-      option.hidden = !matches;
-      option.disabled = !matches;
+      // Keep an already selected value enabled even when the user refines the
+      // search box afterward. A disabled selected native option can be
+      // omitted by browsers on submit, which would break the saved path.
+      const keepSelected = option.value === selectedValue;
+      option.hidden = !matches && !keepSelected;
+      option.disabled = !matches && !keepSelected;
     });
   }
 
