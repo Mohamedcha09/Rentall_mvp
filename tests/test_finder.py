@@ -142,6 +142,7 @@ from app.finder_service import (
 )
 from app.models import (
     Booking,
+    Category,
     FinderConversation,
     FinderListingIndex,
     FinderMessage,
@@ -149,6 +150,7 @@ from app.models import (
     FxRate,
     Item,
     SupportTicket,
+    Subcategory,
     User,
 )
 
@@ -464,6 +466,52 @@ class FinderTests(unittest.TestCase):
         by_custom_value = client.get("/api/search", params={"q": "NewStreaming"})
         self.assertEqual(by_custom_value.status_code, 200)
         self.assertIn(761, {row["id"] for row in by_custom_value.json()["items"]})
+
+    def test_finder_learns_empty_configured_branches_and_lookup_taxonomy(self) -> None:
+        """Finder reads the central tree plus L1/L2 lookup rows, not listings.
+
+        The temporary SQLite fixture deliberately has no school-bus or
+        audit-category listing.  A category can therefore be understood
+        before it has marketplace inventory, while the lookup-table check
+        proves a future admin-created branch needs no Finder if-statement.
+        """
+        db = SessionLocal()
+        category = None
+        try:
+            school_bus, action = apply_user_turn(
+                db,
+                SearchSpec(),
+                "Autobus scolaires",
+                display_currency="CAD",
+            )
+            self.assertEqual(action, "search")
+            self.assertEqual(school_bus.category_candidates, ["Vehicles"])
+            self.assertEqual(school_bus.subcategory_candidates, ["Buses"])
+            self.assertEqual(school_bus.service_candidates, ["School Buses"])
+
+            Category.__table__.create(bind=db.get_bind(), checkfirst=True)
+            Subcategory.__table__.create(bind=db.get_bind(), checkfirst=True)
+            category = Category(name="Temporary Audit Equipment")
+            db.add(category)
+            db.flush()
+            db.add(Subcategory(category_id=category.id, name="Thermal Imaging Kits"))
+            db.commit()
+
+            dynamic, action = apply_user_turn(
+                db,
+                SearchSpec(),
+                "Thermal Imaging Kits",
+                display_currency="CAD",
+            )
+            self.assertEqual(action, "search")
+            self.assertEqual(dynamic.category_candidates, ["Temporary Audit Equipment"])
+            self.assertEqual(dynamic.subcategory_candidates, ["Thermal Imaging Kits"])
+            self.assertEqual(dynamic.service_candidates, [])
+        finally:
+            if category is not None:
+                db.delete(category)
+                db.commit()
+            db.close()
 
     def test_pagination_is_stable_and_does_not_duplicate_results(self) -> None:
         db = SessionLocal()
