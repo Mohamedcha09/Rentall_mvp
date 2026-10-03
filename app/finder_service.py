@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from difflib import SequenceMatcher
+from functools import lru_cache
 import copy
 import hashlib
 import json
@@ -449,6 +450,105 @@ def _has_phrase(text: str, phrase: str) -> bool:
     return bool(pattern and pattern.search(normalize_text(text)))
 
 
+def _append_catalog_concept(
+    concepts: list[CatalogConcept],
+    seen: set[tuple[str, str, str, str, str]],
+    label: Any,
+    kind: str,
+    *,
+    aliases: Iterable[str] = (),
+    category: Any = "",
+    subcategory: Any = "",
+    service: Any = "",
+) -> None:
+    """Append a normalized Finder concept once, preserving its hierarchy."""
+    name = str(label or "").strip()[:160]
+    if not name:
+        return
+    normalized_name = normalize_text(name)
+    if not normalized_name:
+        return
+    cat = str(category or "").strip()[:120]
+    sub = str(subcategory or "").strip()[:160]
+    svc = str(service or "").strip()[:160]
+    marker = (kind, normalized_name, normalize_text(cat), normalize_text(sub), normalize_text(svc))
+    if marker in seen:
+        return
+    seen.add(marker)
+    values = [name]
+    values.extend(str(value or "").strip()[:160] for value in aliases)
+    unique: list[str] = []
+    normalized_seen: set[str] = set()
+    for value in values:
+        normalized_value = normalize_text(value)
+        if normalized_value and normalized_value not in normalized_seen:
+            normalized_seen.add(normalized_value)
+            unique.append(value)
+    concepts.append(CatalogConcept(name, kind, tuple(unique), cat, sub, svc))
+
+
+@lru_cache(maxsize=1)
+def _static_catalog_concepts() -> tuple[CatalogConcept, ...]:
+    """Cache the immutable core and configured taxonomy once per process.
+
+    Lookup-table rows and live listing values are intentionally not cached:
+    they can change without an application restart.  The application-defined
+    tree is immutable for the current process, so rebuilding hundreds of L3
+    concepts on every Finder message offers no correctness benefit.
+    """
+    concepts: list[CatalogConcept] = []
+    seen: set[tuple[str, str, str, str, str]] = set()
+    for canonical, aliases in _CORE_PRODUCT_ALIASES.items():
+        _append_catalog_concept(concepts, seen, canonical, "product", aliases=aliases)
+    for brand, aliases in _KNOWN_BRAND_ALIASES.items():
+        _append_catalog_concept(concepts, seen, brand, "anchor", aliases=aliases)
+    # Start with the configured hierarchy, not the live listings.  This means
+    # a valid new category/type/service is still understood by Finder before
+    # the first approved listing uses it.  ``configured_catalog_rows`` also
+    # yields deliberately two-level branches with an empty third value.
+    for category in CATEGORY_TREE:
+        canonical_category = canonical_rental_category(category)
+        _append_catalog_concept(
+            concepts,
+            seen,
+            canonical_category,
+            "category",
+            aliases=_category_taxonomy_aliases(canonical_category),
+            category=canonical_category,
+        )
+    for category, subcategory, service in configured_catalog_rows():
+        canonical_category = canonical_rental_category(category)
+        _append_catalog_concept(
+            concepts,
+            seen,
+            canonical_category,
+            "category",
+            aliases=_category_taxonomy_aliases(canonical_category),
+            category=canonical_category,
+        )
+        _append_catalog_concept(
+            concepts,
+            seen,
+            subcategory,
+            "subcategory",
+            aliases=(taxonomy_label(subcategory, "fr"), taxonomy_label(subcategory, "ar")),
+            category=canonical_category,
+            subcategory=subcategory,
+        )
+        if service and normalize_text(service) != "other":
+            _append_catalog_concept(
+                concepts,
+                seen,
+                service,
+                "service",
+                aliases=(taxonomy_label(service, "fr"), taxonomy_label(service, "ar")),
+                category=canonical_category,
+                subcategory=subcategory,
+                service=service,
+            )
+    return tuple(concepts)
+
+
 def _known_catalog_concepts(db: Session) -> list[CatalogConcept]:
     """Build a runtime lexicon from SEVOR's actual taxonomy and catalogue.
 
@@ -458,82 +558,17 @@ def _known_catalog_concepts(db: Session) -> list[CatalogConcept]:
     without an ``if category == ...`` branch.
     """
 
-    concepts: list[CatalogConcept] = []
-    seen: set[tuple[str, str, str, str, str]] = set()
-
-    def add(
-        label: Any,
-        kind: str,
-        *,
-        aliases: Iterable[str] = (),
-        category: Any = "",
-        subcategory: Any = "",
-        service: Any = "",
-    ) -> None:
-        name = str(label or "").strip()[:160]
-        if not name:
-            return
-        normalized_name = normalize_text(name)
-        if not normalized_name:
-            return
-        cat = str(category or "").strip()[:120]
-        sub = str(subcategory or "").strip()[:160]
-        svc = str(service or "").strip()[:160]
-        marker = (kind, normalized_name, normalize_text(cat), normalize_text(sub), normalize_text(svc))
-        if marker in seen:
-            return
-        seen.add(marker)
-        values = [name]
-        values.extend(str(value or "").strip()[:160] for value in aliases)
-        unique: list[str] = []
-        normalized_seen: set[str] = set()
-        for value in values:
-            normalized_value = normalize_text(value)
-            if normalized_value and normalized_value not in normalized_seen:
-                normalized_seen.add(normalized_value)
-                unique.append(value)
-        concepts.append(CatalogConcept(name, kind, tuple(unique), cat, sub, svc))
-
-    for canonical, aliases in _CORE_PRODUCT_ALIASES.items():
-        add(canonical, "product", aliases=aliases)
-    for brand, aliases in _KNOWN_BRAND_ALIASES.items():
-        add(brand, "anchor", aliases=aliases)
-    # Start with the configured hierarchy, not the live listings.  This means
-    # a valid new category/type/service is still understood by Finder before
-    # the first approved listing uses it.  ``configured_catalog_rows`` also
-    # yields deliberately two-level branches with an empty third value.
-    for category in CATEGORY_TREE:
-        canonical_category = canonical_rental_category(category)
-        add(
-            canonical_category,
-            "category",
-            aliases=_category_taxonomy_aliases(canonical_category),
-            category=canonical_category,
+    concepts = list(_static_catalog_concepts())
+    seen = {
+        (
+            concept.kind,
+            normalize_text(concept.label),
+            normalize_text(concept.category),
+            normalize_text(concept.subcategory),
+            normalize_text(concept.service),
         )
-    for category, subcategory, service in configured_catalog_rows():
-        canonical_category = canonical_rental_category(category)
-        add(
-            canonical_category,
-            "category",
-            aliases=_category_taxonomy_aliases(canonical_category),
-            category=canonical_category,
-        )
-        add(
-            subcategory,
-            "subcategory",
-            aliases=(taxonomy_label(subcategory, "fr"), taxonomy_label(subcategory, "ar")),
-            category=canonical_category,
-            subcategory=subcategory,
-        )
-        if service and normalize_text(service) != "other":
-            add(
-                service,
-                "service",
-                aliases=(taxonomy_label(service, "fr"), taxonomy_label(service, "ar")),
-                category=canonical_category,
-                subcategory=subcategory,
-                service=service,
-            )
+        for concept in concepts
+    }
 
     # The lookup tables are also an active taxonomy source: an administrator
     # can add a valid L1/L2 node without needing a code release.  This is one
@@ -551,14 +586,18 @@ def _known_catalog_concepts(db: Session) -> list[CatalogConcept]:
         lookup_rows = []
     for category, subcategory in lookup_rows:
         canonical_category = canonical_rental_category(category)
-        add(
+        _append_catalog_concept(
+            concepts,
+            seen,
             canonical_category,
             "category",
             aliases=_category_taxonomy_aliases(category),
             category=canonical_category,
         )
         if subcategory:
-            add(
+            _append_catalog_concept(
+                concepts,
+                seen,
                 subcategory,
                 "subcategory",
                 aliases=(taxonomy_label(subcategory, "fr"), taxonomy_label(subcategory, "ar")),
@@ -578,12 +617,27 @@ def _known_catalog_concepts(db: Session) -> list[CatalogConcept]:
         # prose into a free-text product filter in that situation.
         rows = []
     for category, subcategory, service, custom_service in rows:
-        add(category, "category", category=category)
+        _append_catalog_concept(concepts, seen, category, "category", category=category)
         if subcategory:
-            add(subcategory, "subcategory", category=category, subcategory=subcategory)
+            _append_catalog_concept(
+                concepts,
+                seen,
+                subcategory,
+                "subcategory",
+                category=category,
+                subcategory=subcategory,
+            )
         service_value = custom_service or service
         if service_value:
-            add(service_value, "service", category=category, subcategory=subcategory, service=service_value)
+            _append_catalog_concept(
+                concepts,
+                seen,
+                service_value,
+                "service",
+                category=category,
+                subcategory=subcategory,
+                service=service_value,
+            )
     return concepts
 
 

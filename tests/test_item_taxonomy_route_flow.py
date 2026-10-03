@@ -1032,7 +1032,10 @@ with TestClient(main_module.app) as client:
             # ``python -c``; keep it in this already-isolated temporary test
             # directory instead of weakening the coverage.
             runner_path = Path(temp_dir) / "route_flow_runner.py"
-            runner_path.write_text(script, encoding="utf-8")
+            runner_path.write_text(
+                f"import sys\nsys.path.insert(0, {str(REPOSITORY_ROOT)!r})\n" + script,
+                encoding="utf-8",
+            )
             completed = subprocess.run(
                 [sys.executable, str(runner_path)],
                 cwd=REPOSITORY_ROOT,

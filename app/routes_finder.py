@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .auth import get_current_user
+from .catalog_taxonomy import CATEGORY_TREE
 from .database import get_db
 from .finder_service import (
     MAX_FINDER_MESSAGE_CHARS,
@@ -36,12 +37,30 @@ from .finder_service import (
     spec_summary,
     support_request_response,
 )
-from .models import FinderConversation, FinderMessage, FinderSearchState, Item, User
+from .models import Category, FinderConversation, FinderMessage, FinderSearchState, Item, User
 from .support_ai import get_or_create_csrf_token, require_csrf, validate_client_message_id
 from .utils import display_currency
 
 
 router = APIRouter(tags=["finder"])
+
+
+def _finder_catalog_categories(db: Session) -> list[str]:
+    """Provide Finder the same L1 taxonomy as Create and Explore.
+
+    Configured categories are available before their first public listing.
+    Lookup-table additions are read in one small query so valid administrator
+    additions are not hidden from provider-assisted parsing.  The result has
+    no user or listing data and performs no write.
+    """
+    names = list(CATEGORY_TREE)
+    try:
+        names.extend(row[0] for row in db.query(Category.name).order_by(Category.name.asc()).all())
+    except Exception:
+        # Older isolated schemas can omit lookup tables.  The configured
+        # source remains useful and Finder must not fail unrelated requests.
+        pass
+    return list(dict.fromkeys(str(name or "").strip() for name in names if str(name or "").strip()))
 
 
 # A Finder history is intentionally durable, but opening empty conversations
@@ -436,7 +455,7 @@ def finder_message(
     # payment support text. Provider enrichment also cannot reinterpret a
     # paging/comparison control turn as a new search.
     if not support_requested and action == "search":
-        categories = [row[0] for row in public_listings_query(db).with_entities(Item.category).distinct().all()]
+        categories = _finder_catalog_categories(db)
         locations = [row[0] for row in public_listings_query(db).with_entities(Item.city).filter(Item.city.isnot(None), Item.city != "").distinct().all()]
         next_spec, provider_used = enrich_spec_with_provider(
             db,
