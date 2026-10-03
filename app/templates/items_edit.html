@@ -264,6 +264,7 @@ img.edit-thumb {
   <!-- Category -->
   <div class="mb-3">
     <label class="form-label">{{ taxonomy_payload['labels']['category'] }}</label>
+    <input class="form-control mb-2" type="search" id="categoryTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_categories'] }}" placeholder="{{ taxonomy_payload['labels']['filter_categories'] }}">
     <select class="form-select" id="catSelect" name="category" required>
       {% for catalog_category in taxonomy_payload.categories %}
         <option value="{{ catalog_category.name }}" data-id="{{ catalog_category.id }}" {% if catalog_category.name == form_values.get('category', item.category) %}selected{% endif %}>
@@ -276,6 +277,7 @@ img.edit-thumb {
   <!-- Subcategory -->
   <div class="mb-3">
     <label class="form-label" id="subSelectLabel">{{ taxonomy_payload['labels']['subcategory'] }}</label>
+    <input class="form-control mb-2" type="search" id="subcategoryTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_subcategories'] }}" placeholder="{{ taxonomy_payload['labels']['filter_subcategories'] }}">
     <select class="form-select" id="subSelect" name="subcategory_id">
       <option value="">{{ taxonomy_payload['labels']['select_category_first'] }}</option>
     </select>
@@ -283,6 +285,7 @@ img.edit-thumb {
 
   <div class="mb-3" id="thirdLevelField" hidden>
     <label class="form-label" id="thirdLevelLabel" for="thirdLevelSelect">{{ taxonomy_payload['labels']['service_platform'] }}</label>
+    <input class="form-control mb-2" type="search" id="thirdLevelTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_types'] }}" placeholder="{{ taxonomy_payload['labels']['filter_types'] }}">
     <select class="form-select" id="thirdLevelSelect" name="third_level" disabled aria-disabled="true">
       <option value="">{{ taxonomy_payload['labels']['select_level2_first'] }}</option>
     </select>
@@ -290,7 +293,7 @@ img.edit-thumb {
   </div>
 
   <div class="mb-3" id="customThirdLevelField" hidden>
-    <label class="form-label" for="customThirdLevel">{{ taxonomy_payload['labels']['custom_service'] }}</label>
+    <label class="form-label" id="customThirdLevelLabel" for="customThirdLevel">{{ taxonomy_payload['labels']['custom_service'] }}</label>
     <input type="text" class="form-control" id="customThirdLevel" name="custom_third_level" maxlength="200" disabled aria-disabled="true">
     <div class="form-text">{{ taxonomy_payload['labels']['custom_service_help'] }}</div>
   </div>
@@ -423,22 +426,28 @@ document.getElementById('imgInput').addEventListener('change', function(){
 
 (() => {
     const categorySelect = document.getElementById('catSelect');
+    const categoryFilter = document.getElementById('categoryTaxonomyFilter');
     const subcategorySelect = document.getElementById('subSelect');
+    const subcategoryFilter = document.getElementById('subcategoryTaxonomyFilter');
     const subcategoryLabel = document.getElementById('subSelectLabel');
     const thirdField = document.getElementById('thirdLevelField');
     const thirdLabel = document.getElementById('thirdLevelLabel');
     const thirdSelect = document.getElementById('thirdLevelSelect');
+    const thirdFilter = document.getElementById('thirdLevelTaxonomyFilter');
     const thirdHelp = document.getElementById('thirdLevelHelp');
     const customField = document.getElementById('customThirdLevelField');
+    const customLabel = document.getElementById('customThirdLevelLabel');
     const customInput = document.getElementById('customThirdLevel');
     const taxonomy = {{ taxonomy_payload | tojson }};
     const categories = Array.isArray(taxonomy.categories) ? taxonomy.categories : [];
     const labels = taxonomy.labels || {};
     const initial = {
+        category: {{ form_values.get('category', item.category) | tojson }},
         subcategoryId: {{ form_values.get('subcategory_id', '') | tojson }},
         subcategory: {{ form_values.get('subcategory', item.subcategory or '') | tojson }},
         thirdLevel: {{ form_values.get('third_level', item.third_level or '') | tojson }},
         customThirdLevel: {{ form_values.get('custom_third_level', item.custom_third_level or '') | tojson }},
+        legacyBlankThirdLevel: {{ ((not item.third_level and not item.custom_third_level and form_values.get('category', item.category) == item.category) | tojson) }},
     };
 
     if (!categorySelect || !subcategorySelect || !thirdSelect || !thirdField || !customField || !customInput) return;
@@ -446,6 +455,28 @@ document.getElementById('imgInput').addEventListener('change', function(){
     function selectedCategory() {
         const option = categorySelect.options[categorySelect.selectedIndex];
         return categories.find((category) => String(category.id) === String(option?.dataset.id || '')) || null;
+    }
+
+    function filterTaxonomyOptions(input, select) {
+        if (!input || !select) return;
+        const query = input.value.trim().toLocaleLowerCase();
+        Array.from(select.options).forEach((option) => {
+            if (!option.value) return;
+            const matches = !query || option.textContent.toLocaleLowerCase().includes(query);
+            option.hidden = !matches;
+            option.disabled = !matches;
+        });
+    }
+
+    function refreshTaxonomyFilter(input, select, minimum = 12) {
+        if (!input || !select) return;
+        const choices = Array.from(select.options).filter((option) => option.value);
+        input.value = '';
+        input.hidden = choices.length <= minimum;
+        choices.forEach((option) => {
+            option.hidden = false;
+            option.disabled = false;
+        });
     }
 
     function resetCustom() {
@@ -463,6 +494,8 @@ document.getElementById('imgInput').addEventListener('change', function(){
         thirdSelect.required = false;
         thirdSelect.setAttribute('aria-disabled', 'true');
         if (thirdHelp) thirdHelp.textContent = '';
+        refreshTaxonomyFilter(thirdFilter, thirdSelect);
+        if (customLabel) customLabel.textContent = category?.level_labels?.custom_level3 || labels.custom_service || 'Custom Service Name';
         resetCustom();
     }
 
@@ -484,12 +517,29 @@ document.getElementById('imgInput').addEventListener('change', function(){
 
         thirdField.hidden = false;
         if (thirdLabel) thirdLabel.textContent = category.level_labels?.level3 || labels.service_platform || 'Service / Platform';
+        if (customLabel) customLabel.textContent = category.level_labels?.custom_level3 || labels.custom_service || 'Custom Service Name';
         thirdSelect.replaceChildren(new Option(labels.select_service || 'Select service / platform', ''));
         levels.forEach((level) => thirdSelect.append(new Option(level.label || level.name, level.name)));
+        refreshTaxonomyFilter(thirdFilter, thirdSelect);
         thirdSelect.disabled = false;
-        thirdSelect.required = true;
+        const preserveLegacyBlank = Boolean(
+            preserve
+            && initial.legacyBlankThirdLevel
+            && !initial.thirdLevel
+            && category.name === initial.category
+            && subcategory.name === initial.subcategory
+        );
+        thirdSelect.required = !preserveLegacyBlank;
         thirdSelect.setAttribute('aria-disabled', 'false');
-        if (thirdHelp) thirdHelp.textContent = labels.service_help || 'Choose the service or platform for this type.';
+        if (thirdHelp) {
+            if (preserveLegacyBlank) {
+                thirdHelp.textContent = labels.legacy_type_help || 'This existing listing has no type selected; you may keep it unchanged or choose a type.';
+            } else if (category.level_labels?.level3 === (labels.service_platform || 'Service / Platform')) {
+                thirdHelp.textContent = labels.service_help || 'Choose the service or platform for this type.';
+            } else {
+                thirdHelp.textContent = labels.type_help || 'Choose the most specific type for this group.';
+            }
+        }
         if (preserve && levels.some((level) => level.name === initial.thirdLevel)) {
             thirdSelect.value = initial.thirdLevel;
             updateCustom();
@@ -502,6 +552,7 @@ document.getElementById('imgInput').addEventListener('change', function(){
         const subcategories = Array.isArray(category?.subcategories) ? category.subcategories : [];
         resetThird(category);
         subcategorySelect.replaceChildren();
+        refreshTaxonomyFilter(subcategoryFilter, subcategorySelect);
         if (subcategoryLabel) subcategoryLabel.textContent = category?.level_labels?.level2 || labels.subcategory || 'Subcategory';
         if (!category) {
             subcategorySelect.append(new Option(labels.select_category_first || 'Select a category first', ''));
@@ -520,6 +571,7 @@ document.getElementById('imgInput').addEventListener('change', function(){
         const placeholder = category.level2_placeholder || labels.select_subcategory || 'Select subcategory';
         subcategorySelect.append(new Option(placeholder, ''));
         subcategories.forEach((subcategory) => subcategorySelect.append(new Option(subcategory.label || subcategory.name, String(subcategory.id))));
+        refreshTaxonomyFilter(subcategoryFilter, subcategorySelect);
         subcategorySelect.disabled = false;
         subcategorySelect.required = true;
         subcategorySelect.setAttribute('aria-disabled', 'false');
@@ -535,6 +587,10 @@ document.getElementById('imgInput').addEventListener('change', function(){
     categorySelect.addEventListener('change', () => updateSubcategories(false));
     subcategorySelect.addEventListener('change', () => updateThird(false));
     thirdSelect.addEventListener('change', updateCustom);
+    categoryFilter?.addEventListener('input', () => filterTaxonomyOptions(categoryFilter, categorySelect));
+    subcategoryFilter?.addEventListener('input', () => filterTaxonomyOptions(subcategoryFilter, subcategorySelect));
+    thirdFilter?.addEventListener('input', () => filterTaxonomyOptions(thirdFilter, thirdSelect));
+    refreshTaxonomyFilter(categoryFilter, categorySelect);
     updateSubcategories(true);
 })();
 </script>

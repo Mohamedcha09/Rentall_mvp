@@ -1,16 +1,115 @@
 # app/routes_search.py
 
+from collections import defaultdict
+from functools import lru_cache
+import re
+import unicodedata
+
 from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
+from .catalog_taxonomy import CATEGORY_TREE, canonical_rental_category, taxonomy_label
 from .database import get_db
 from .models import User, Item
+from .rental_catalog import RENTAL_CATEGORY_ALIASES
 
 router = APIRouter()
 
 # Earth radius constant
 EARTH_RADIUS_KM = 6371.0
+
+
+def _taxonomy_key(value: str) -> str:
+    """Normalize a taxonomy label for exact multilingual alias lookup."""
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = text.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
+    text = text.replace("ـ", "")
+    text = re.sub("[أإآٱ]", "ا", text)
+    text = text.replace("ى", "ي").replace("ة", "ه")
+    text = re.sub(r"[^\w.+×x-]+", " ", text.casefold(), flags=re.UNICODE)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _category_stored_values(value: str) -> tuple[str, ...]:
+    """Keep search compatible with declared legacy category spellings."""
+    canonical = canonical_rental_category(value)
+    values = [str(canonical or "").strip()]
+    values.extend(
+        alias
+        for alias, target in RENTAL_CATEGORY_ALIASES.items()
+        if target == canonical
+    )
+    return tuple(dict.fromkeys(value for value in values if value))
+
+
+@lru_cache(maxsize=1)
+def _taxonomy_alias_index() -> dict[str, tuple[str, ...]]:
+    """Map each central EN/FR/AR taxonomy label to stored canonical values.
+
+    The index is static application taxonomy data and contains no listing or
+    user data.  It lets general search resolve a translated category/type or
+    service name without copying category-specific conditionals into a route.
+    Dynamic lookup-table additions remain searchable by their stored names.
+    """
+    index: dict[str, set[str]] = defaultdict(set)
+
+    def register(value: str, *, category: bool = False, aliases: tuple[str, ...] = ()) -> None:
+        canonical = canonical_rental_category(value) if category else str(value or "").strip()
+        if not canonical:
+            return
+        stored_values = _category_stored_values(canonical) if category else (canonical,)
+        labels = (
+            canonical,
+            taxonomy_label(canonical, "fr"),
+            taxonomy_label(canonical, "ar"),
+            *aliases,
+        )
+        for label in labels:
+            key = _taxonomy_key(label)
+            if key:
+                index[key].update(stored_values)
+
+    for category, subcategories in CATEGORY_TREE.items():
+        category_aliases = tuple(
+            alias
+            for alias, target in RENTAL_CATEGORY_ALIASES.items()
+            if target == canonical_rental_category(category)
+        )
+        register(category, category=True, aliases=category_aliases)
+        for subcategory, third_levels in subcategories.items():
+            register(subcategory)
+            for third_level in third_levels:
+                register(third_level)
+    return {key: tuple(sorted(values, key=str.casefold)) for key, values in index.items()}
+
+
+def _taxonomy_search_values(query: str) -> tuple[str, ...]:
+    """Return canonical/legacy values only for an exact known taxonomy alias."""
+    return _taxonomy_alias_index().get(_taxonomy_key(query), ())
+
+
+def _item_search_predicate(query: str):
+    """Build one approved-listing text predicate with taxonomy aliases.
+
+    The original free-text matching remains intact.  Exact values derived
+    from the central catalog add translated/legacy taxonomy matching only;
+    arbitrary user text never becomes a taxonomy filter.
+    """
+    pattern = f"%{query}%"
+    fields = (
+        Item.title,
+        Item.description,
+        Item.category,
+        Item.subcategory,
+        Item.third_level,
+        Item.custom_third_level,
+    )
+    clauses = [field.ilike(pattern) for field in fields]
+    for value in _taxonomy_search_values(query):
+        clauses.extend(func.lower(field) == value.casefold() for field in fields)
+    return or_(*clauses)
 
 def _clean_name(first: str, last: str, uid: int) -> str:
     f = (first or "").strip()
@@ -99,14 +198,7 @@ def api_search(
         .filter(
             Item.is_active == "yes",
             Item.status == "approved",        # ✔ FIX
-            or_(
-                Item.title.ilike(pattern),
-                Item.description.ilike(pattern),
-                Item.category.ilike(pattern),
-                Item.subcategory.ilike(pattern),
-                Item.third_level.ilike(pattern),
-                Item.custom_third_level.ilike(pattern),
-            ),
+            _item_search_predicate(q),
         )
     )
 
@@ -174,7 +266,6 @@ def search_page(
 
     if len(q) >= 2:
         pattern = f"%{q}%"
-
         # USERS
         users_rows = (
             db.query(User.id, User.first_name, User.last_name, User.avatar_path)
@@ -203,14 +294,7 @@ def search_page(
             .filter(
                 Item.is_active == "yes",
                 Item.status == "approved",      # ✔ FIX
-                or_(
-                    Item.title.ilike(pattern),
-                    Item.description.ilike(pattern),
-                    Item.category.ilike(pattern),
-                    Item.subcategory.ilike(pattern),
-                    Item.third_level.ilike(pattern),
-                    Item.custom_third_level.ilike(pattern),
-                ),
+                _item_search_predicate(q),
             )
         )
 

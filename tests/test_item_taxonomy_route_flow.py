@@ -72,7 +72,7 @@ try:
     assert "subcategory" in columns
     assert connection.execute(
         "SELECT version_num FROM alembic_version"
-    ).fetchone()[0] == "digital_catalog_20261003"
+    ).fetchone()[0] == "rental_catalog_20261004"
     index = connection.execute(
         "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
         ("ix_items_category_subcategory_third_level",),
@@ -181,7 +181,7 @@ try:
     )
     assert connection.execute("SELECT third_level FROM items WHERE id = 4").fetchone()[0] == 'Zee5'
     assert connection.execute("SELECT version_num FROM alembic_version").fetchone()[0] == (
-        'digital_catalog_20261003'
+        'rental_catalog_20261004'
     )
 finally:
     connection.close()
@@ -248,12 +248,23 @@ CREATE TABLE categories (id INTEGER PRIMARY KEY, name VARCHAR(80) NOT NULL UNIQU
 CREATE TABLE subcategories (id INTEGER PRIMARY KEY, category_id INTEGER NOT NULL, name VARCHAR(120) NOT NULL);
 -- This legacy row supplies an existing normal two-level branch.  The
 -- migration must backfill its lookup records without changing the Item.
+INSERT INTO categories (id, name) VALUES (20, 'Baby & Kids');
+INSERT INTO subcategories (id, category_id, name) VALUES (200, 20, 'Car Seats');
 INSERT INTO items (
   id, owner_id, title, description, city, currency, price, status,
   price_per_day, category, subcategory, is_active, created_at
 ) VALUES (
   1, 901, 'Legacy car seat', 'legacy', 'Montréal', 'CAD', 10, 'approved',
   10, 'Baby & Kids', 'Car Seats', 'yes', CURRENT_TIMESTAMP
+);
+-- This listing predates L3 choices under Cars.  The new catalog must not
+-- invent a type or prevent an otherwise ordinary edit later in this test.
+INSERT INTO items (
+  id, owner_id, title, description, city, currency, price, status,
+  price_per_day, category, subcategory, is_active, created_at
+) VALUES (
+  2, 901, 'Legacy untyped car', 'legacy', 'Montréal', 'CAD', 10, 'approved',
+  10, 'Vehicles', 'Cars', 'yes', CURRENT_TIMESTAMP
 );
 """)
 connection.commit()
@@ -275,7 +286,7 @@ try:
     item_columns = {row[1] for row in connection.execute("PRAGMA table_info('items')")}
     assert {"subcategory", "third_level", "custom_third_level"}.issubset(item_columns)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-    assert revision == "digital_catalog_20261003", revision
+    assert revision == "rental_catalog_20261004", revision
     digital = connection.execute(
         "SELECT id FROM categories WHERE name = ?", ("Digital Accounts",)
     ).fetchone()
@@ -286,6 +297,19 @@ try:
         )
     }
     assert {"Movies & Streaming", "Sports"}.issubset(seeded_types)
+    for category_name, expected_subcategory in (
+        ("Vehicles", "Buses"),
+        ("Food & Concession Equipment", "Popcorn Equipment"),
+        ("Housing & Stays", "Parking & Storage"),
+    ):
+        category_row = connection.execute(
+            "SELECT id FROM categories WHERE name = ?", (category_name,)
+        ).fetchone()
+        assert category_row is not None, category_name
+        assert connection.execute(
+            "SELECT 1 FROM subcategories WHERE category_id = ? AND name = ?",
+            (category_row[0], expected_subcategory),
+        ).fetchone() is not None, (category_name, expected_subcategory)
     # There is deliberately no digital listing before the first form request.
     assert connection.execute(
         "SELECT COUNT(*) FROM items WHERE category = ?", ("Digital Accounts",)
@@ -344,12 +368,34 @@ try:
     seats = db.query(Subcategory).filter(
         Subcategory.category_id == baby.id, Subcategory.name == "Car Seats"
     ).one()
+    vehicles = db.query(Category).filter(Category.name == "Vehicles").one()
+    buses = db.query(Subcategory).filter(
+        Subcategory.category_id == vehicles.id, Subcategory.name == "Buses"
+    ).one()
+    cars = db.query(Subcategory).filter(
+        Subcategory.category_id == vehicles.id, Subcategory.name == "Cars"
+    ).one()
+    food = db.query(Category).filter(Category.name == "Food & Concession Equipment").one()
+    popcorn = db.query(Subcategory).filter(
+        Subcategory.category_id == food.id, Subcategory.name == "Popcorn Equipment"
+    ).one()
+    housing = db.query(Category).filter(Category.name == "Housing & Stays").one()
+    parking = db.query(Subcategory).filter(
+        Subcategory.category_id == housing.id, Subcategory.name == "Parking & Storage"
+    ).one()
     ids = {
         "movies": movies.id,
         "sports": sports.id,
         "gaming": gaming.id,
         "seats": seats.id,
         "digital": digital.id,
+        "vehicles": vehicles.id,
+        "buses": buses.id,
+        "cars": cars.id,
+        "food": food.id,
+        "popcorn": popcorn.id,
+        "housing": housing.id,
+        "parking": parking.id,
     }
 finally:
     db.close()
@@ -384,13 +430,22 @@ with TestClient(main_module.app) as client:
     assert "Sports" in empty_explore.text
     assert "No items found" in empty_explore.text
 
+    empty_vehicle_explore = client.get("/items?category=Vehicles&sub=Buses")
+    assert empty_vehicle_explore.status_code == 200, empty_vehicle_explore.text[:1000]
+    assert "School Buses" in empty_vehicle_explore.text
+    assert "No items found" in empty_vehicle_explore.text
+
     # The real creation page includes a persisted Category id rather than a
     # presentation-only option with no parent record for server validation.
     create = client.get("/owner/items/new")
     assert create.status_code == 200, create.text[:1000]
     assert f'value="Digital Accounts" data-id="{ids["digital"]}"' in create.text
+    assert f'value="Vehicles" data-id="{ids["vehicles"]}"' in create.text
+    assert f'value="Food &amp; Concession Equipment" data-id="{ids["food"]}"' in create.text
     assert "Movies \\u0026 Streaming" in create.text
     assert "beIN Sports" in create.text
+    assert "School Buses" in create.text
+    assert "Popcorn Machines" in create.text
 
     # A server validation failure is a real form response, not a redirect; it
     # retains the submitted valid taxonomy so the client JS can rebuild it.
@@ -555,6 +610,54 @@ with TestClient(main_module.app) as client:
         follow_redirects=False,
     )
     assert playstation_response.status_code == 303
+    school_bus_response = client.post(
+        "/owner/items/new",
+        data=listing_form(
+            title="School bus for field trip",
+            category="Vehicles",
+            subcategory_id=ids["buses"],
+            third_level="School Buses",
+        ),
+        files=listing_image(),
+        follow_redirects=False,
+    )
+    assert school_bus_response.status_code == 303, school_bus_response.text[:1000]
+    popcorn_response = client.post(
+        "/owner/items/new",
+        data=listing_form(
+            title="Popcorn machine for event",
+            category="Food & Concession Equipment",
+            subcategory_id=ids["popcorn"],
+            third_level="Popcorn Machines",
+        ),
+        files=listing_image(),
+        follow_redirects=False,
+    )
+    assert popcorn_response.status_code == 303, popcorn_response.text[:1000]
+    popcorn_other_response = client.post(
+        "/owner/items/new",
+        data=listing_form(
+            title="Vintage popcorn cart",
+            category="Food & Concession Equipment",
+            subcategory_id=ids["popcorn"],
+            third_level="Other",
+            custom_third_level="Vintage Popcorn Cart",
+        ),
+        files=listing_image(),
+        follow_redirects=False,
+    )
+    assert popcorn_other_response.status_code == 303, popcorn_other_response.text[:1000]
+    parking_response = client.post(
+        "/owner/items/new",
+        data=listing_form(
+            title="Temporary storage space",
+            category="Housing & Stays",
+            subcategory_id=ids["parking"],
+        ),
+        files=listing_image(),
+        follow_redirects=False,
+    )
+    assert parking_response.status_code == 303, parking_response.text[:1000]
 
     db = SessionLocal()
     try:
@@ -564,6 +667,10 @@ with TestClient(main_module.app) as client:
         netflix = db.query(Item).filter(Item.title == "Netflix access").one()
         amazon_lifecycle = db.query(Item).filter(Item.title == "Amazon Prime Video access").one()
         playstation = db.query(Item).filter(Item.title == "PlayStation Plus Premium access").one()
+        school_bus = db.query(Item).filter(Item.title == "School bus for field trip").one()
+        popcorn_machine = db.query(Item).filter(Item.title == "Popcorn machine for event").one()
+        popcorn_other = db.query(Item).filter(Item.title == "Vintage popcorn cart").one()
+        parking_space = db.query(Item).filter(Item.title == "Temporary storage space").one()
         assert (bein.category, bein.subcategory, bein.third_level, bein.custom_third_level) == (
             "Digital Accounts", "Sports", "beIN Sports", None,
         )
@@ -580,6 +687,18 @@ with TestClient(main_module.app) as client:
         assert (playstation.category, playstation.subcategory, playstation.third_level, playstation.custom_third_level) == (
             "Digital Accounts", "Gaming", "PlayStation Plus Premium", None,
         )
+        assert (school_bus.category, school_bus.subcategory, school_bus.third_level, school_bus.custom_third_level) == (
+            "Vehicles", "Buses", "School Buses", None,
+        )
+        assert (popcorn_machine.category, popcorn_machine.subcategory, popcorn_machine.third_level, popcorn_machine.custom_third_level) == (
+            "Food & Concession Equipment", "Popcorn Equipment", "Popcorn Machines", None,
+        )
+        assert (popcorn_other.category, popcorn_other.subcategory, popcorn_other.third_level, popcorn_other.custom_third_level) == (
+            "Food & Concession Equipment", "Popcorn Equipment", "Other", "Vintage Popcorn Cart",
+        )
+        assert (parking_space.category, parking_space.subcategory, parking_space.third_level, parking_space.custom_third_level) == (
+            "Housing & Stays", "Parking & Storage", None, None,
+        )
         ids.update(
             {
                 "bein_item": bein.id,
@@ -588,6 +707,10 @@ with TestClient(main_module.app) as client:
                 "netflix_item": netflix.id,
                 "amazon_item": amazon_lifecycle.id,
                 "playstation_item": playstation.id,
+                "school_bus_item": school_bus.id,
+                "popcorn_item": popcorn_machine.id,
+                "popcorn_other_item": popcorn_other.id,
+                "parking_item": parking_space.id,
             }
         )
     finally:
@@ -600,6 +723,9 @@ with TestClient(main_module.app) as client:
         "Approved beIN Sports access", "Digital Accounts", "Sports", "beIN Sports",
         "Custom streaming access", "NewStreamingPlatform", "New car seat", "Car Seats",
         "Netflix access", "Amazon Prime Video access", "PlayStation Plus Premium access",
+        "School bus for field trip", "Vehicles", "Buses", "School Buses",
+        "Popcorn machine for event", "Food &amp; Concession Equipment", "Popcorn Equipment", "Popcorn Machines",
+        "Vintage popcorn cart", "Vintage Popcorn Cart", "Temporary storage space", "Parking &amp; Storage",
     ):
         assert expected in pending.text, expected
 
@@ -612,6 +738,10 @@ with TestClient(main_module.app) as client:
         ids["playstation_item"],
         ids["normal_item"],
         ids["other_item"],
+        ids["school_bus_item"],
+        ids["popcorn_item"],
+        ids["popcorn_other_item"],
+        ids["parking_item"],
     ):
         approved = client.post(f"/admin/items/{item_id}/approve", follow_redirects=False)
         assert approved.status_code == 302, approved.text[:1000]
@@ -634,6 +764,18 @@ with TestClient(main_module.app) as client:
         )
         assert (db.get(Item, ids["other_item"]).third_level, db.get(Item, ids["other_item"]).custom_third_level, db.get(Item, ids["other_item"]).status) == (
             "Other", "NewStreamingPlatform", "approved",
+        )
+        assert (db.get(Item, ids["school_bus_item"]).category, db.get(Item, ids["school_bus_item"]).subcategory, db.get(Item, ids["school_bus_item"]).third_level, db.get(Item, ids["school_bus_item"]).custom_third_level, db.get(Item, ids["school_bus_item"]).status) == (
+            "Vehicles", "Buses", "School Buses", None, "approved",
+        )
+        assert (db.get(Item, ids["popcorn_item"]).category, db.get(Item, ids["popcorn_item"]).subcategory, db.get(Item, ids["popcorn_item"]).third_level, db.get(Item, ids["popcorn_item"]).custom_third_level, db.get(Item, ids["popcorn_item"]).status) == (
+            "Food & Concession Equipment", "Popcorn Equipment", "Popcorn Machines", None, "approved",
+        )
+        assert (db.get(Item, ids["popcorn_other_item"]).third_level, db.get(Item, ids["popcorn_other_item"]).custom_third_level, db.get(Item, ids["popcorn_other_item"]).status) == (
+            "Other", "Vintage Popcorn Cart", "approved",
+        )
+        assert (db.get(Item, ids["parking_item"]).category, db.get(Item, ids["parking_item"]).subcategory, db.get(Item, ids["parking_item"]).third_level, db.get(Item, ids["parking_item"]).custom_third_level, db.get(Item, ids["parking_item"]).status) == (
+            "Housing & Stays", "Parking & Storage", None, None, "approved",
         )
     finally:
         db.close()
@@ -689,11 +831,45 @@ with TestClient(main_module.app) as client:
     assert "New car seat" in normal_explore.text
     assert "Netflix access" not in normal_explore.text
 
+    vehicles_level_one = client.get("/items?category=Vehicles")
+    assert vehicles_level_one.status_code == 200
+    assert "School bus for field trip" in vehicles_level_one.text
+    assert "Popcorn machine for event" not in vehicles_level_one.text
+    buses_level_two = client.get("/items?category=Vehicles&sub=Buses")
+    assert buses_level_two.status_code == 200
+    assert "School bus for field trip" in buses_level_two.text
+    assert "Legacy untyped car" not in buses_level_two.text
+    school_bus_type = client.get("/items?category=Vehicles&sub=Buses&service=School%20Buses")
+    assert school_bus_type.status_code == 200
+    assert "School bus for field trip" in school_bus_type.text
+    assert "Popcorn machine for event" not in school_bus_type.text
+
+    popcorn_type = client.get(
+        "/items?category=Food%20%26%20Concession%20Equipment"
+        "&sub=Popcorn%20Equipment&service=Popcorn%20Machines"
+    )
+    assert popcorn_type.status_code == 200
+    assert "Popcorn machine for event" in popcorn_type.text
+    assert "Vintage popcorn cart" not in popcorn_type.text
+    popcorn_other_type = client.get(
+        "/items?category=Food%20%26%20Concession%20Equipment"
+        "&sub=Popcorn%20Equipment&service=Other"
+    )
+    assert popcorn_other_type.status_code == 200
+    assert "Vintage popcorn cart" in popcorn_other_type.text
+    assert "Popcorn machine for event" not in popcorn_other_type.text
+    parking_explore = client.get("/items?category=Housing%20%26%20Stays&sub=Parking%20%26%20Storage")
+    assert parking_explore.status_code == 200
+    assert "Temporary storage space" in parking_explore.text
+    assert "School bus for field trip" not in parking_explore.text
+
     for item_id, expected_hierarchy in (
         (ids["netflix_item"], ("Digital Accounts", "Movies & Streaming", "Netflix")),
         (ids["amazon_item"], ("Digital Accounts", "Movies & Streaming", "Amazon Prime Video")),
         (ids["bein_item"], ("Digital Accounts", "Sports", "beIN Sports")),
         (ids["playstation_item"], ("Digital Accounts", "Gaming", "PlayStation Plus Premium")),
+        (ids["school_bus_item"], ("Vehicles", "Buses", "School Buses")),
+        (ids["popcorn_item"], ("Food & Concession Equipment", "Popcorn Equipment", "Popcorn Machines")),
     ):
         detail = client.get(f"/items/{item_id}")
         assert detail.status_code == 200, detail.text[:1000]
@@ -789,6 +965,31 @@ with TestClient(main_module.app) as client:
     finally:
         db.close()
 
+    # A pre-expansion Cars listing has no type.  The edit route must accept an
+    # unchanged parent path without silently assigning Sports Cars, Economy
+    # Cars, or another inaccurate value.
+    legacy_edit = client.get("/owner/items/2/edit", follow_redirects=False)
+    assert legacy_edit.status_code == 200, legacy_edit.text[:1000]
+    assert "Legacy untyped car" in legacy_edit.text
+    legacy_save = client.post(
+        "/owner/items/2/edit",
+        data=listing_form(
+            title="Legacy untyped car updated",
+            category="Vehicles",
+            subcategory_id=ids["cars"],
+        ),
+        follow_redirects=False,
+    )
+    assert legacy_save.status_code == 303, legacy_save.text[:1000]
+    db = SessionLocal()
+    try:
+        legacy_item = db.get(Item, 2)
+        assert (legacy_item.category, legacy_item.subcategory, legacy_item.third_level, legacy_item.custom_third_level) == (
+            "Vehicles", "Cars", None, None,
+        )
+    finally:
+        db.close()
+
     # Rendered French and Arabic forms localize labels only.  The French
     # option assertion demonstrates that the submitted value remains the
     # canonical English identity; Arabic uses the identical payload builder.
@@ -826,8 +1027,14 @@ with TestClient(main_module.app) as client:
                 environment["PYTHONPATH"] = os.pathsep.join(
                     part for part in (site_packages, environment.get("PYTHONPATH", "")) if part
                 )
+            # The complete HTTP lifecycle script is intentionally substantial.
+            # On Windows it exceeds the command-line limit when passed through
+            # ``python -c``; keep it in this already-isolated temporary test
+            # directory instead of weakening the coverage.
+            runner_path = Path(temp_dir) / "route_flow_runner.py"
+            runner_path.write_text(script, encoding="utf-8")
             completed = subprocess.run(
-                [sys.executable, "-c", script],
+                [sys.executable, str(runner_path)],
                 cwd=REPOSITORY_ROOT,
                 env=environment,
                 text=True,

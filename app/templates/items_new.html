@@ -849,6 +849,7 @@
 
         <div class="listing-create__field" data-field>
           <label class="listing-create__label" for="catSelect">{{ taxonomy_payload['labels']['category'] }}</label>
+          <input class="listing-create__control" type="search" id="categoryTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_categories'] }}" placeholder="{{ taxonomy_payload['labels']['filter_categories'] }}">
           <select
             class="listing-create__control"
             id="catSelect"
@@ -868,6 +869,7 @@
 
         <div class="listing-create__field" data-field>
           <label class="listing-create__label" id="subSelectLabel" for="subSelect">{{ taxonomy_payload['labels']['subcategory'] }}</label>
+          <input class="listing-create__control" type="search" id="subcategoryTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_subcategories'] }}" placeholder="{{ taxonomy_payload['labels']['filter_subcategories'] }}">
           <select
             class="listing-create__control"
             id="subSelect"
@@ -886,6 +888,7 @@
 
         <div class="listing-create__field" id="thirdLevelField" data-field hidden>
           <label class="listing-create__label" id="thirdLevelLabel" for="thirdLevelSelect">{{ taxonomy_payload['labels']['service_platform'] }}</label>
+          <input class="listing-create__control" type="search" id="thirdLevelTaxonomyFilter" hidden autocomplete="off" aria-label="{{ taxonomy_payload['labels']['filter_types'] }}" placeholder="{{ taxonomy_payload['labels']['filter_types'] }}">
           <select
             class="listing-create__control"
             id="thirdLevelSelect"
@@ -903,7 +906,7 @@
         </div>
 
         <div class="listing-create__field" id="customThirdLevelField" data-field hidden>
-          <label class="listing-create__label" for="customThirdLevel">{{ taxonomy_payload['labels']['custom_service'] }}</label>
+          <label class="listing-create__label" id="customThirdLevelLabel" for="customThirdLevel">{{ taxonomy_payload['labels']['custom_service'] }}</label>
           <input
             class="listing-create__control"
             type="text"
@@ -1146,13 +1149,17 @@
   const titleInput = document.getElementById('listingTitle');
   const titleCount = document.getElementById('titleCount');
   const catSelect = document.getElementById('catSelect');
+  const categoryTaxonomyFilter = document.getElementById('categoryTaxonomyFilter');
   const subSelect = document.getElementById('subSelect');
+  const subcategoryTaxonomyFilter = document.getElementById('subcategoryTaxonomyFilter');
   const subSelectLabel = document.getElementById('subSelectLabel');
   const thirdLevelField = document.getElementById('thirdLevelField');
   const thirdLevelLabel = document.getElementById('thirdLevelLabel');
   const thirdLevelSelect = document.getElementById('thirdLevelSelect');
+  const thirdLevelTaxonomyFilter = document.getElementById('thirdLevelTaxonomyFilter');
   const thirdLevelHelp = document.getElementById('thirdLevelHelp');
   const customThirdLevelField = document.getElementById('customThirdLevelField');
+  const customThirdLevelLabel = document.getElementById('customThirdLevelLabel');
   const customThirdLevelInput = document.getElementById('customThirdLevel');
   const websiteInput = document.getElementById('websiteUrlNew');
   const noWebsite = document.getElementById('noWebsiteNew');
@@ -1265,6 +1272,28 @@
     return taxonomyCategories.find((category) => String(category.id) === String(selectedOption?.dataset.id || '')) || null;
   }
 
+  function filterTaxonomyOptions(input, select) {
+    if (!input || !select) return;
+    const query = input.value.trim().toLocaleLowerCase();
+    Array.from(select.options).forEach((option) => {
+      if (!option.value) return;
+      const matches = !query || option.textContent.toLocaleLowerCase().includes(query);
+      option.hidden = !matches;
+      option.disabled = !matches;
+    });
+  }
+
+  function refreshTaxonomyFilter(input, select, minimum = 12) {
+    if (!input || !select) return;
+    const choices = Array.from(select.options).filter((option) => option.value);
+    input.value = '';
+    input.hidden = choices.length <= minimum;
+    choices.forEach((option) => {
+      option.hidden = false;
+      option.disabled = false;
+    });
+  }
+
   function resetCustomThirdLevel() {
     if (!customThirdLevelField || !customThirdLevelInput) return;
     customThirdLevelField.hidden = true;
@@ -1283,6 +1312,10 @@
     thirdLevelSelect.required = false;
     thirdLevelSelect.setAttribute('aria-disabled', 'true');
     if (thirdLevelHelp) thirdLevelHelp.textContent = '';
+    refreshTaxonomyFilter(thirdLevelTaxonomyFilter, thirdLevelSelect);
+    if (customThirdLevelLabel) {
+      customThirdLevelLabel.textContent = category?.level_labels?.custom_level3 || taxonomyLabels.custom_service || 'Custom Service Name';
+    }
     clearFieldError(thirdLevelSelect);
     resetCustomThirdLevel();
   }
@@ -1309,12 +1342,20 @@
 
     thirdLevelField.hidden = false;
     if (thirdLevelLabel) thirdLevelLabel.textContent = category.level_labels?.level3 || taxonomyLabels.service_platform || 'Service / Platform';
+    if (customThirdLevelLabel) {
+      customThirdLevelLabel.textContent = category.level_labels?.custom_level3 || taxonomyLabels.custom_service || 'Custom Service Name';
+    }
     thirdLevelSelect.replaceChildren(new Option(taxonomyLabels.select_service || 'Select service / platform', ''));
     levels.forEach((level) => thirdLevelSelect.append(new Option(level.label || level.name, level.name)));
+    refreshTaxonomyFilter(thirdLevelTaxonomyFilter, thirdLevelSelect);
     thirdLevelSelect.disabled = false;
     thirdLevelSelect.required = true;
     thirdLevelSelect.setAttribute('aria-disabled', 'false');
-    if (thirdLevelHelp) thirdLevelHelp.textContent = taxonomyLabels.service_help || 'Choose the service or platform for this type.';
+    if (thirdLevelHelp) {
+      thirdLevelHelp.textContent = category.level_labels?.level3 === (taxonomyLabels.service_platform || 'Service / Platform')
+        ? (taxonomyLabels.service_help || 'Choose the service or platform for this type.')
+        : (taxonomyLabels.type_help || 'Choose the most specific type for this group.');
+    }
     if (preserve && levels.some((level) => level.name === initialTaxonomy.thirdLevel)) {
       thirdLevelSelect.value = initialTaxonomy.thirdLevel;
       updateCustomThirdLevel();
@@ -1330,6 +1371,7 @@
     const subcategories = Array.isArray(category?.subcategories) ? category.subcategories : [];
     resetThirdLevel(category);
     subSelect.replaceChildren();
+    refreshTaxonomyFilter(subcategoryTaxonomyFilter, subSelect);
     if (subSelectLabel) subSelectLabel.textContent = category?.level_labels?.level2 || taxonomyLabels.subcategory || 'Subcategory';
     if (!category) {
       subSelect.append(new Option(taxonomyLabels.select_category_first || 'Select a category first', ''));
@@ -1352,6 +1394,7 @@
     const placeholder = category.level2_placeholder || taxonomyLabels.select_subcategory || 'Select subcategory';
     subSelect.append(new Option(placeholder, ''));
     subcategories.forEach((subcategory) => subSelect.append(new Option(subcategory.label || subcategory.name, String(subcategory.id))));
+    refreshTaxonomyFilter(subcategoryTaxonomyFilter, subSelect);
     subSelect.disabled = false;
     subSelect.required = true;
     subSelect.setAttribute('aria-disabled', 'false');
@@ -1364,6 +1407,10 @@
   catSelect?.addEventListener('change', () => updateSubcategories(false));
   subSelect?.addEventListener('change', () => updateThirdLevels(false));
   thirdLevelSelect?.addEventListener('change', updateCustomThirdLevel);
+  categoryTaxonomyFilter?.addEventListener('input', () => filterTaxonomyOptions(categoryTaxonomyFilter, catSelect));
+  subcategoryTaxonomyFilter?.addEventListener('input', () => filterTaxonomyOptions(subcategoryTaxonomyFilter, subSelect));
+  thirdLevelTaxonomyFilter?.addEventListener('input', () => filterTaxonomyOptions(thirdLevelTaxonomyFilter, thirdLevelSelect));
+  refreshTaxonomyFilter(categoryTaxonomyFilter, catSelect);
   updateSubcategories(true);
 
   function setLocationStatus(message, state) {

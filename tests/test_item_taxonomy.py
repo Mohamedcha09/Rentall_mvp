@@ -83,7 +83,8 @@ class ItemTaxonomyCatalogTests(unittest.TestCase):
         ]
         payload = catalog_tree_payload(categories, subcategories, "ar")
         baby, digital = payload["categories"]
-        self.assertEqual(baby["label"], "Baby & Kids")
+        self.assertEqual(baby["name"], "Baby & Kids")
+        self.assertEqual(baby["label"], "الأطفال والرضع")
         self.assertEqual(baby["subcategories"][0]["third_levels"], [])
         self.assertEqual(digital["label"], "الحسابات الرقمية")
         self.assertIn("beIN Sports", [row["name"] for row in digital["subcategories"][0]["third_levels"]])
@@ -198,12 +199,19 @@ db = SessionLocal()
 try:
     digital = Category(name="Digital Accounts")
     baby = Category(name="Baby & Kids")
-    db.add_all([digital, baby])
+    vehicles = Category(name="Vehicles")
+    food = Category(name="Food & Concession Equipment")
+    housing = Category(name="Housing & Stays")
+    db.add_all([digital, baby, vehicles, food, housing])
     db.flush()
     sports = Subcategory(category_id=digital.id, name="Sports")
     movies = Subcategory(category_id=digital.id, name="Movies & Streaming")
     seats = Subcategory(category_id=baby.id, name="Car Seats")
-    db.add_all([sports, movies, seats])
+    buses = Subcategory(category_id=vehicles.id, name="Buses")
+    cars = Subcategory(category_id=vehicles.id, name="Cars")
+    popcorn = Subcategory(category_id=food.id, name="Popcorn Equipment")
+    parking = Subcategory(category_id=housing.id, name="Parking & Storage")
+    db.add_all([sports, movies, seats, buses, cars, popcorn, parking])
     db.commit()
 
     normal = resolve_listing_hierarchy(
@@ -230,11 +238,56 @@ try:
     assert other["third_level"] == "Other"
     assert other["custom_third_level"] == "NewStreamingPlatform"
 
+    school_bus = resolve_listing_hierarchy(
+        db, category_name="Vehicles", subcategory_id=buses.id,
+        third_level="School Buses", custom_third_level="",
+    )
+    assert school_bus == {
+        "category": "Vehicles", "subcategory": "Buses",
+        "third_level": "School Buses", "custom_third_level": None,
+    }
+
+    popcorn_machine = resolve_listing_hierarchy(
+        db, category_name="Food & Concession Equipment", subcategory_id=popcorn.id,
+        third_level="Popcorn Machines", custom_third_level="",
+    )
+    assert popcorn_machine["third_level"] == "Popcorn Machines"
+
+    equipment_other = resolve_listing_hierarchy(
+        db, category_name="Food & Concession Equipment", subcategory_id=popcorn.id,
+        third_level="Other", custom_third_level="Vintage Popcorn Cart",
+    )
+    assert equipment_other["custom_third_level"] == "Vintage Popcorn Cart"
+
+    new_two_level = resolve_listing_hierarchy(
+        db, category_name="Housing & Stays", subcategory_id=parking.id,
+        third_level="", custom_third_level="",
+    )
+    assert new_two_level == {
+        "category": "Housing & Stays", "subcategory": "Parking & Storage",
+        "third_level": None, "custom_third_level": None,
+    }
+
+    # Cars gained useful L3 types after older listings already existed.  The
+    # resolver must preserve an unchanged legacy two-level path rather than
+    # guessing a vehicle type or making the edit impossible.
+    legacy_cars = resolve_listing_hierarchy(
+        db, category_name="Vehicles", subcategory_id=cars.id,
+        third_level="", custom_third_level="",
+        legacy_blank_path=("Vehicles", "Cars"),
+    )
+    assert legacy_cars == {
+        "category": "Vehicles", "subcategory": "Cars",
+        "third_level": None, "custom_third_level": None,
+    }
+
     for kwargs in (
         dict(category_name="Digital Accounts", subcategory_id=seats.id, third_level="beIN Sports", custom_third_level=""),
         dict(category_name="Digital Accounts", subcategory_id=sports.id, third_level="Netflix", custom_third_level=""),
         dict(category_name="Baby & Kids", subcategory_id=seats.id, third_level="beIN Sports", custom_third_level=""),
         dict(category_name="Digital Accounts", subcategory_id=movies.id, third_level="Other", custom_third_level=""),
+        dict(category_name="Vehicles", subcategory_id=buses.id, third_level="", custom_third_level=""),
+        dict(category_name="Food & Concession Equipment", subcategory_id=popcorn.id, third_level="School Buses", custom_third_level=""),
     ):
         try:
             resolve_listing_hierarchy(db, **kwargs)
@@ -310,6 +363,46 @@ try:
     db.refresh(created)
     assert (created.category, created.subcategory, created.third_level, created.custom_third_level) == (
         "Baby & Kids", "Car Seats", None, None,
+    )
+
+    # This is an existing listing, not a new create.  Editing only its title
+    # through the real POST handler must leave the newly-expanded Cars branch
+    # untyped until its owner deliberately chooses a vehicle type.
+    legacy_item = item_routes.Item(
+        owner_id=41,
+        title="Legacy car",
+        description="Created before Cars acquired L3 types",
+        city="Montréal",
+        currency="CAD",
+        price=10,
+        price_per_day=10,
+        category="Vehicles",
+        subcategory="Cars",
+        status="approved",
+        is_active="yes",
+    )
+    db.add(legacy_item)
+    db.commit()
+    item_routes.item_edit_post(
+        Request(), legacy_item.id, db,
+        title="Legacy car updated",
+        category="Vehicles",
+        subcategory_id=cars.id,
+        third_level="",
+        custom_third_level="",
+        description="Only title changed",
+        city="Montréal",
+        website_url="",
+        no_website=True,
+        price="10",
+        currency="CAD",
+        images=None,
+        latitude="",
+        longitude="",
+    )
+    db.refresh(legacy_item)
+    assert (legacy_item.category, legacy_item.subcategory, legacy_item.third_level, legacy_item.custom_third_level) == (
+        "Vehicles", "Cars", None, None,
     )
 finally:
     db.close()
@@ -535,7 +628,8 @@ with TestClient(main_module.app) as client:
         self.assertIn("env(safe-area-inset", admin)
         self.assertIn("@media (max-width: 440px)", admin)
         self.assertIn("overflow-x:auto", explore)
-        for field in ("Item.category.ilike(pattern)", "Item.subcategory.ilike(pattern)", "Item.third_level.ilike(pattern)", "Item.custom_third_level.ilike(pattern)"):
+        self.assertIn("_taxonomy_search_values", search)
+        for field in ("Item.category,", "Item.subcategory,", "Item.third_level,", "Item.custom_third_level,"):
             self.assertIn(field, search)
 
 

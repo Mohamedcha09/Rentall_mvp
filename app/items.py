@@ -923,12 +923,24 @@ def item_edit_post(
         )
 
     try:
+        # A pre-expansion listing can legitimately have only two levels.  If
+        # its parent path is unchanged, preserve that honest unknown type;
+        # new listings and moved paths still require a configured L3 choice.
+        legacy_blank_path = None
+        if not str(getattr(it, "third_level", "") or "").strip() and not str(
+            getattr(it, "custom_third_level", "") or ""
+        ).strip():
+            legacy_blank_path = (
+                str(getattr(it, "category", "") or ""),
+                str(getattr(it, "subcategory", "") or "") or None,
+            )
         hierarchy = resolve_listing_hierarchy(
             db,
             category_name=category,
             subcategory_id=subcategory_id,
             third_level=third_level,
             custom_third_level=custom_third_level,
+            legacy_blank_path=legacy_blank_path,
         )
     except TaxonomyValidationError as exc:
         return _render_item_edit_form(

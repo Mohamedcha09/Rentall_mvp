@@ -15,6 +15,13 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from .rental_catalog import (
+    RENTAL_CATEGORY_PRESENTATION,
+    RENTAL_CATEGORY_TREE,
+    RENTAL_VALUE_LABELS,
+    canonical_rental_category,
+)
+
 
 DIGITAL_ACCOUNTS_CATEGORY = "Digital Accounts"
 OTHER_VALUE = "Other"
@@ -120,9 +127,12 @@ DIGITAL_ACCOUNTS_SERVICES: dict[str, tuple[str, ...]] = {
 
 
 # A general tree, intentionally not a series of ``if category == ...`` checks
-# in route handlers.  Additional three-level categories can be registered in
-# the same structure later.
+# in route handlers.  L1/L2 rows are persisted lookup data while this map owns
+# optional L3 choices.  The rental definitions are imported as data, not
+# copied into routes/templates/validators; Digital Accounts remains the
+# established catalog entry for its platform-specific services.
 CATEGORY_TREE: dict[str, dict[str, tuple[str, ...]]] = {
+    **RENTAL_CATEGORY_TREE,
     DIGITAL_ACCOUNTS_CATEGORY: DIGITAL_ACCOUNTS_SERVICES,
 }
 
@@ -130,9 +140,11 @@ CATEGORY_TREE: dict[str, dict[str, tuple[str, ...]]] = {
 # third level; they never special-case Digital Accounts.  A future configured
 # category gets neutral Type/Service labels unless it supplies a clearer pair.
 CATEGORY_LEVEL_PRESENTATION: dict[str, dict[str, str]] = {
+    **RENTAL_CATEGORY_PRESENTATION,
     DIGITAL_ACCOUNTS_CATEGORY: {
         "level2": "digital_type",
         "level3": "service_platform",
+        "custom_level3": "custom_service",
     },
 }
 
@@ -146,6 +158,18 @@ _COPY: dict[str, dict[str, str]] = {
         "service": "Service",
         "service_platform": "Service / Platform",
         "custom_service": "Custom Service Name",
+        "vehicle_group": "Vehicle Group",
+        "vehicle_type": "Vehicle Type",
+        "custom_vehicle_type": "Custom Vehicle Type",
+        "equipment_group": "Equipment Group",
+        "equipment_type": "Equipment Type",
+        "custom_equipment_type": "Custom Equipment Type",
+        "space_group": "Space Type",
+        "space_type": "Space / Unit Type",
+        "custom_space_type": "Custom Space Type",
+        "rental_group": "Rental Group",
+        "item_type": "Item Type",
+        "custom_item_type": "Custom Item Type",
         "select_category": "Select category",
         "select_category_first": "Select a category first",
         "select_subcategory": "Select subcategory",
@@ -158,6 +182,11 @@ _COPY: dict[str, dict[str, str]] = {
         "subcategory_help": "Available after you choose a category.",
         "service_help": "Choose the service or platform for this type.",
         "custom_service_help": "Required only when you choose Other.",
+        "type_help": "Choose the most specific type for this group.",
+        "legacy_type_help": "This existing listing has no type selected; you may keep it unchanged or choose a type.",
+        "filter_categories": "Find a category",
+        "filter_subcategories": "Find a subcategory",
+        "filter_types": "Find a type",
         "pending_review": "Pending Review",
         "no_selection": "No selection",
         "pending_items_review": "Pending Items Review",
@@ -193,6 +222,18 @@ _COPY: dict[str, dict[str, str]] = {
         "service": "Service",
         "service_platform": "Service / plateforme",
         "custom_service": "Nom du service personnalisé",
+        "vehicle_group": "Groupe de véhicules",
+        "vehicle_type": "Type de véhicule",
+        "custom_vehicle_type": "Type de véhicule personnalisé",
+        "equipment_group": "Groupe d’équipement",
+        "equipment_type": "Type d’équipement",
+        "custom_equipment_type": "Type d’équipement personnalisé",
+        "space_group": "Type d’espace",
+        "space_type": "Type d’espace / d’unité",
+        "custom_space_type": "Type d’espace personnalisé",
+        "rental_group": "Groupe de location",
+        "item_type": "Type d’article",
+        "custom_item_type": "Type d’article personnalisé",
         "select_category": "Sélectionnez une catégorie",
         "select_category_first": "Sélectionnez d’abord une catégorie",
         "select_subcategory": "Sélectionnez une sous-catégorie",
@@ -205,6 +246,11 @@ _COPY: dict[str, dict[str, str]] = {
         "subcategory_help": "Disponible après avoir choisi une catégorie.",
         "service_help": "Choisissez le service ou la plateforme pour ce type.",
         "custom_service_help": "Requis uniquement après avoir choisi Autre.",
+        "type_help": "Choisissez le type le plus précis pour ce groupe.",
+        "legacy_type_help": "Cette annonce existante n’a pas de type sélectionné; vous pouvez la conserver telle quelle ou choisir un type.",
+        "filter_categories": "Trouver une catégorie",
+        "filter_subcategories": "Trouver une sous-catégorie",
+        "filter_types": "Trouver un type",
         "pending_review": "En attente de révision",
         "no_selection": "Aucune sélection",
         "pending_items_review": "Révision des annonces en attente",
@@ -240,6 +286,18 @@ _COPY: dict[str, dict[str, str]] = {
         "service": "الخدمة",
         "service_platform": "الخدمة / المنصة",
         "custom_service": "اسم خدمة مخصصة",
+        "vehicle_group": "مجموعة المركبات",
+        "vehicle_type": "نوع المركبة",
+        "custom_vehicle_type": "نوع مركبة مخصص",
+        "equipment_group": "مجموعة المعدات",
+        "equipment_type": "نوع المعدة",
+        "custom_equipment_type": "نوع معدة مخصص",
+        "space_group": "نوع المساحة",
+        "space_type": "نوع المساحة / الوحدة",
+        "custom_space_type": "نوع مساحة مخصص",
+        "rental_group": "مجموعة الكراء",
+        "item_type": "نوع العنصر",
+        "custom_item_type": "نوع عنصر مخصص",
         "select_category": "اختر الفئة",
         "select_category_first": "اختر فئة أولًا",
         "select_subcategory": "اختر الفئة الفرعية",
@@ -252,6 +310,11 @@ _COPY: dict[str, dict[str, str]] = {
         "subcategory_help": "يتاح بعد اختيار الفئة.",
         "service_help": "اختر الخدمة أو المنصة لهذا النوع.",
         "custom_service_help": "مطلوب فقط عند اختيار «أخرى».",
+        "type_help": "اختر النوع الأكثر تحديدًا لهذه المجموعة.",
+        "legacy_type_help": "هذا الإعلان الحالي لا يحتوي على نوع محدد؛ يمكنك إبقاؤه كما هو أو اختيار نوع.",
+        "filter_categories": "ابحث عن فئة",
+        "filter_subcategories": "ابحث عن فئة فرعية",
+        "filter_types": "ابحث عن نوع",
         "pending_review": "قيد المراجعة",
         "no_selection": "لا يوجد اختيار",
         "pending_items_review": "مراجعة الإعلانات المعلّقة",
@@ -378,6 +441,13 @@ _VALUE_LABELS: dict[str, dict[str, str]] = {
     },
 }
 
+# ``RENTAL_VALUE_LABELS`` includes every active rental L1/L2/L3 value with
+# EN/FR/AR display labels.  It is intentionally merged after the established
+# Digital labels so existing Digital wording remains the compatibility source
+# if a canonical display value is shared by two contextual branches.
+for _catalog_value, _catalog_labels in RENTAL_VALUE_LABELS.items():
+    _VALUE_LABELS.setdefault(_catalog_value, _catalog_labels)
+
 
 def normalize_language(value: str | None) -> str:
     language = str(value or "en").lower().split("-", 1)[0]
@@ -395,7 +465,13 @@ def taxonomy_label(value: Any, language: str | None = None) -> str:
     if not raw:
         return ""
     language = normalize_language(language)
-    return _VALUE_LABELS.get(raw, {}).get(language, raw)
+    # Prefer an exact value first: ``Sports`` is a valid Digital Accounts L2
+    # and must not be confused with the legacy lowercase ``sports`` L1 alias.
+    labels = _VALUE_LABELS.get(raw)
+    if labels:
+        return labels.get(language, raw)
+    canonical = canonical_rental_category(raw)
+    return _VALUE_LABELS.get(canonical, {}).get(language, raw)
 
 
 def third_levels_for(
@@ -409,7 +485,8 @@ def third_levels_for(
     and subcategory values still come from the persisted lookup tables, while
     this central catalog owns optional child-service membership.
     """
-    return CATEGORY_TREE.get(str(category_name or ""), {}).get(
+    category_name = canonical_rental_category(category_name)
+    return CATEGORY_TREE.get(category_name, {}).get(
         str(subcategory_name or ""),
         (),
     )
@@ -417,19 +494,19 @@ def third_levels_for(
 
 def category_level_labels(category_name: str | None, language: str | None = None) -> dict[str, str]:
     """UI labels for generic versus configured three-level categories."""
-    category_name = str(category_name or "")
+    category_name = canonical_rental_category(category_name)
     configured = CATEGORY_TREE.get(category_name, {})
     presentation = CATEGORY_LEVEL_PRESENTATION.get(category_name, {})
     return {
         "level2": ui_copy(presentation.get("level2", "type") if configured else "subcategory", language),
         "level3": ui_copy(presentation.get("level3", "service"), language),
-        "custom_level3": ui_copy("custom_service", language),
+        "custom_level3": ui_copy(presentation.get("custom_level3", "custom_service"), language),
     }
 
 
 def category_level2_placeholder(category_name: str | None, language: str | None = None) -> str:
     """Return a data-driven second-level prompt for every category shape."""
-    category_name = str(category_name or "")
+    category_name = canonical_rental_category(category_name)
     if category_name not in CATEGORY_TREE:
         return ui_copy("select_subcategory", language)
     presentation = CATEGORY_LEVEL_PRESENTATION.get(category_name, {})
@@ -439,7 +516,7 @@ def category_level2_placeholder(category_name: str | None, language: str | None 
 
 def category_level3_placeholder(category_name: str | None, language: str | None = None) -> str:
     """Return the progressive-disclosure hint without assuming Digital Accounts."""
-    presentation = CATEGORY_LEVEL_PRESENTATION.get(str(category_name or ""), {})
+    presentation = CATEGORY_LEVEL_PRESENTATION.get(canonical_rental_category(category_name), {})
     key = "select_type_first" if presentation.get("level2") == "digital_type" else "select_level2_first"
     return ui_copy(key, language)
 
@@ -490,7 +567,7 @@ def catalog_tree_payload(categories: Iterable[Any], subcategories: Iterable[Any]
             {
                 "id": category_id,
                 "name": name,
-                "label": taxonomy_label(name, language),
+                "label": taxonomy_label(canonical_rental_category(name), language),
                 "level_labels": category_level_labels(name, language),
                 "level2_placeholder": category_level2_placeholder(name, language),
                 "level3_placeholder": category_level3_placeholder(name, language),
@@ -526,7 +603,10 @@ def listing_hierarchy(item: Any, language: str | None = None) -> list[dict[str, 
     labels = category_level_labels(category, language)
     rows: list[dict[str, str]] = []
     if category:
-        rows.append({"kind": ui_copy("category", language), "value": taxonomy_label(category, language)})
+        rows.append({
+            "kind": ui_copy("category", language),
+            "value": taxonomy_label(canonical_rental_category(category), language),
+        })
     if subcategory:
         rows.append({"kind": labels["level2"], "value": taxonomy_label(subcategory, language)})
     if third:
@@ -545,14 +625,18 @@ def resolve_listing_hierarchy(
     subcategory_id: int | str | None,
     third_level: str | None = None,
     custom_third_level: str | None = None,
+    legacy_blank_path: tuple[str, str | None] | None = None,
 ) -> dict[str, str | None]:
     """Resolve and validate the selected category hierarchy on the server.
 
     A browser can submit arbitrary ids/names, so each child is checked against
     its actual parent.  A generic level-three field is allowed only for a
     configured branch, and a free text value is accepted only after the
-    explicit ``Other`` choice.  The returned canonical values are ready to be
-    persisted on ``Item``.
+    explicit ``Other`` choice.  ``legacy_blank_path`` is used exclusively by
+    Edit to preserve an existing two-level listing after a new L3 catalog is
+    introduced under its unchanged parent.  New listings never receive that
+    exception.  The returned canonical values are ready to be persisted on
+    ``Item``.
     """
     # Imported lazily so Alembic can import the central data module without
     # loading application models while rendering an offline migration.
@@ -599,6 +683,17 @@ def resolve_listing_hierarchy(
             "custom_third_level": None,
         }
 
+    if not submitted_third and not submitted_custom and legacy_blank_path is not None:
+        legacy_category = str(legacy_blank_path[0] or "").strip()
+        legacy_subcategory = str(legacy_blank_path[1] or "").strip() or None
+        if category_name == legacy_category and canonical_subcategory == legacy_subcategory:
+            return {
+                "category": category_name,
+                "subcategory": canonical_subcategory,
+                "third_level": None,
+                "custom_third_level": None,
+            }
+
     if submitted_third not in valid_third_levels:
         raise TaxonomyValidationError("Choose a valid service for the selected type.")
     if submitted_third == OTHER_VALUE:
@@ -618,8 +713,16 @@ def resolve_listing_hierarchy(
 
 
 def configured_catalog_rows() -> Iterable[tuple[str, str, str]]:
-    """Yield category, subcategory and optional third level from central data."""
+    """Yield all central rows, including deliberately two-level branches.
+
+    Finder uses this iterator to learn the same catalog that routes validate.
+    An empty third-level value represents a valid two-level branch; callers
+    should not turn it into a searchable empty token.
+    """
     for category, second_levels in CATEGORY_TREE.items():
-        for subcategory in second_levels:
-            for third_level in third_levels_for(category, subcategory):
+        for subcategory, third_levels in second_levels.items():
+            if not third_levels:
+                yield category, subcategory, ""
+                continue
+            for third_level in third_levels:
                 yield category, subcategory, third_level

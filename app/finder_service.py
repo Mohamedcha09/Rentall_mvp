@@ -25,11 +25,50 @@ from typing import Any, Iterable, Optional
 from sqlalchemy import func, inspect as sqlalchemy_inspect, or_
 from sqlalchemy.orm import Session
 
-from .catalog_taxonomy import configured_catalog_rows, taxonomy_label
-from .models import Booking, FinderListingIndex, FxRate, Item, ItemReview
+from .catalog_taxonomy import (
+    CATEGORY_TREE,
+    canonical_rental_category,
+    configured_catalog_rows,
+    taxonomy_label,
+)
+from .models import Booking, Category, FinderListingIndex, FxRate, Item, ItemReview, Subcategory
+from .rental_catalog import RENTAL_CATEGORY_ALIASES
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _category_compatibility_values(value: Any) -> tuple[str, ...]:
+    """Return canonical and legacy-stored values for one rental category.
+
+    The Item model intentionally keeps category text for compatibility with
+    existing listings.  A taxonomy expansion must therefore search both the
+    new canonical value and a declared legacy alias (for example ``vehicle``)
+    without rewriting old listings or adding a per-category route branch.
+    """
+    raw = str(value or "").strip()
+    canonical = canonical_rental_category(raw)
+    values: list[str] = []
+    for candidate in (raw, canonical):
+        candidate = str(candidate or "").strip()
+        if candidate and candidate.casefold() not in {entry.casefold() for entry in values}:
+            values.append(candidate)
+    for alias, target in RENTAL_CATEGORY_ALIASES.items():
+        if target != canonical:
+            continue
+        if alias.casefold() not in {entry.casefold() for entry in values}:
+            values.append(alias)
+    return tuple(values)
+
+
+def _category_taxonomy_aliases(value: Any) -> tuple[str, ...]:
+    """Give Finder every localized and legacy label for an L1 value."""
+    aliases: list[str] = []
+    for candidate in _category_compatibility_values(value):
+        aliases.extend((candidate, taxonomy_label(candidate, "fr"), taxonomy_label(candidate, "ar")))
+    # ``dict.fromkeys`` preserves the canonical label first, which matters to
+    # deterministic ambiguity handling later in the parser.
+    return tuple(dict.fromkeys(alias for alias in aliases if str(alias or "").strip()))
 
 
 FINDER_SYSTEM_INSTRUCTIONS = """You are Sevor Finder, a rental-catalog assistant for SEVOR.
@@ -459,11 +498,73 @@ def _known_catalog_concepts(db: Session) -> list[CatalogConcept]:
         add(canonical, "product", aliases=aliases)
     for brand, aliases in _KNOWN_BRAND_ALIASES.items():
         add(brand, "anchor", aliases=aliases)
+    # Start with the configured hierarchy, not the live listings.  This means
+    # a valid new category/type/service is still understood by Finder before
+    # the first approved listing uses it.  ``configured_catalog_rows`` also
+    # yields deliberately two-level branches with an empty third value.
+    for category in CATEGORY_TREE:
+        canonical_category = canonical_rental_category(category)
+        add(
+            canonical_category,
+            "category",
+            aliases=_category_taxonomy_aliases(canonical_category),
+            category=canonical_category,
+        )
     for category, subcategory, service in configured_catalog_rows():
-        add(category, "category", aliases=(taxonomy_label(category, "fr"), taxonomy_label(category, "ar")), category=category)
-        add(subcategory, "subcategory", aliases=(taxonomy_label(subcategory, "fr"), taxonomy_label(subcategory, "ar")), category=category, subcategory=subcategory)
-        if normalize_text(service) != "other":
-            add(service, "service", aliases=(taxonomy_label(service, "fr"), taxonomy_label(service, "ar")), category=category, subcategory=subcategory, service=service)
+        canonical_category = canonical_rental_category(category)
+        add(
+            canonical_category,
+            "category",
+            aliases=_category_taxonomy_aliases(canonical_category),
+            category=canonical_category,
+        )
+        add(
+            subcategory,
+            "subcategory",
+            aliases=(taxonomy_label(subcategory, "fr"), taxonomy_label(subcategory, "ar")),
+            category=canonical_category,
+            subcategory=subcategory,
+        )
+        if service and normalize_text(service) != "other":
+            add(
+                service,
+                "service",
+                aliases=(taxonomy_label(service, "fr"), taxonomy_label(service, "ar")),
+                category=canonical_category,
+                subcategory=subcategory,
+                service=service,
+            )
+
+    # The lookup tables are also an active taxonomy source: an administrator
+    # can add a valid L1/L2 node without needing a code release.  This is one
+    # ordered LEFT JOIN (not an N+1 walk) and is strictly read-only.  Some
+    # legacy/test schemas predate these tables, so leave Finder conservative
+    # rather than failing an unrelated search in that case.
+    try:
+        lookup_rows = (
+            db.query(Category.name, Subcategory.name)
+            .outerjoin(Subcategory, Subcategory.category_id == Category.id)
+            .order_by(Category.id.asc(), Subcategory.id.asc())
+            .all()
+        )
+    except Exception:
+        lookup_rows = []
+    for category, subcategory in lookup_rows:
+        canonical_category = canonical_rental_category(category)
+        add(
+            canonical_category,
+            "category",
+            aliases=_category_taxonomy_aliases(category),
+            category=canonical_category,
+        )
+        if subcategory:
+            add(
+                subcategory,
+                "subcategory",
+                aliases=(taxonomy_label(subcategory, "fr"), taxonomy_label(subcategory, "ar")),
+                category=canonical_category,
+                subcategory=subcategory,
+            )
     try:
         rows = (
             public_listings_query(db)
@@ -778,6 +879,29 @@ def _resolve_catalog_request(db: Session, text: str) -> ResolvedCatalogRequest:
             else:
                 exact.append(concept)
     if exact:
+        # A whole configured taxonomy label is more specific than an embedded
+        # generic product word.  For example, ``Autobus scolaires`` is the
+        # French label for one configured service; treating it only as ``bus``
+        # would discard its L1/L2/L3 filter.  This remains data-driven and does
+        # not weaken the short generic product guard below.
+        whole_taxonomy_matches = [
+            concept
+            for concept in exact
+            if concept.kind in {"category", "subcategory", "service"}
+            and any(normalize_text(alias) == normalized for alias in concept.aliases)
+        ]
+        if whole_taxonomy_matches:
+            whole_taxonomy_matches.sort(key=_concept_priority)
+            labels = {normalize_text(concept.label) for concept in whole_taxonomy_matches}
+            if len(labels) == 1:
+                _apply_concept_to_request(result, whole_taxonomy_matches[0], confidence="high")
+                result.anchors = list(dict.fromkeys(
+                    result.anchors + [normalize_text(value) for value in matched_anchors]
+                ))[:4]
+                return result
+            result.ambiguity = whole_taxonomy_matches[:4]
+            return result
+
         # A clear, narrow product beats an incidental taxonomy/service word
         # appearing in the same sentence.  Without this rule ``car now`` and
         # ``camera max 30`` were interpreted as the Digital services NOW/Max.
@@ -2224,9 +2348,15 @@ def _matches_product_terms(text: str, terms: list[str]) -> bool:
 def _matches_category(item: Item, candidates: list[str]) -> bool:
     if not candidates:
         return True
-    return any(
-        normalize_text(candidate) == normalize_text(getattr(item, "category", ""))
+    accepted = {
+        normalize_text(value)
         for candidate in candidates
+        for value in _category_compatibility_values(candidate)
+        if normalize_text(value)
+    }
+    return any(
+        normalize_text(getattr(item, "category", "")) == candidate
+        for candidate in accepted
     )
 
 
@@ -2713,7 +2843,12 @@ def _candidate_query(db: Session, spec: SearchSpec):
 
     query = public_listings_query(db)
     if spec.category_candidates:
-        wanted = [str(value).strip() for value in spec.category_candidates if str(value).strip()]
+        wanted = list(dict.fromkeys(
+            value
+            for candidate in spec.category_candidates
+            for value in _category_compatibility_values(candidate)
+            if str(value or "").strip()
+        ))
         if wanted:
             query = query.filter(or_(*[func.lower(Item.category) == value.casefold() for value in wanted]))
     if spec.subcategory_candidates:
