@@ -72,7 +72,7 @@ try:
     assert "subcategory" in columns
     assert connection.execute(
         "SELECT version_num FROM alembic_version"
-    ).fetchone()[0] == "item_subcat_taxonomy_20261002"
+    ).fetchone()[0] == "digital_catalog_20261003"
     index = connection.execute(
         "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
         ("ix_items_category_subcategory_third_level",),
@@ -87,6 +87,111 @@ finally:
                     "DATABASE_URL": f"sqlite:///{database_path.as_posix()}",
                     "TAXONOMY_SUBCATEGORY_DB": str(database_path),
                     "TAXONOMY_SUBCATEGORY_ROOT": str(REPOSITORY_ROOT),
+                }
+            )
+            site_packages = _project_site_packages()
+            if site_packages:
+                environment["SEVOR_TEST_SITE_PACKAGES"] = site_packages
+                environment["PYTHONPATH"] = os.pathsep.join(
+                    part for part in (site_packages, environment.get("PYTHONPATH", "")) if part
+                )
+            completed = subprocess.run(
+                [sys.executable, "-c", script],
+                cwd=REPOSITORY_ROOT,
+                env=environment,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+
+    def test_corrective_catalog_migration_preserves_legacy_digital_rows(self):
+        """A legacy General branch is renamed without deleting its lookup ID or items."""
+        with tempfile.TemporaryDirectory(prefix="sevor-digital-catalog-correction-") as temp_dir:
+            database_path = Path(temp_dir) / "digital-catalog.sqlite3"
+            script = r'''
+import os
+import sqlite3
+import sys
+from pathlib import Path
+
+site_packages = os.environ.get("SEVOR_TEST_SITE_PACKAGES", "")
+if site_packages:
+    sys.path.insert(0, site_packages)
+
+database_path = Path(os.environ["DIGITAL_CATALOG_CORRECTION_DB"])
+connection = sqlite3.connect(database_path)
+connection.executescript("""
+CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL);
+INSERT INTO alembic_version(version_num) VALUES ('item_subcat_taxonomy_20261002');
+CREATE TABLE categories (id INTEGER PRIMARY KEY, name VARCHAR(80) NOT NULL UNIQUE);
+CREATE TABLE subcategories (id INTEGER PRIMARY KEY, category_id INTEGER NOT NULL, name VARCHAR(120) NOT NULL);
+CREATE TABLE items (
+  id INTEGER PRIMARY KEY, category VARCHAR(80), subcategory VARCHAR(120), third_level VARCHAR(160)
+);
+INSERT INTO categories (id, name) VALUES (7, 'Digital Accounts');
+INSERT INTO subcategories (id, category_id, name) VALUES (70, 7, 'General');
+INSERT INTO items (id, category, subcategory, third_level) VALUES
+  (1, 'Digital Accounts', 'General', 'Amazon Prime'),
+  (2, 'Digital Accounts', 'Movies & Streaming', 'BBC-related paid services'),
+  (3, 'Digital Accounts', 'AI Tools', 'Character.AI'),
+  (4, 'Digital Accounts', 'Regional TV & Entertainment', 'ZEE5');
+""")
+connection.commit()
+connection.close()
+
+from alembic import command
+from alembic.config import Config
+
+root = Path(os.environ["DIGITAL_CATALOG_CORRECTION_ROOT"])
+config = Config(str(root / "alembic.ini"))
+config.set_main_option("script_location", str(root / "db_migrations"))
+command.upgrade(config, "head")
+
+connection = sqlite3.connect(database_path)
+try:
+    category_id = connection.execute(
+        "SELECT id FROM categories WHERE name = ?", ('Digital Accounts',)
+    ).fetchone()[0]
+    types = [
+        row[0] for row in connection.execute(
+            "SELECT name FROM subcategories WHERE category_id = ? ORDER BY name", (category_id,)
+        )
+    ]
+    expected = {
+        'Movies & Streaming', 'Sports', 'Gaming', 'Music & Audio', 'AI Tools',
+        'Software & Productivity', 'Design / Photo / Video', 'Cloud & Storage',
+        'Education', 'News & Reading', 'Social & Creator', 'Business & Marketing',
+        'Hosting & Developer', 'VPN & Security', 'Regional TV & Entertainment',
+        'General Subscriptions', 'Other',
+    }
+    assert set(types) == expected, types
+    assert connection.execute(
+        "SELECT id FROM subcategories WHERE category_id = ? AND name = ?",
+        (category_id, 'General Subscriptions'),
+    ).fetchone()[0] == 70
+    assert connection.execute(
+        "SELECT subcategory, third_level FROM items WHERE id = 1"
+    ).fetchone() == ('General Subscriptions', 'Amazon Prime')
+    assert connection.execute("SELECT third_level FROM items WHERE id = 2").fetchone()[0] == (
+        'BBC-related paid services where available'
+    )
+    assert connection.execute("SELECT third_level FROM items WHERE id = 3").fetchone()[0] == (
+        'Character.AI paid plans'
+    )
+    assert connection.execute("SELECT third_level FROM items WHERE id = 4").fetchone()[0] == 'Zee5'
+    assert connection.execute("SELECT version_num FROM alembic_version").fetchone()[0] == (
+        'digital_catalog_20261003'
+    )
+finally:
+    connection.close()
+'''
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "DATABASE_URL": f"sqlite:///{database_path.as_posix()}",
+                    "DIGITAL_CATALOG_CORRECTION_DB": str(database_path),
+                    "DIGITAL_CATALOG_CORRECTION_ROOT": str(REPOSITORY_ROOT),
                 }
             )
             site_packages = _project_site_packages()
@@ -170,7 +275,7 @@ try:
     item_columns = {row[1] for row in connection.execute("PRAGMA table_info('items')")}
     assert {"subcategory", "third_level", "custom_third_level"}.issubset(item_columns)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-    assert revision == "item_subcat_taxonomy_20261002", revision
+    assert revision == "digital_catalog_20261003", revision
     digital = connection.execute(
         "SELECT id FROM categories WHERE name = ?", ("Digital Accounts",)
     ).fetchone()

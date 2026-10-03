@@ -29,7 +29,7 @@ DIGITAL_ACCOUNTS_SERVICES: dict[str, tuple[str, ...]] = {
         "Canal+", "OCS", "Molotov", "BritBox", "Acorn TV", "MUBI", "Criterion Channel",
         "Rakuten TV", "Plex Pass", "YouTube Premium", "Crunchyroll", "HIDIVE", "Shahid",
         "OSN+", "TOD", "STARZPLAY", "Viaplay", "NOW", "Sky Go", "Sky services",
-        "ITVX Premium", "BBC-related paid services", "Stan", "Binge", "Kayo-related bundles",
+        "ITVX Premium", "BBC-related paid services where available", "Stan", "Binge", "Kayo-related bundles",
         "Paramount regional services", OTHER_VALUE,
     ),
     "Sports": (
@@ -47,6 +47,7 @@ DIGITAL_ACCOUNTS_SERVICES: dict[str, tuple[str, ...]] = {
         "PC Game Pass", "Xbox Game Pass Ultimate", "Nintendo Switch Online",
         "Nintendo Switch Online + Expansion Pack", "Steam", "Epic Games", "EA Play", "EA Play Pro",
         "Ubisoft+", "Battle.net", "Riot Games", "Rockstar Games", "Minecraft", "Roblox", "Fortnite",
+        "Epic Games / Fortnite",
         "GeForce NOW", "Amazon Luna", "Boosteroid", "Shadow PC", "Apple Arcade", "Google Play Pass",
         "Meta Quest services", OTHER_VALUE,
     ),
@@ -58,7 +59,7 @@ DIGITAL_ACCOUNTS_SERVICES: dict[str, tuple[str, ...]] = {
     "AI Tools": (
         "ChatGPT", "Claude", "Gemini", "Perplexity", "Microsoft Copilot", "GitHub Copilot", "Midjourney",
         "Leonardo AI", "Runway", "Pika", "Kling AI", "Luma", "ElevenLabs", "Suno", "Udio", "Synthesia",
-        "HeyGen", "Character.AI", "Poe", "Cursor", "Replit", "Notion AI", "Canva AI", "Adobe Firefly",
+        "HeyGen", "Character.AI paid plans", "Poe", "Cursor", "Replit", "Notion AI", "Canva AI", "Adobe Firefly",
         "Grammarly AI", "Jasper", "Copy.ai", "Writesonic", "DeepL Pro", OTHER_VALUE,
     ),
     "Software & Productivity": (
@@ -109,11 +110,11 @@ DIGITAL_ACCOUNTS_SERVICES: dict[str, tuple[str, ...]] = {
     ),
     "Regional TV & Entertainment": (
         "Canal+", "beIN", "Shahid", "OSN+", "TOD", "Crave", "Molotov", "NOW", "Sky", "Viaplay", "Stan",
-        "Binge", "Kayo", "Hotstar", "JioHotstar", "ZEE5", "SonyLIV", "Viki Pass", "iQIYI", "WeTV", OTHER_VALUE,
+        "Binge", "Kayo", "Hotstar", "JioHotstar", "Zee5", "SonyLIV", "Viki Pass", "iQIYI", "WeTV", OTHER_VALUE,
     ),
     # Amazon Prime itself is intentionally separate from Prime Video, Music,
     # Luna, Audible, and Kindle Unlimited, which belong to their own types.
-    "General": ("Amazon Prime", OTHER_VALUE),
+    "General Subscriptions": ("Amazon Prime", OTHER_VALUE),
     OTHER_VALUE: (OTHER_VALUE,),
 }
 
@@ -365,10 +366,10 @@ _VALUE_LABELS: dict[str, dict[str, str]] = {
         "fr": "TV régionale et divertissement",
         "ar": "التلفزيون الإقليمي والترفيه",
     },
-    "General": {
-        "en": "General",
-        "fr": "Général",
-        "ar": "عام",
+    "General Subscriptions": {
+        "en": "General Subscriptions",
+        "fr": "Abonnements généraux",
+        "ar": "الاشتراكات العامة",
     },
     OTHER_VALUE: {
         "en": "Other",

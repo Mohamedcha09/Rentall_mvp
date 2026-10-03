@@ -22,7 +22,7 @@ from app.catalog_taxonomy import DIGITAL_ACCOUNTS_CATEGORY, DIGITAL_ACCOUNTS_SER
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 ALEMBIC_CONFIG = REPOSITORY_ROOT / "alembic.ini"
 MIGRATIONS_PATH = REPOSITORY_ROOT / "db_migrations"
-EXPECTED_HEAD = "item_subcat_taxonomy_20261002"
+EXPECTED_HEAD = "digital_catalog_20261003"
 STORAGE_COLUMNS = (
     "storage_backend",
     "storage_key",

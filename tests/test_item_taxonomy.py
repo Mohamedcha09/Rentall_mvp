@@ -47,7 +47,7 @@ class ItemTaxonomyCatalogTests(unittest.TestCase):
             "Movies & Streaming", "Sports", "Gaming", "Music & Audio", "AI Tools",
             "Software & Productivity", "Design / Photo / Video", "Cloud & Storage",
             "Education", "News & Reading", "Social & Creator", "Business & Marketing",
-            "Hosting & Developer", "VPN & Security", "Regional TV & Entertainment", "General", "Other",
+            "Hosting & Developer", "VPN & Security", "Regional TV & Entertainment", "General Subscriptions", "Other",
         }
         self.assertEqual(set(DIGITAL_ACCOUNTS_SERVICES), expected_types)
         self.assertIs(CATEGORY_TREE[DIGITAL_ACCOUNTS_CATEGORY], DIGITAL_ACCOUNTS_SERVICES)
@@ -57,13 +57,20 @@ class ItemTaxonomyCatalogTests(unittest.TestCase):
         # Representative services ensure easily confused Amazon offerings stay
         # in their intended type rather than becoming one generic service.
         self.assertIn("Amazon Prime Video", DIGITAL_ACCOUNTS_SERVICES["Movies & Streaming"])
-        self.assertIn("Amazon Prime", DIGITAL_ACCOUNTS_SERVICES["General"])
+        self.assertIn("Amazon Prime", DIGITAL_ACCOUNTS_SERVICES["General Subscriptions"])
         self.assertIn("Amazon Music Unlimited", DIGITAL_ACCOUNTS_SERVICES["Music & Audio"])
         self.assertIn("Amazon Luna", DIGITAL_ACCOUNTS_SERVICES["Gaming"])
         self.assertIn("Audible", DIGITAL_ACCOUNTS_SERVICES["News & Reading"])
         self.assertIn("Kindle Unlimited", DIGITAL_ACCOUNTS_SERVICES["News & Reading"])
         self.assertIn("beIN Sports", DIGITAL_ACCOUNTS_SERVICES["Sports"])
         self.assertIn("ChatGPT", DIGITAL_ACCOUNTS_SERVICES["AI Tools"])
+        self.assertIn("Epic Games / Fortnite", DIGITAL_ACCOUNTS_SERVICES["Gaming"])
+        self.assertIn(
+            "BBC-related paid services where available",
+            DIGITAL_ACCOUNTS_SERVICES["Movies & Streaming"],
+        )
+        self.assertIn("Character.AI paid plans", DIGITAL_ACCOUNTS_SERVICES["AI Tools"])
+        self.assertIn("Zee5", DIGITAL_ACCOUNTS_SERVICES["Regional TV & Entertainment"])
 
     def test_payload_is_two_levels_for_normal_categories_and_three_for_configured_branch(self):
         categories = [
