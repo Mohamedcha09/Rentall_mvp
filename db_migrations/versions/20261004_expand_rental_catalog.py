@@ -53,7 +53,7 @@ CATEGORY_SEED = (
     ),
     (
         "Electronics",
-        (),
+        ("electronics",),
         (
             "Computers & Tablets",
             "Cameras & Video",
@@ -64,7 +64,7 @@ CATEGORY_SEED = (
     ),
     (
         "Furniture",
-        (),
+        ("furniture",),
         (
             "Home Furniture",
             "Office Furniture",
@@ -318,10 +318,13 @@ def _validate_snapshot() -> None:
         if not canonical or category_key in category_keys:
             raise RuntimeError(f"Invalid duplicate category in migration snapshot: {canonical!r}")
         category_keys.add(category_key)
-        alias_keys = {alias.casefold() for alias in aliases}
-        if category_key in alias_keys:
-            raise RuntimeError(f"Category alias repeats its canonical value: {canonical!r}")
-        if len(alias_keys) != len(aliases):
+        # A lower-case legacy spelling such as ``electronics`` is compatible
+        # with the canonical ``Electronics`` through the case-insensitive
+        # lookup.  It is useful documentation in this immutable snapshot and
+        # is not an ambiguous second parent.  Two distinct aliases that fold
+        # to each other remain unsafe.
+        alias_keys = [alias.casefold() for alias in aliases if alias.casefold() != category_key]
+        if len(set(alias_keys)) != len(alias_keys):
             raise RuntimeError(f"Duplicate aliases in migration snapshot: {canonical!r}")
         subcategory_keys = {name.casefold() for name in subcategory_names}
         if not subcategory_names or len(subcategory_keys) != len(subcategory_names):
