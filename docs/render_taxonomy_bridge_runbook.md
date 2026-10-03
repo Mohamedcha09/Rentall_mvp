@@ -77,3 +77,23 @@ reconcile the other lineage through the merge revision.
 Finally, restart only the existing Web Service so SQLAlchemy reloads the three
 new Item columns, then verify Create Listing and Explore without submitting a
 fake production listing.
+
+## If Production already reports `digital_catalog_20261003`
+
+This is a different, safe starting point: Finder is already an ancestor of
+that revision. Do not target the standalone `research_bridge_20261005` from
+this state. After the same backup and code-deployment checks, run:
+
+```bash
+cd ~/project/src
+test -f db_migrations/versions/20261005_merge_research_taxonomy.py
+PYTHONPATH="$PWD" python scripts/render_taxonomy_preflight.py --require-revision digital_catalog_20261003
+SEVOR_TAXONOMY_BRIDGE_STRICT=1 PYTHONPATH="$PWD" alembic upgrade merge_research_taxonomy_20261005
+PYTHONPATH="$PWD" python scripts/render_taxonomy_preflight.py --require-revision merge_research_taxonomy_20261005 --require-catalog
+PYTHONPATH="$PWD" alembic current
+```
+
+The expected final revision is `merge_research_taxonomy_20261005`. This
+explicit target applies only the remaining taxonomy migrations and merge
+markers; it does not re-run Finder. Never substitute `alembic upgrade head`
+or `alembic stamp`.

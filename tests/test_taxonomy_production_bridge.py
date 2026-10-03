@@ -226,6 +226,94 @@ finally:
             )
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
 
+    def test_digital_catalog_current_can_merge_only_taxonomy_successors(self):
+        """The deployed Digital catalog revision already has Finder as an ancestor.
+
+        From that revision, the explicit final taxonomy merge is safe: it adds
+        only the remaining catalog branches and does not run Finder again.
+        """
+        with tempfile.TemporaryDirectory(prefix="sevor-taxonomy-digital-current-") as temp_dir:
+            database_path = Path(temp_dir) / "digital-current.sqlite3"
+            script = r'''
+import os
+import sqlite3
+import sys
+from pathlib import Path
+
+site_packages = os.environ.get("SEVOR_TEST_SITE_PACKAGES", "")
+if site_packages:
+    sys.path.insert(0, site_packages)
+
+database_path = Path(os.environ["TAXONOMY_BRIDGE_DB"])
+connection = sqlite3.connect(database_path)
+connection.executescript("""
+CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL);
+INSERT INTO alembic_version(version_num) VALUES ('digital_catalog_20261003');
+CREATE TABLE items (
+  id INTEGER PRIMARY KEY, category VARCHAR(80), subcategory VARCHAR(120),
+  third_level VARCHAR(160), custom_third_level VARCHAR(200)
+);
+INSERT INTO items (id, category, subcategory, third_level)
+VALUES (1, 'Digital Accounts', 'Sports', 'beIN Sports');
+CREATE TABLE categories (id INTEGER PRIMARY KEY, name VARCHAR(80) NOT NULL UNIQUE);
+CREATE TABLE subcategories (id INTEGER PRIMARY KEY, category_id INTEGER NOT NULL, name VARCHAR(120) NOT NULL);
+""")
+connection.commit()
+connection.close()
+
+from alembic import command
+from alembic.config import Config
+
+root = Path(os.environ["TAXONOMY_BRIDGE_ROOT"])
+config = Config(str(root / "alembic.ini"))
+config.set_main_option("script_location", str(root / "db_migrations"))
+command.upgrade(config, "merge_research_taxonomy_20261005")
+
+connection = sqlite3.connect(database_path)
+try:
+    assert connection.execute("SELECT category, subcategory, third_level FROM items WHERE id=1").fetchone() == (
+        'Digital Accounts', 'Sports', 'beIN Sports'
+    )
+    assert connection.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 22
+    assert connection.execute("SELECT COUNT(*) FROM subcategories").fetchone()[0] == 135
+    assert connection.execute(
+        "SELECT COUNT(*) FROM subcategories s JOIN categories c ON c.id=s.category_id "
+        "WHERE c.name='Test & Measurement Equipment' AND s.name='Electrical Test Instruments'"
+    ).fetchone()[0] == 1
+    assert connection.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='finder_conversations'"
+    ).fetchone()[0] == 0
+    assert connection.execute("SELECT version_num FROM alembic_version").fetchone()[0] == (
+        'merge_research_taxonomy_20261005'
+    )
+finally:
+    connection.close()
+'''
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "DATABASE_URL": f"sqlite:///{database_path.as_posix()}",
+                    "TAXONOMY_BRIDGE_DB": str(database_path),
+                    "TAXONOMY_BRIDGE_ROOT": str(REPOSITORY_ROOT),
+                    "SEVOR_TAXONOMY_BRIDGE_STRICT": "1",
+                }
+            )
+            site_packages = _site_packages()
+            if site_packages:
+                environment["SEVOR_TEST_SITE_PACKAGES"] = site_packages
+                environment["PYTHONPATH"] = os.pathsep.join(
+                    part for part in (site_packages, environment.get("PYTHONPATH", "")) if part
+                )
+            completed = subprocess.run(
+                [sys.executable, "-c", script],
+                cwd=REPOSITORY_ROOT,
+                env=environment,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
