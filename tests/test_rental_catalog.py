@@ -103,6 +103,7 @@ class RentalCatalogTopologyTests(unittest.TestCase):
         self.assertEqual(canonical_rental_category("vehicle"), "Vehicles")
         self.assertEqual(canonical_rental_category("housing"), "Housing & Stays")
         self.assertEqual(canonical_rental_category("Sports Equipment"), "Sports & Outdoors")
+        self.assertEqual(canonical_rental_category("Test & Measurement"), "Test & Measurement Equipment")
         self.assertEqual(canonical_rental_category("Digital Accounts"), "Digital Accounts")
         self.assertEqual(canonical_rental_category("Unconfigured Legacy Value"), "Unconfigured Legacy Value")
 
@@ -119,7 +120,7 @@ class RentalCatalogTopologyTests(unittest.TestCase):
         self.assertNotIn("School Buses", by_category["Vehicles"][1])
         self.assertNotIn("Popcorn Machines", by_category["Food & Concession Equipment"][1])
 
-    def test_additive_migration_snapshot_matches_the_active_l1_l2_contract(self):
+    def test_additive_migration_snapshots_match_the_active_l1_l2_contract(self):
         """A category cannot be available only in code and absent from Create.
 
         Create/Explore receive L1/L2 choices from lookup rows.  The migration
@@ -127,18 +128,53 @@ class RentalCatalogTopologyTests(unittest.TestCase):
         contract; compare it here so a catalog edit cannot silently leave the
         database-backed form behind.
         """
-        migration_path = (
+        baseline_migration_path = (
             Path(__file__).resolve().parents[1]
             / "db_migrations"
             / "versions"
             / "20261004_expand_rental_catalog.py"
         )
-        spec = importlib.util.spec_from_file_location("rental_catalog_migration", migration_path)
-        self.assertIsNotNone(spec)
-        self.assertIsNotNone(spec.loader)
-        migration = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(migration)
-        self.assertEqual(rental_seed_rows(), migration.CATEGORY_SEED)
+        research_migration_path = (
+            Path(__file__).resolve().parents[1]
+            / "db_migrations"
+            / "versions"
+            / "20261005_expand_research_rental_catalog.py"
+        )
+
+        def load_migration(module_name: str, migration_path: Path):
+            spec = importlib.util.spec_from_file_location(module_name, migration_path)
+            self.assertIsNotNone(spec)
+            self.assertIsNotNone(spec.loader)
+            migration = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(migration)
+            return migration
+
+        baseline = load_migration("rental_catalog_migration", baseline_migration_path)
+        research = load_migration("research_catalog_migration", research_migration_path)
+        self.assertEqual(research.down_revision, "merge_taxonomy_20261004")
+
+        merged: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = list(baseline.CATEGORY_SEED)
+        positions = {row[0]: index for index, row in enumerate(merged)}
+        for category, aliases, subcategories in research.CATEGORY_SEED:
+            position = positions.get(category)
+            if position is None:
+                positions[category] = len(merged)
+                merged.append((category, aliases, subcategories))
+                continue
+            old_category, old_aliases, old_subcategories = merged[position]
+            self.assertEqual(old_category, category)
+            merged[position] = (
+                old_category,
+                tuple(dict.fromkeys((*old_aliases, *aliases))),
+                tuple(dict.fromkeys((*old_subcategories, *subcategories))),
+            )
+
+        self.assertEqual(rental_seed_rows(), tuple(merged))
+        self.assertIn(
+            ("Test & Measurement Equipment", ("Test and Measurement Equipment", "Test & Measurement"),
+             ("Electrical Test Instruments", "Environmental Monitoring")),
+            research.CATEGORY_SEED,
+        )
 
     def _assert_value_has_all_labels(self, value) -> None:
         labels = value.labels()

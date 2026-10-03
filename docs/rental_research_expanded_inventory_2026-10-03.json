@@ -1,0 +1,6137 @@
+{
+  "schema_version": "1.0",
+  "generated_on": "2026-10-03",
+  "source_of_truth": "app/catalog_taxonomy.py::CATEGORY_TREE",
+  "listing_storage": {
+    "level1": "Item.category",
+    "level2": "Item.subcategory",
+    "level3": "Item.third_level",
+    "custom_other": "Item.custom_third_level"
+  },
+  "counts": {
+    "level1": 22,
+    "level2": 135,
+    "level3": 951
+  },
+  "tree": {
+    "Vehicles": {
+      "Cars": [
+        "Economy Cars",
+        "Compact Cars",
+        "Sedans",
+        "SUVs",
+        "Coupes",
+        "Convertibles",
+        "Luxury Cars",
+        "Sports Cars",
+        "Classic Cars",
+        "Limousines / Stretch Cars",
+        "Other"
+      ],
+      "Buses": [
+        "School Buses",
+        "City / Transit Buses",
+        "Shuttle Buses",
+        "Minibuses",
+        "Coach / Tour Buses",
+        "Party Buses",
+        "Other"
+      ],
+      "Trucks & Vans": [
+        "Pickup Trucks",
+        "Cargo Vans",
+        "Passenger Vans",
+        "Box Trucks",
+        "Refrigerated Trucks",
+        "Dump Trucks",
+        "Other"
+      ],
+      "Trailers & RVs": [
+        "Utility Trailers",
+        "Cargo Trailers",
+        "Car Haulers",
+        "Travel Trailers",
+        "Campervans",
+        "Motorhomes",
+        "Other"
+      ],
+      "Bicycles & Micro-mobility": [
+        "Road Bikes",
+        "Mountain Bikes",
+        "E-Bikes",
+        "Cargo Bikes",
+        "E-Scooters",
+        "Other"
+      ],
+      "Motorcycles & Scooters": [
+        "Motorcycles",
+        "Scooters",
+        "Mopeds",
+        "Other"
+      ],
+      "Vehicle Travel Accessories": [
+        "Roof Cargo Boxes",
+        "Other"
+      ]
+    },
+    "Housing & Stays": {
+      "Apartments & Homes": [],
+      "Vacation Properties": [],
+      "Rooms & Shared Stays": [],
+      "Parking & Storage": []
+    },
+    "Electronics": {
+      "Computers & Tablets": [
+        "Laptops",
+        "Desktop Computers",
+        "Tablets",
+        "Monitors",
+        "Other"
+      ],
+      "Cameras & Video": [
+        "DSLR / Mirrorless Cameras",
+        "Cinema Cameras",
+        "Lenses",
+        "Tripods & Stabilizers",
+        "Broadcast Cameras",
+        "Cinema Prime Lenses",
+        "Cinema Zoom Lenses",
+        "Anamorphic Lenses",
+        "Director Viewfinders",
+        "Other"
+      ],
+      "Networking & Communications": [
+        "Wi-Fi Kits",
+        "Routers & Switches",
+        "Walkie-Talkies",
+        "Satellite Phones",
+        "Other"
+      ],
+      "Office Tech": [
+        "Projectors",
+        "Projection Screens",
+        "Printers & Scanners",
+        "Other"
+      ],
+      "Gaming & VR": [
+        "Game Consoles",
+        "VR Headsets",
+        "Racing Simulators",
+        "Other"
+      ]
+    },
+    "Furniture": {
+      "Home Furniture": [],
+      "Office Furniture": [],
+      "Event Furniture": [],
+      "Appliances": [],
+      "Rugs & Decor": [
+        "Artwork Rentals",
+        "Tropical Plant Rentals",
+        "Other"
+      ]
+    },
+    "Clothing & Costumes": {
+      "Formal & Bridal": [
+        "Wedding Dresses",
+        "Suits & Tuxedos",
+        "Evening Wear",
+        "Other"
+      ],
+      "Costumes & Theatrical": [
+        "Character Costumes",
+        "Period Costumes",
+        "Stage Costumes",
+        "Other"
+      ],
+      "Outdoor & Specialty": [],
+      "Accessories": []
+    },
+    "Tools & Equipment": {
+      "Power Tools": [
+        "Drills & Drivers",
+        "Saws",
+        "Sanders",
+        "Grinders",
+        "Angle Grinders",
+        "Belt Sanders",
+        "Orbital Sanders",
+        "Circular Saws",
+        "Miter Saws",
+        "Band Saws",
+        "Reciprocating Saws",
+        "Table Saws",
+        "Electric Planers",
+        "Routers",
+        "Magnetic Drills",
+        "Heat Guns",
+        "Metal Shears & Nibblers",
+        "Other"
+      ],
+      "Hand Tools": [],
+      "Plumbing & Pipe Tools": [
+        "Pipe Benders",
+        "Pipe Cutters",
+        "Pipe Threading Machines",
+        "Pipe Crimping Tools",
+        "Flange Spreaders",
+        "Sewer Inspection Cameras",
+        "Pipe Freezing Machines",
+        "Pipe Plugs",
+        "Other"
+      ],
+      "Electrical & Testing Tools": [],
+      "Cleaning & Restoration Equipment": [
+        "Carpet Cleaners",
+        "Pressure Washers",
+        "Floor Scrubbers",
+        "Steam Cleaners",
+        "Carpet Extractors",
+        "Floor Polishers",
+        "Walk-Behind Scrubbers",
+        "Ride-On Scrubbers",
+        "Handheld Sweepers",
+        "Walk-Behind Sweepers",
+        "Ride-On Sweepers",
+        "Wet & Dry Vacuums",
+        "Hot-Water Pressure Washers",
+        "Cold-Water Pressure Washers",
+        "Other"
+      ],
+      "Surveying & Inspection": [
+        "Laser Levels",
+        "Total Stations",
+        "Thermal Cameras",
+        "Inspection Cameras",
+        "3D Laser Scanners",
+        "Robotic Total Stations",
+        "GNSS Survey Receivers",
+        "Digital Levels",
+        "Automatic Optical Levels",
+        "Pipe Lasers",
+        "Underground Utility Detectors",
+        "Other"
+      ],
+      "Automotive Workshop Tools": [
+        "Battery Boosters",
+        "Battery Testers",
+        "Battery Chargers",
+        "Cooling-System Pressure Testers",
+        "Automotive Inspection Borescopes",
+        "Hydraulic Body Repair Kits",
+        "Vibratory Tumblers",
+        "Ultrasonic Cleaners",
+        "Large Socket & Ratchet Sets",
+        "Engine Stands",
+        "Jack Stands",
+        "Transmission Jacks",
+        "Impact Wrenches",
+        "Torque Wrenches",
+        "Tailpipe Expanders",
+        "Valve Spring Compressors",
+        "Other"
+      ],
+      "Floor Installation & Removal": [
+        "Drum Floor Sanders",
+        "Orbital Floor Sanders",
+        "Floor Edge Sanders",
+        "Carpet Knee Kickers",
+        "Floor Stripping Machines",
+        "Tile Cutters",
+        "Vinyl Flooring Cutters",
+        "Hardwood Floor Nailers",
+        "Concrete Floor Grinders",
+        "Dust Extractors",
+        "Other"
+      ]
+    },
+    "Baby & Kids": {
+      "Travel & Safety": [
+        "Car Seats",
+        "Strollers",
+        "Child Wagons",
+        "Other"
+      ],
+      "Nursery & Sleep": [
+        "Cribs",
+        "High Chairs",
+        "Baby Bathing Equipment",
+        "Bouncers",
+        "Baby Swings",
+        "Other"
+      ],
+      "Toys & Play": [
+        "Toys, Books & Games Kits",
+        "Other"
+      ],
+      "Party & Event Gear": []
+    },
+    "Sports & Outdoors": {
+      "Camping & Outdoors": [
+        "Tents",
+        "Sleeping Bags",
+        "Coolers",
+        "Camping Stoves",
+        "Camping Equipment Kits",
+        "Sleeping Equipment Kits",
+        "Packrafts",
+        "Other"
+      ],
+      "Winter Sports": [
+        "Skis",
+        "Snowboards",
+        "Snowshoes",
+        "Other"
+      ],
+      "Water Sports": [
+        "Kayaks",
+        "Canoes",
+        "Paddleboards",
+        "Other"
+      ],
+      "Fitness Equipment": [
+        "Treadmills",
+        "Exercise Bikes",
+        "Weights",
+        "Other"
+      ],
+      "Team Sports": [],
+      "Fishing Equipment": []
+    },
+    "Books & Learning": {
+      "Books": [],
+      "Classroom Equipment": [],
+      "Lab & Science Kits": [
+        "Microscopes",
+        "Science Kits",
+        "Lab Glassware",
+        "Other"
+      ],
+      "Training & Presentation": []
+    },
+    "Events & Production Equipment": {
+      "Tents & Canopies": [
+        "Frame Tents",
+        "Pole Tents",
+        "Pop-up Canopies",
+        "Other"
+      ],
+      "Staging & Flooring": [
+        "Stage Platforms",
+        "Risers",
+        "Portable Dance Floors",
+        "Runways",
+        "Other"
+      ],
+      "Audio Equipment": [
+        "PA Systems",
+        "Speakers",
+        "Microphones",
+        "Mixers",
+        "Lavalier Microphones",
+        "Shotgun Microphones",
+        "Boom Poles",
+        "Other"
+      ],
+      "Lighting Equipment": [
+        "LED Lighting",
+        "Moving Lights",
+        "Lighting Controllers",
+        "Other"
+      ],
+      "Video & Displays": [
+        "LED Walls",
+        "Video Switchers",
+        "Live Streaming Kits",
+        "Media Servers",
+        "Video Production Systems",
+        "Other"
+      ],
+      "Photo Booths & Signage": [
+        "Photo Booths",
+        "Digital Signage",
+        "Backdrops",
+        "Other"
+      ],
+      "Crowd Control & Safety": [
+        "Queue Stanchions",
+        "Temporary Signage",
+        "Emergency Lighting",
+        "Other"
+      ],
+      "Event Furniture": [],
+      "Tableware & Linen": [
+        "Dinner Plates",
+        "Glassware",
+        "Cutlery Sets",
+        "Canape Serving Dishes",
+        "Pastry & Serving Cutlery",
+        "Table Linen",
+        "Service Linen",
+        "Chair Sashes",
+        "Other"
+      ],
+      "Rigging & Truss": [
+        "Rigging Equipment",
+        "Pipe-and-Drape Systems",
+        "Other"
+      ],
+      "Interpretation & Tour Audio": [
+        "Soundproof Interpretation Booths",
+        "Wireless Interpretation Receivers",
+        "Interpretation Headsets",
+        "Portable Tour Audio Systems",
+        "Other"
+      ]
+    },
+    "Food & Concession Equipment": {
+      "Popcorn Equipment": [
+        "Popcorn Machines",
+        "Popcorn Warmers",
+        "Popcorn Carts",
+        "Other"
+      ],
+      "Hot Dog Equipment": [
+        "Hot Dog Rollers",
+        "Hot Dog Steamers",
+        "Hot Dog Carts",
+        "Other"
+      ],
+      "Donut Equipment": [
+        "Donut Makers",
+        "Donut Fryers",
+        "Donut Display Equipment",
+        "Other"
+      ],
+      "Frozen & Dessert Equipment": [
+        "Cotton Candy Machines",
+        "Slush Machines",
+        "Soft-Serve Machines",
+        "Ice Cream Equipment",
+        "Chocolate Fountains",
+        "Crepe Stations",
+        "Waffle Makers",
+        "Shaved Ice Machines",
+        "Nacho Cheese Dispensers",
+        "Other"
+      ],
+      "Cooking Equipment": [
+        "Commercial Coffee Machines",
+        "Pizza Ovens",
+        "Commercial Fryers",
+        "Grills & Griddles",
+        "Other"
+      ],
+      "Serving & Beverage Equipment": [
+        "Beverage Dispensers",
+        "Mobile Bars",
+        "Serving Counters",
+        "Beverage Coolers",
+        "Rectangular Chafing Dishes",
+        "Round Roll-Top Chafing Dishes",
+        "Insulated Beverage Dispensers",
+        "Hot Chocolate Urns",
+        "Beverage Cooling Troughs",
+        "Other"
+      ],
+      "Mobile Food Units": [
+        "Mobile Kitchens",
+        "Food Trailers",
+        "Food Carts",
+        "Other"
+      ],
+      "Sanitation & Dishwashing": [
+        "Dishwashing Equipment",
+        "Commercial Sanitizers",
+        "Other"
+      ],
+      "Commercial Kitchen Equipment": [
+        "Catering Ovens",
+        "Hot Cupboards",
+        "Commercial Refrigerators",
+        "Commercial Freezers",
+        "Preparation Tables",
+        "Other"
+      ]
+    },
+    "Construction & Industrial Equipment": {
+      "Earthmoving": [
+        "Excavators",
+        "Skid Steers",
+        "Backhoes",
+        "Loaders",
+        "Bulldozers",
+        "Other"
+      ],
+      "Aerial Access": [
+        "Scissor Lifts",
+        "Boom Lifts",
+        "Vertical Mast Lifts",
+        "Other"
+      ],
+      "Concrete & Masonry": [
+        "Concrete Mixers",
+        "Concrete Saws",
+        "Breakers",
+        "Trowels",
+        "Mortar Mixers",
+        "Concrete Vibrators",
+        "Concrete Buggies",
+        "Concrete Buckets",
+        "Concrete Floor Saws",
+        "Diamond Core Drills",
+        "Masonry Saws",
+        "Tile Saws",
+        "Rebar Cutters",
+        "Rebar Benders",
+        "Rebar Tying Tools",
+        "Concrete Scarifiers",
+        "Portable Shot Blasters",
+        "Other"
+      ],
+      "Compaction & Paving": [
+        "Plate Compactors",
+        "Rollers",
+        "Asphalt Cutters",
+        "Other"
+      ],
+      "Air & Pneumatic": [
+        "Air Compressors",
+        "Pneumatic Tools",
+        "Other"
+      ],
+      "Welding & Fabrication": [
+        "Welders",
+        "Plasma Cutters",
+        "Pipe Threaders",
+        "Welding Power Sources",
+        "Orbital Welding Systems",
+        "Tube Cutting Machines",
+        "Pipe Cutting Machines",
+        "Tube Facing Machines",
+        "Other"
+      ],
+      "Trench & Shoring": [
+        "Trench Boxes",
+        "Shoring Systems",
+        "Confined-Space Gear",
+        "Trench Shields",
+        "Hydraulic Shoring",
+        "Manhole Braces",
+        "Bedding Boxes",
+        "Ground Protection Mats",
+        "Steel Road Plates",
+        "Composite Trench Covers",
+        "Temporary Guardrails",
+        "Trench Bridges",
+        "Manhole Vacuum Testers",
+        "Davit & Tripod Retrieval Systems",
+        "Other"
+      ],
+      "Hydraulic Maintenance Tools": [
+        "Hydraulic Torque Wrenches",
+        "Low-Height Hydraulic Cylinders",
+        "Hollow-Plunger Hydraulic Cylinders",
+        "Lock-Nut Hydraulic Cylinders",
+        "Pancake Hydraulic Cylinders",
+        "Hydraulic Hand Pumps",
+        "Hydraulic Electric Pumps",
+        "Hydraulic Nut Splitters",
+        "Hydraulic Punches",
+        "Hydraulic Cutterheads",
+        "Other"
+      ],
+      "Geotextile & Site Textile Tools": [
+        "Portable Geotextile Sewing Machines",
+        "Other"
+      ]
+    },
+    "Agriculture & Landscaping": {
+      "Tractors & Implements": [
+        "Compact Tractors",
+        "Tillers",
+        "Seeders",
+        "Harvesting Equipment",
+        "Tractors",
+        "Utility Terrain Vehicles",
+        "Cultivation Equipment",
+        "Post-Hole Borers",
+        "Agricultural Trailers",
+        "Other"
+      ],
+      "Lawn & Garden": [
+        "Mowers",
+        "Aerators",
+        "Trimmers",
+        "Leaf Blowers",
+        "Hedge Cutters",
+        "Lawn Dethatchers",
+        "Broadcast Seed Spreaders",
+        "Sod Cutters",
+        "Other"
+      ],
+      "Forestry & Tree Care": [
+        "Chainsaws",
+        "Wood Chippers",
+        "Stump Grinders",
+        "Other"
+      ],
+      "Irrigation & Water": [
+        "Water Pumps",
+        "Irrigation Systems",
+        "Water Tanks",
+        "Other"
+      ],
+      "Livestock & Farm Handling": [
+        "Fencing Equipment",
+        "Other"
+      ],
+      "Small-Harvest Processing": [
+        "Honey Extractor Kits",
+        "Apple Crushers",
+        "Apple Presses",
+        "Orchard Tripod Ladders",
+        "Other"
+      ]
+    },
+    "Warehousing & Logistics": {
+      "Forklifts & Telehandlers": [
+        "Forklifts",
+        "Reach Trucks",
+        "Telehandlers",
+        "Pallet Stackers",
+        "Other"
+      ],
+      "Pallet & Manual Handling": [
+        "Pallet Jacks",
+        "Dollies",
+        "Hand Trucks",
+        "Utility Carts",
+        "Air-Cushion Appliance Lifters",
+        "Powered Stair-Climbing Dollies",
+        "Tree Dollies",
+        "Other"
+      ],
+      "Storage & Containers": [
+        "Shipping Containers",
+        "Mobile Storage Containers",
+        "Refrigerated Containers",
+        "Other"
+      ],
+      "Loading & Dock": [
+        "Loading Ramps",
+        "Dock Plates",
+        "Conveyors",
+        "Other"
+      ],
+      "Packaging & Labeling": [
+        "Label Printers",
+        "Stretch Wrappers",
+        "Vacuum Packaging Machines",
+        "Other"
+      ]
+    },
+    "Temporary Infrastructure & Site Services": {
+      "Power Generation": [
+        "Generators",
+        "Load Banks",
+        "Power Distribution Panels",
+        "Battery Storage",
+        "Transfer Switches",
+        "Transformers",
+        "Temporary Power Cables",
+        "Other"
+      ],
+      "Climate Control": [
+        "Portable Air Conditioners",
+        "Heaters",
+        "Air Handlers",
+        "Chillers",
+        "Spot Coolers",
+        "Cooling Towers",
+        "Electric Heaters",
+        "Indirect-Fired Heaters",
+        "Ground Heaters",
+        "Other"
+      ],
+      "Drying & Air Quality": [
+        "Dehumidifiers",
+        "Air Scrubbers",
+        "Industrial Fans",
+        "Refrigerant Dehumidifiers",
+        "Desiccant Dehumidifiers",
+        "Carpet Dryers & Air Movers",
+        "Other"
+      ],
+      "Sanitation": [
+        "Portable Toilets",
+        "Mobile Showers",
+        "Restroom Trailers",
+        "Handwash Stations",
+        "Other"
+      ],
+      "Fencing & Traffic Control": [
+        "Temporary Fencing",
+        "Crowd Barriers",
+        "Traffic Signs & Cones",
+        "Other"
+      ],
+      "Mobile Offices & Structures": [
+        "Mobile Offices",
+        "Construction Trailers",
+        "Temporary Structures",
+        "Other"
+      ],
+      "Pumps & Water Management": [
+        "Centrifugal Pumps",
+        "Submersible Pumps",
+        "Water Treatment Units",
+        "Diaphragm Pumps",
+        "Dewatering Pumps",
+        "Fluid Storage Tanks",
+        "Other"
+      ]
+    },
+    "Marine & Watercraft": {
+      "Boats": [
+        "Fishing Boats",
+        "Pontoon Boats",
+        "Sailboats",
+        "Speedboats",
+        "Sailing Catamarans",
+        "Monohull Sailboats",
+        "Power Yachts",
+        "Other"
+      ],
+      "Personal Watercraft": [
+        "Jet Skis",
+        "Water Scooters",
+        "Other"
+      ],
+      "Marine Gear": [
+        "Life Jackets & Safety Gear",
+        "Anchors & Docking Gear",
+        "Marine Navigation Gear",
+        "Other"
+      ]
+    },
+    "Spaces & Studios": {
+      "Event Venues": [
+        "Banquet Halls",
+        "Conference Rooms",
+        "Outdoor Venues",
+        "Other"
+      ],
+      "Studios": [
+        "Photo Studios",
+        "Film Studios",
+        "Podcast Studios",
+        "Music Rehearsal Studios",
+        "Other"
+      ],
+      "Meeting & Workspaces": [
+        "Meeting Rooms",
+        "Training Rooms",
+        "Coworking Offices",
+        "Other"
+      ],
+      "Workshops & Maker Spaces": [
+        "Woodworking Workshops",
+        "Fabrication Shops",
+        "Craft Studios",
+        "Sewing Workstations",
+        "Heat-Press Workstations",
+        "Other"
+      ],
+      "Commercial Kitchens": [
+        "Shared Kitchens",
+        "Production Kitchens",
+        "Other"
+      ],
+      "Retail & Pop-up Spaces": [
+        "Pop-up Retail Spaces",
+        "Other"
+      ]
+    },
+    "Retail & Vending Equipment": {
+      "Display & Merchandising": [
+        "Shelving",
+        "Display Cases",
+        "Garment Racks",
+        "Mannequins",
+        "Other"
+      ],
+      "POS & Checkout": [
+        "Cash Registers",
+        "Receipt Printers",
+        "Barcode Scanners",
+        "POS Hardware Kits",
+        "Inventory Scanning Terminals",
+        "Thermal Badge Printers",
+        "Other"
+      ],
+      "Kiosks & Booths": [
+        "Pop-up Kiosks",
+        "Market Stalls",
+        "Exhibition Booths",
+        "Other"
+      ],
+      "Vending & Refrigerated Merchandising": [
+        "Vending Machines",
+        "Cold Beverage Vending",
+        "Other"
+      ]
+    },
+    "Music & Performance Equipment": {
+      "Musical Instruments": [
+        "Guitars",
+        "Keyboards",
+        "Drum Kits",
+        "String Instruments",
+        "Bass Guitars",
+        "Synthesizers",
+        "Orchestral Instruments",
+        "Other"
+      ],
+      "DJ Equipment": [
+        "DJ Controllers",
+        "Turntables",
+        "DJ Mixers",
+        "Other"
+      ],
+      "Amplification & Backline": [
+        "Guitar Amplifiers",
+        "Bass Amplifiers",
+        "Keyboard Amplifiers",
+        "Instrument Amplifiers",
+        "Other"
+      ],
+      "Rehearsal & Performance Gear": [
+        "Music Stands",
+        "Stage Monitors",
+        "Other"
+      ],
+      "Recording & Studio Equipment": [
+        "Recording Equipment",
+        "Other"
+      ]
+    },
+    "Hobbies & Creative Equipment": {
+      "Printing & Fabrication": [
+        "3D Printers",
+        "Laser Cutters",
+        "Heat Presses",
+        "Other"
+      ],
+      "Sewing & Textile": [
+        "Sewing Machines",
+        "Embroidery Machines",
+        "Serger Machines",
+        "Coverstitch Machines",
+        "Fabric Cutting Tables",
+        "Ironing Stations",
+        "Fabric Die-Cutting Machines",
+        "Other"
+      ],
+      "Arts & Crafts": [
+        "Pottery Wheels",
+        "Easels",
+        "Craft Tools",
+        "Button Badge Press Kits",
+        "Other"
+      ],
+      "Games & Recreation": [
+        "Board Games",
+        "Arcade Machines",
+        "Table Games",
+        "Other"
+      ]
+    },
+    "Test & Measurement Equipment": {
+      "Electrical Test Instruments": [
+        "Ground Resistance Testers",
+        "Low-Resistance Ohmmeters",
+        "Insulation Resistance Testers",
+        "Phase Meters",
+        "Cable Locators",
+        "Clamp Meters",
+        "High-Voltage Meters",
+        "Hipot Testers",
+        "Electronic Loads",
+        "Network Cable Testers",
+        "Optical Test Equipment",
+        "Power Analyzers",
+        "RF Amplifiers",
+        "Solar PV Testers",
+        "Other"
+      ],
+      "Environmental Monitoring": [
+        "Water Quality Meters",
+        "Water Sampling Equipment",
+        "Water-Level Meters",
+        "Pressure Transducers",
+        "Flow Probes",
+        "Gas Detectors",
+        "PID Detectors",
+        "Noise & Sound Meters",
+        "Indoor Air Monitoring Equipment",
+        "Other"
+      ]
+    },
+    "Digital Accounts": {
+      "Movies & Streaming": [
+        "Netflix",
+        "Amazon Prime Video",
+        "Disney+",
+        "Apple TV+",
+        "Max",
+        "Hulu",
+        "Paramount+",
+        "Peacock",
+        "STARZ",
+        "SHOWTIME",
+        "AMC+",
+        "Discovery+",
+        "Crave",
+        "Canal+",
+        "OCS",
+        "Molotov",
+        "BritBox",
+        "Acorn TV",
+        "MUBI",
+        "Criterion Channel",
+        "Rakuten TV",
+        "Plex Pass",
+        "YouTube Premium",
+        "Crunchyroll",
+        "HIDIVE",
+        "Shahid",
+        "OSN+",
+        "TOD",
+        "STARZPLAY",
+        "Viaplay",
+        "NOW",
+        "Sky Go",
+        "Sky services",
+        "ITVX Premium",
+        "BBC-related paid services where available",
+        "Stan",
+        "Binge",
+        "Kayo-related bundles",
+        "Paramount regional services",
+        "Other"
+      ],
+      "Sports": [
+        "beIN Sports",
+        "DAZN",
+        "ESPN+",
+        "Fubo",
+        "YouTube TV sports packages",
+        "Sling sports packages",
+        "Canal+ Sport",
+        "RMC Sport",
+        "Eurosport",
+        "TNT Sports",
+        "Sky Sports",
+        "NOW Sports",
+        "TSN+",
+        "Sportsnet+",
+        "TVA Sports-related services",
+        "MLS Season Pass",
+        "NBA League Pass",
+        "NFL Game Pass",
+        "MLB.TV",
+        "NHL services",
+        "UFC Fight Pass",
+        "WWE-related streaming",
+        "F1 TV",
+        "MotoGP VideoPass",
+        "Tennis TV",
+        "ATP/WTA-related streaming services",
+        "FloSports",
+        "Peacock Sports",
+        "Paramount+ Sports",
+        "TOD Sports",
+        "Other"
+      ],
+      "Gaming": [
+        "PlayStation Network",
+        "PlayStation Plus Essential",
+        "PlayStation Plus Extra",
+        "PlayStation Plus Premium",
+        "Xbox",
+        "Xbox Game Pass Core",
+        "Xbox Game Pass Standard",
+        "PC Game Pass",
+        "Xbox Game Pass Ultimate",
+        "Nintendo Switch Online",
+        "Nintendo Switch Online + Expansion Pack",
+        "Steam",
+        "Epic Games",
+        "EA Play",
+        "EA Play Pro",
+        "Ubisoft+",
+        "Battle.net",
+        "Riot Games",
+        "Rockstar Games",
+        "Minecraft",
+        "Roblox",
+        "Fortnite",
+        "Epic Games / Fortnite",
+        "GeForce NOW",
+        "Amazon Luna",
+        "Boosteroid",
+        "Shadow PC",
+        "Apple Arcade",
+        "Google Play Pass",
+        "Meta Quest services",
+        "Other"
+      ],
+      "Music & Audio": [
+        "Spotify Premium",
+        "Apple Music",
+        "Amazon Music Unlimited",
+        "YouTube Music Premium",
+        "Deezer",
+        "Tidal",
+        "SoundCloud Go+",
+        "Anghami",
+        "Qobuz",
+        "Pandora",
+        "iHeartRadio services",
+        "SiriusXM",
+        "Audible",
+        "Storytel",
+        "Pocket Casts Plus",
+        "Other"
+      ],
+      "AI Tools": [
+        "ChatGPT",
+        "Claude",
+        "Gemini",
+        "Perplexity",
+        "Microsoft Copilot",
+        "GitHub Copilot",
+        "Midjourney",
+        "Leonardo AI",
+        "Runway",
+        "Pika",
+        "Kling AI",
+        "Luma",
+        "ElevenLabs",
+        "Suno",
+        "Udio",
+        "Synthesia",
+        "HeyGen",
+        "Character.AI paid plans",
+        "Poe",
+        "Cursor",
+        "Replit",
+        "Notion AI",
+        "Canva AI",
+        "Adobe Firefly",
+        "Grammarly AI",
+        "Jasper",
+        "Copy.ai",
+        "Writesonic",
+        "DeepL Pro",
+        "Other"
+      ],
+      "Software & Productivity": [
+        "Microsoft 365",
+        "Google Workspace",
+        "Adobe Creative Cloud",
+        "Canva Pro",
+        "Notion",
+        "Slack",
+        "Zoom",
+        "Dropbox",
+        "OneDrive",
+        "iCloud+",
+        "Google One",
+        "Evernote",
+        "Grammarly",
+        "Todoist",
+        "ClickUp",
+        "Monday.com",
+        "Asana",
+        "Trello",
+        "Airtable",
+        "Calendly",
+        "DocuSign",
+        "Dropbox Sign",
+        "Office apps",
+        "PDF editors",
+        "Antivirus software",
+        "Security software",
+        "Other"
+      ],
+      "Design / Photo / Video": [
+        "Adobe Photoshop",
+        "Adobe Illustrator",
+        "Adobe Lightroom",
+        "Adobe Premiere Pro",
+        "Adobe After Effects",
+        "Adobe Acrobat Pro",
+        "Canva Pro",
+        "Figma Professional",
+        "CapCut Pro",
+        "Filmora",
+        "Envato Elements",
+        "Motion Array",
+        "Storyblocks",
+        "Freepik Premium",
+        "Shutterstock subscriptions",
+        "Adobe Stock",
+        "Epidemic Sound",
+        "Artlist",
+        "VSCO",
+        "Picsart",
+        "Placeit",
+        "Creative Market memberships",
+        "Other"
+      ],
+      "Cloud & Storage": [
+        "Google One",
+        "iCloud+",
+        "Microsoft OneDrive",
+        "Dropbox",
+        "Box",
+        "MEGA",
+        "pCloud",
+        "Proton Drive",
+        "Sync.com",
+        "IDrive",
+        "Backblaze",
+        "Other"
+      ],
+      "Education": [
+        "Coursera Plus",
+        "Udemy subscriptions",
+        "Skillshare",
+        "MasterClass",
+        "LinkedIn Learning",
+        "Pluralsight",
+        "Codecademy",
+        "DataCamp",
+        "Brilliant",
+        "Duolingo Super",
+        "Duolingo Max",
+        "Babbel",
+        "Busuu",
+        "Rosetta Stone",
+        "Quizlet Plus",
+        "Chegg",
+        "Study.com",
+        "Khan-related paid offerings if applicable",
+        "Other"
+      ],
+      "News & Reading": [
+        "Kindle Unlimited",
+        "Audible",
+        "Everand",
+        "Kobo Plus",
+        "Blinkist",
+        "Medium",
+        "The New York Times",
+        "Wall Street Journal",
+        "Financial Times",
+        "Bloomberg",
+        "The Economist",
+        "Washington Post",
+        "Le Monde",
+        "Le Figaro",
+        "The Athletic",
+        "Readly",
+        "PressReader",
+        "Other"
+      ],
+      "Social & Creator": [
+        "X Premium",
+        "Snapchat+",
+        "Telegram Premium",
+        "Discord Nitro",
+        "LinkedIn Premium",
+        "Twitch subscriptions",
+        "Twitch Turbo",
+        "Patreon memberships",
+        "YouTube Premium",
+        "YouTube channel memberships",
+        "vidIQ",
+        "TubeBuddy",
+        "StreamYard",
+        "Restream",
+        "Later",
+        "Buffer",
+        "Hootsuite",
+        "Other"
+      ],
+      "Business & Marketing": [
+        "Shopify",
+        "Wix",
+        "Squarespace",
+        "Webflow",
+        "Framer",
+        "WordPress paid services",
+        "HubSpot",
+        "Salesforce",
+        "Zendesk",
+        "Intercom",
+        "Mailchimp",
+        "Brevo",
+        "Semrush",
+        "Ahrefs",
+        "Moz",
+        "Ubersuggest",
+        "Similarweb",
+        "QuickBooks",
+        "Xero",
+        "FreshBooks",
+        "Other"
+      ],
+      "Hosting & Developer": [
+        "GitHub",
+        "GitLab",
+        "JetBrains",
+        "Replit",
+        "Vercel",
+        "Render",
+        "Netlify",
+        "DigitalOcean",
+        "AWS",
+        "Microsoft Azure",
+        "Google Cloud",
+        "Cloudflare",
+        "Hostinger",
+        "GoDaddy",
+        "Namecheap",
+        "Heroku",
+        "Railway",
+        "Supabase",
+        "Firebase paid plans",
+        "Other"
+      ],
+      "VPN & Security": [
+        "NordVPN",
+        "ExpressVPN",
+        "Surfshark",
+        "Proton VPN",
+        "CyberGhost",
+        "Private Internet Access",
+        "Mullvad",
+        "Norton",
+        "McAfee",
+        "Bitdefender",
+        "Malwarebytes",
+        "Kaspersky where legally available",
+        "1Password",
+        "Dashlane",
+        "Proton Pass",
+        "Other"
+      ],
+      "Regional TV & Entertainment": [
+        "Canal+",
+        "beIN",
+        "Shahid",
+        "OSN+",
+        "TOD",
+        "Crave",
+        "Molotov",
+        "NOW",
+        "Sky",
+        "Viaplay",
+        "Stan",
+        "Binge",
+        "Kayo",
+        "Hotstar",
+        "JioHotstar",
+        "Zee5",
+        "SonyLIV",
+        "Viki Pass",
+        "iQIYI",
+        "WeTV",
+        "Other"
+      ],
+      "General Subscriptions": [
+        "Amazon Prime",
+        "Other"
+      ],
+      "Other": [
+        "Other"
+      ]
+    }
+  },
+  "translations": {
+    "Vehicles": {
+      "en": "Vehicles",
+      "fr": "Véhicules",
+      "ar": "المركبات"
+    },
+    "Cars": {
+      "en": "Cars",
+      "fr": "Voitures",
+      "ar": "السيارات"
+    },
+    "Economy Cars": {
+      "en": "Economy Cars",
+      "fr": "Voitures économiques",
+      "ar": "سيارات اقتصادية"
+    },
+    "Compact Cars": {
+      "en": "Compact Cars",
+      "fr": "Voitures compactes",
+      "ar": "سيارات مدمجة"
+    },
+    "Sedans": {
+      "en": "Sedans",
+      "fr": "Berlines",
+      "ar": "سيارات سيدان"
+    },
+    "SUVs": {
+      "en": "SUVs",
+      "fr": "VUS",
+      "ar": "سيارات دفع رباعي"
+    },
+    "Coupes": {
+      "en": "Coupes",
+      "fr": "Coupés",
+      "ar": "سيارات كوبيه"
+    },
+    "Convertibles": {
+      "en": "Convertibles",
+      "fr": "Cabriolets",
+      "ar": "سيارات مكشوفة"
+    },
+    "Luxury Cars": {
+      "en": "Luxury Cars",
+      "fr": "Voitures de luxe",
+      "ar": "سيارات فاخرة"
+    },
+    "Sports Cars": {
+      "en": "Sports Cars",
+      "fr": "Voitures sportives",
+      "ar": "سيارات رياضية"
+    },
+    "Classic Cars": {
+      "en": "Classic Cars",
+      "fr": "Voitures classiques",
+      "ar": "سيارات كلاسيكية"
+    },
+    "Limousines / Stretch Cars": {
+      "en": "Limousines / Stretch Cars",
+      "fr": "Limousines / voitures allongées",
+      "ar": "ليموزين / سيارات طويلة"
+    },
+    "Other": {
+      "en": "Other",
+      "fr": "Autre",
+      "ar": "أخرى"
+    },
+    "Buses": {
+      "en": "Buses",
+      "fr": "Autobus",
+      "ar": "الحافلات"
+    },
+    "School Buses": {
+      "en": "School Buses",
+      "fr": "Autobus scolaires",
+      "ar": "حافلات مدرسية"
+    },
+    "City / Transit Buses": {
+      "en": "City / Transit Buses",
+      "fr": "Autobus urbains / de transport",
+      "ar": "حافلات مدينة / نقل عام"
+    },
+    "Shuttle Buses": {
+      "en": "Shuttle Buses",
+      "fr": "Navettes",
+      "ar": "حافلات نقل مكوكية"
+    },
+    "Minibuses": {
+      "en": "Minibuses",
+      "fr": "Minibus",
+      "ar": "حافلات صغيرة"
+    },
+    "Coach / Tour Buses": {
+      "en": "Coach / Tour Buses",
+      "fr": "Autocars de tourisme",
+      "ar": "حافلات سياحية"
+    },
+    "Party Buses": {
+      "en": "Party Buses",
+      "fr": "Autobus festifs",
+      "ar": "حافلات حفلات"
+    },
+    "Trucks & Vans": {
+      "en": "Trucks & Vans",
+      "fr": "Camions et fourgonnettes",
+      "ar": "الشاحنات والفانات"
+    },
+    "Pickup Trucks": {
+      "en": "Pickup Trucks",
+      "fr": "Camionnettes",
+      "ar": "شاحنات بيك أب"
+    },
+    "Cargo Vans": {
+      "en": "Cargo Vans",
+      "fr": "Fourgonnettes cargo",
+      "ar": "فانات شحن"
+    },
+    "Passenger Vans": {
+      "en": "Passenger Vans",
+      "fr": "Fourgonnettes de passagers",
+      "ar": "فانات ركاب"
+    },
+    "Box Trucks": {
+      "en": "Box Trucks",
+      "fr": "Camions cubes",
+      "ar": "شاحنات صندوقية"
+    },
+    "Refrigerated Trucks": {
+      "en": "Refrigerated Trucks",
+      "fr": "Camions frigorifiques",
+      "ar": "شاحنات مبردة"
+    },
+    "Dump Trucks": {
+      "en": "Dump Trucks",
+      "fr": "Camions-bennes",
+      "ar": "شاحنات قلابة"
+    },
+    "Trailers & RVs": {
+      "en": "Trailers & RVs",
+      "fr": "Remorques et VR",
+      "ar": "المقطورات والمركبات الترفيهية"
+    },
+    "Utility Trailers": {
+      "en": "Utility Trailers",
+      "fr": "Remorques utilitaires",
+      "ar": "مقطورات متعددة الاستخدام"
+    },
+    "Cargo Trailers": {
+      "en": "Cargo Trailers",
+      "fr": "Remorques cargo",
+      "ar": "مقطورات شحن"
+    },
+    "Car Haulers": {
+      "en": "Car Haulers",
+      "fr": "Remorques porte-voitures",
+      "ar": "مقطورات نقل سيارات"
+    },
+    "Travel Trailers": {
+      "en": "Travel Trailers",
+      "fr": "Roulottes",
+      "ar": "مقطورات سفر"
+    },
+    "Campervans": {
+      "en": "Campervans",
+      "fr": "Fourgons aménagés",
+      "ar": "فانات تخييم"
+    },
+    "Motorhomes": {
+      "en": "Motorhomes",
+      "fr": "Autocaravanes",
+      "ar": "بيوت متنقلة"
+    },
+    "Bicycles & Micro-mobility": {
+      "en": "Bicycles & Micro-mobility",
+      "fr": "Vélos et micromobilité",
+      "ar": "الدراجات والتنقل الخفيف"
+    },
+    "Road Bikes": {
+      "en": "Road Bikes",
+      "fr": "Vélos de route",
+      "ar": "دراجات طريق"
+    },
+    "Mountain Bikes": {
+      "en": "Mountain Bikes",
+      "fr": "Vélos de montagne",
+      "ar": "دراجات جبلية"
+    },
+    "E-Bikes": {
+      "en": "E-Bikes",
+      "fr": "Vélos électriques",
+      "ar": "دراجات كهربائية"
+    },
+    "Cargo Bikes": {
+      "en": "Cargo Bikes",
+      "fr": "Vélos-cargos",
+      "ar": "دراجات شحن"
+    },
+    "E-Scooters": {
+      "en": "E-Scooters",
+      "fr": "Trottinettes électriques",
+      "ar": "سكوترات كهربائية"
+    },
+    "Motorcycles & Scooters": {
+      "en": "Motorcycles & Scooters",
+      "fr": "Motos et scooters",
+      "ar": "الدراجات النارية والسكوترات"
+    },
+    "Motorcycles": {
+      "en": "Motorcycles",
+      "fr": "Motocyclettes",
+      "ar": "دراجات نارية"
+    },
+    "Scooters": {
+      "en": "Scooters",
+      "fr": "Scooters",
+      "ar": "سكوترات"
+    },
+    "Mopeds": {
+      "en": "Mopeds",
+      "fr": "Cyclomoteurs",
+      "ar": "دراجات بخارية خفيفة"
+    },
+    "Vehicle Travel Accessories": {
+      "en": "Vehicle Travel Accessories",
+      "fr": "Accessoires de voyage pour véhicule",
+      "ar": "ملحقات سفر المركبات"
+    },
+    "Roof Cargo Boxes": {
+      "en": "Roof Cargo Boxes",
+      "fr": "Coffres de toit",
+      "ar": "صناديق سقف للسيارات"
+    },
+    "Housing & Stays": {
+      "en": "Housing & Stays",
+      "fr": "Logements et séjours",
+      "ar": "السكن والإقامات"
+    },
+    "Apartments & Homes": {
+      "en": "Apartments & Homes",
+      "fr": "Appartements et maisons",
+      "ar": "شقق ومنازل"
+    },
+    "Vacation Properties": {
+      "en": "Vacation Properties",
+      "fr": "Propriétés de vacances",
+      "ar": "عقارات للإجازات"
+    },
+    "Rooms & Shared Stays": {
+      "en": "Rooms & Shared Stays",
+      "fr": "Chambres et séjours partagés",
+      "ar": "غرف وإقامات مشتركة"
+    },
+    "Parking & Storage": {
+      "en": "Parking & Storage",
+      "fr": "Stationnement et entreposage",
+      "ar": "مواقف وتخزين"
+    },
+    "Electronics": {
+      "en": "Electronics",
+      "fr": "Électronique",
+      "ar": "الإلكترونيات"
+    },
+    "Computers & Tablets": {
+      "en": "Computers & Tablets",
+      "fr": "Ordinateurs et tablettes",
+      "ar": "الحواسيب والأجهزة اللوحية"
+    },
+    "Laptops": {
+      "en": "Laptops",
+      "fr": "Ordinateurs portables",
+      "ar": "حواسيب محمولة"
+    },
+    "Desktop Computers": {
+      "en": "Desktop Computers",
+      "fr": "Ordinateurs de bureau",
+      "ar": "حواسيب مكتبية"
+    },
+    "Tablets": {
+      "en": "Tablets",
+      "fr": "Tablettes",
+      "ar": "أجهزة لوحية"
+    },
+    "Monitors": {
+      "en": "Monitors",
+      "fr": "Moniteurs",
+      "ar": "شاشات"
+    },
+    "Cameras & Video": {
+      "en": "Cameras & Video",
+      "fr": "Caméras et vidéo",
+      "ar": "الكاميرات والفيديو"
+    },
+    "DSLR / Mirrorless Cameras": {
+      "en": "DSLR / Mirrorless Cameras",
+      "fr": "Appareils reflex / hybrides",
+      "ar": "كاميرات DSLR / بدون مرآة"
+    },
+    "Cinema Cameras": {
+      "en": "Cinema Cameras",
+      "fr": "Caméras de cinéma",
+      "ar": "كاميرات سينمائية"
+    },
+    "Lenses": {
+      "en": "Lenses",
+      "fr": "Objectifs",
+      "ar": "عدسات"
+    },
+    "Tripods & Stabilizers": {
+      "en": "Tripods & Stabilizers",
+      "fr": "Trépieds et stabilisateurs",
+      "ar": "حوامل ثلاثية ومثبتات"
+    },
+    "Broadcast Cameras": {
+      "en": "Broadcast Cameras",
+      "fr": "Caméras de diffusion",
+      "ar": "كاميرات بث"
+    },
+    "Cinema Prime Lenses": {
+      "en": "Cinema Prime Lenses",
+      "fr": "Objectifs cinéma à focale fixe",
+      "ar": "عدسات سينمائية ثابتة"
+    },
+    "Cinema Zoom Lenses": {
+      "en": "Cinema Zoom Lenses",
+      "fr": "Objectifs cinéma zoom",
+      "ar": "عدسات سينمائية متغيرة"
+    },
+    "Anamorphic Lenses": {
+      "en": "Anamorphic Lenses",
+      "fr": "Objectifs anamorphiques",
+      "ar": "عدسات أنامورفية"
+    },
+    "Director Viewfinders": {
+      "en": "Director Viewfinders",
+      "fr": "Viseurs de réalisateur",
+      "ar": "مناظير مخرج"
+    },
+    "Networking & Communications": {
+      "en": "Networking & Communications",
+      "fr": "Réseaux et communications",
+      "ar": "الشبكات والاتصالات"
+    },
+    "Wi-Fi Kits": {
+      "en": "Wi-Fi Kits",
+      "fr": "Kits Wi-Fi",
+      "ar": "أطقم واي فاي"
+    },
+    "Routers & Switches": {
+      "en": "Routers & Switches",
+      "fr": "Routeurs et commutateurs",
+      "ar": "أجهزة توجيه ومحولات"
+    },
+    "Walkie-Talkies": {
+      "en": "Walkie-Talkies",
+      "fr": "Talkies-walkies",
+      "ar": "أجهزة اتصال لاسلكي"
+    },
+    "Satellite Phones": {
+      "en": "Satellite Phones",
+      "fr": "Téléphones satellites",
+      "ar": "هواتف فضائية"
+    },
+    "Office Tech": {
+      "en": "Office Tech",
+      "fr": "Technologie de bureau",
+      "ar": "تقنية المكاتب"
+    },
+    "Projectors": {
+      "en": "Projectors",
+      "fr": "Projecteurs",
+      "ar": "أجهزة عرض"
+    },
+    "Projection Screens": {
+      "en": "Projection Screens",
+      "fr": "Écrans de projection",
+      "ar": "شاشات عرض"
+    },
+    "Printers & Scanners": {
+      "en": "Printers & Scanners",
+      "fr": "Imprimantes et numériseurs",
+      "ar": "طابعات وماسحات ضوئية"
+    },
+    "Gaming & VR": {
+      "en": "Gaming & VR",
+      "fr": "Jeux vidéo et RV",
+      "ar": "الألعاب والواقع الافتراضي"
+    },
+    "Game Consoles": {
+      "en": "Game Consoles",
+      "fr": "Consoles de jeux",
+      "ar": "أجهزة ألعاب"
+    },
+    "VR Headsets": {
+      "en": "VR Headsets",
+      "fr": "Casques de RV",
+      "ar": "نظارات واقع افتراضي"
+    },
+    "Racing Simulators": {
+      "en": "Racing Simulators",
+      "fr": "Simulateurs de course",
+      "ar": "محاكيات سباق"
+    },
+    "Furniture": {
+      "en": "Furniture",
+      "fr": "Mobilier",
+      "ar": "الأثاث"
+    },
+    "Home Furniture": {
+      "en": "Home Furniture",
+      "fr": "Mobilier résidentiel",
+      "ar": "أثاث منزلي"
+    },
+    "Office Furniture": {
+      "en": "Office Furniture",
+      "fr": "Mobilier de bureau",
+      "ar": "أثاث مكتبي"
+    },
+    "Event Furniture": {
+      "en": "Event Furniture",
+      "fr": "Mobilier événementiel",
+      "ar": "أثاث مناسبات"
+    },
+    "Appliances": {
+      "en": "Appliances",
+      "fr": "Électroménagers",
+      "ar": "أجهزة منزلية"
+    },
+    "Rugs & Decor": {
+      "en": "Rugs & Decor",
+      "fr": "Tapis et décoration",
+      "ar": "سجاد وديكور"
+    },
+    "Artwork Rentals": {
+      "en": "Artwork Rentals",
+      "fr": "Location d'œuvres d'art",
+      "ar": "تأجير أعمال فنية"
+    },
+    "Tropical Plant Rentals": {
+      "en": "Tropical Plant Rentals",
+      "fr": "Location de plantes tropicales",
+      "ar": "تأجير نباتات استوائية"
+    },
+    "Clothing & Costumes": {
+      "en": "Clothing & Costumes",
+      "fr": "Vêtements et costumes",
+      "ar": "الملابس والأزياء التنكرية"
+    },
+    "Formal & Bridal": {
+      "en": "Formal & Bridal",
+      "fr": "Tenues de cérémonie et mariage",
+      "ar": "ملابس رسمية وزفاف"
+    },
+    "Wedding Dresses": {
+      "en": "Wedding Dresses",
+      "fr": "Robes de mariée",
+      "ar": "فساتين زفاف"
+    },
+    "Suits & Tuxedos": {
+      "en": "Suits & Tuxedos",
+      "fr": "Costumes et smokings",
+      "ar": "بدلات وتوكسيدو"
+    },
+    "Evening Wear": {
+      "en": "Evening Wear",
+      "fr": "Tenues de soirée",
+      "ar": "ملابس سهرة"
+    },
+    "Costumes & Theatrical": {
+      "en": "Costumes & Theatrical",
+      "fr": "Costumes et théâtre",
+      "ar": "أزياء تنكرية ومسرحية"
+    },
+    "Character Costumes": {
+      "en": "Character Costumes",
+      "fr": "Costumes de personnages",
+      "ar": "أزياء شخصيات"
+    },
+    "Period Costumes": {
+      "en": "Period Costumes",
+      "fr": "Costumes d'époque",
+      "ar": "أزياء تاريخية"
+    },
+    "Stage Costumes": {
+      "en": "Stage Costumes",
+      "fr": "Costumes de scène",
+      "ar": "أزياء مسرحية"
+    },
+    "Outdoor & Specialty": {
+      "en": "Outdoor & Specialty",
+      "fr": "Plein air et spécialisé",
+      "ar": "ملابس خارجية ومتخصصة"
+    },
+    "Accessories": {
+      "en": "Accessories",
+      "fr": "Accessoires",
+      "ar": "إكسسوارات"
+    },
+    "Tools & Equipment": {
+      "en": "Tools & Equipment",
+      "fr": "Outils et équipement",
+      "ar": "الأدوات والمعدات"
+    },
+    "Power Tools": {
+      "en": "Power Tools",
+      "fr": "Outils électriques",
+      "ar": "أدوات كهربائية"
+    },
+    "Drills & Drivers": {
+      "en": "Drills & Drivers",
+      "fr": "Perceuses et visseuses",
+      "ar": "مثاقب ومفكات كهربائية"
+    },
+    "Saws": {
+      "en": "Saws",
+      "fr": "Scies",
+      "ar": "مناشير"
+    },
+    "Sanders": {
+      "en": "Sanders",
+      "fr": "Ponceuses",
+      "ar": "صنفرة كهربائية"
+    },
+    "Grinders": {
+      "en": "Grinders",
+      "fr": "Meuleuses",
+      "ar": "جلاخات"
+    },
+    "Angle Grinders": {
+      "en": "Angle Grinders",
+      "fr": "Meuleuses d'angle",
+      "ar": "جلاخات زاوية"
+    },
+    "Belt Sanders": {
+      "en": "Belt Sanders",
+      "fr": "Ponceuses à bande",
+      "ar": "صنفرة شريطية"
+    },
+    "Orbital Sanders": {
+      "en": "Orbital Sanders",
+      "fr": "Ponceuses orbitales",
+      "ar": "صنفرة مدارية"
+    },
+    "Circular Saws": {
+      "en": "Circular Saws",
+      "fr": "Scies circulaires",
+      "ar": "مناشير دائرية"
+    },
+    "Miter Saws": {
+      "en": "Miter Saws",
+      "fr": "Scies à onglet",
+      "ar": "مناشير زاوية"
+    },
+    "Band Saws": {
+      "en": "Band Saws",
+      "fr": "Scies à ruban",
+      "ar": "مناشير شريطية"
+    },
+    "Reciprocating Saws": {
+      "en": "Reciprocating Saws",
+      "fr": "Scies alternatives",
+      "ar": "مناشير ترددية"
+    },
+    "Table Saws": {
+      "en": "Table Saws",
+      "fr": "Scies sur table",
+      "ar": "مناشير طاولة"
+    },
+    "Electric Planers": {
+      "en": "Electric Planers",
+      "fr": "Raboteuses électriques",
+      "ar": "فارات كهربائية"
+    },
+    "Routers": {
+      "en": "Routers",
+      "fr": "Défonceuses",
+      "ar": "فارات راوتر"
+    },
+    "Magnetic Drills": {
+      "en": "Magnetic Drills",
+      "fr": "Perceuses magnétiques",
+      "ar": "مثاقب مغناطيسية"
+    },
+    "Heat Guns": {
+      "en": "Heat Guns",
+      "fr": "Pistolets thermiques",
+      "ar": "مسدسات حرارية"
+    },
+    "Metal Shears & Nibblers": {
+      "en": "Metal Shears & Nibblers",
+      "fr": "Cisailles et grignoteuses pour métal",
+      "ar": "مقصات وقواطع معدنية"
+    },
+    "Hand Tools": {
+      "en": "Hand Tools",
+      "fr": "Outils manuels",
+      "ar": "أدوات يدوية"
+    },
+    "Plumbing & Pipe Tools": {
+      "en": "Plumbing & Pipe Tools",
+      "fr": "Outils de plomberie et tuyauterie",
+      "ar": "أدوات سباكة وأنابيب"
+    },
+    "Pipe Benders": {
+      "en": "Pipe Benders",
+      "fr": "Cintreuses de tuyaux",
+      "ar": "ثنيات أنابيب"
+    },
+    "Pipe Cutters": {
+      "en": "Pipe Cutters",
+      "fr": "Coupe-tuyaux",
+      "ar": "قواطع أنابيب"
+    },
+    "Pipe Threading Machines": {
+      "en": "Pipe Threading Machines",
+      "fr": "Machines à fileter les tuyaux",
+      "ar": "ماكينات قلاوظ أنابيب"
+    },
+    "Pipe Crimping Tools": {
+      "en": "Pipe Crimping Tools",
+      "fr": "Outils de sertissage de tuyaux",
+      "ar": "أدوات كبس أنابيب"
+    },
+    "Flange Spreaders": {
+      "en": "Flange Spreaders",
+      "fr": "Écarteurs de brides",
+      "ar": "موسعات فلنجات"
+    },
+    "Sewer Inspection Cameras": {
+      "en": "Sewer Inspection Cameras",
+      "fr": "Caméras d'inspection d'égout",
+      "ar": "كاميرات فحص مجاري"
+    },
+    "Pipe Freezing Machines": {
+      "en": "Pipe Freezing Machines",
+      "fr": "Machines de congélation de tuyaux",
+      "ar": "ماكينات تجميد أنابيب"
+    },
+    "Pipe Plugs": {
+      "en": "Pipe Plugs",
+      "fr": "Bouchons de tuyaux",
+      "ar": "سدادات أنابيب"
+    },
+    "Electrical & Testing Tools": {
+      "en": "Electrical & Testing Tools",
+      "fr": "Outils électriques et de test",
+      "ar": "أدوات كهرباء واختبار"
+    },
+    "Cleaning & Restoration Equipment": {
+      "en": "Cleaning & Restoration Equipment",
+      "fr": "Équipement de nettoyage et restauration",
+      "ar": "معدات تنظيف وترميم"
+    },
+    "Carpet Cleaners": {
+      "en": "Carpet Cleaners",
+      "fr": "Nettoyeurs de tapis",
+      "ar": "منظفات سجاد"
+    },
+    "Pressure Washers": {
+      "en": "Pressure Washers",
+      "fr": "Laveuses à pression",
+      "ar": "غسالات ضغط"
+    },
+    "Floor Scrubbers": {
+      "en": "Floor Scrubbers",
+      "fr": "Autolaveuses",
+      "ar": "ماكينات تنظيف أرضيات"
+    },
+    "Steam Cleaners": {
+      "en": "Steam Cleaners",
+      "fr": "Nettoyeurs vapeur",
+      "ar": "منظفات بخارية"
+    },
+    "Carpet Extractors": {
+      "en": "Carpet Extractors",
+      "fr": "Extracteurs pour tapis",
+      "ar": "ماكينات استخراج وتنظيف السجاد"
+    },
+    "Floor Polishers": {
+      "en": "Floor Polishers",
+      "fr": "Polisseuses de sol",
+      "ar": "ماكينات تلميع أرضيات"
+    },
+    "Walk-Behind Scrubbers": {
+      "en": "Walk-Behind Scrubbers",
+      "fr": "Autolaveuses accompagnées",
+      "ar": "ماكينات تنظيف أرضيات خلفية"
+    },
+    "Ride-On Scrubbers": {
+      "en": "Ride-On Scrubbers",
+      "fr": "Autolaveuses autoportées",
+      "ar": "ماكينات تنظيف أرضيات راكبة"
+    },
+    "Handheld Sweepers": {
+      "en": "Handheld Sweepers",
+      "fr": "Balayeuses portatives",
+      "ar": "مكانس يدوية"
+    },
+    "Walk-Behind Sweepers": {
+      "en": "Walk-Behind Sweepers",
+      "fr": "Balayeuses accompagnées",
+      "ar": "مكانس خلفية"
+    },
+    "Ride-On Sweepers": {
+      "en": "Ride-On Sweepers",
+      "fr": "Balayeuses autoportées",
+      "ar": "مكانس راكبة"
+    },
+    "Wet & Dry Vacuums": {
+      "en": "Wet & Dry Vacuums",
+      "fr": "Aspirateurs eau et poussière",
+      "ar": "مكانس رطبة وجافة"
+    },
+    "Hot-Water Pressure Washers": {
+      "en": "Hot-Water Pressure Washers",
+      "fr": "Laveuses à pression à eau chaude",
+      "ar": "غسالات ضغط بماء ساخن"
+    },
+    "Cold-Water Pressure Washers": {
+      "en": "Cold-Water Pressure Washers",
+      "fr": "Laveuses à pression à eau froide",
+      "ar": "غسالات ضغط بماء بارد"
+    },
+    "Surveying & Inspection": {
+      "en": "Surveying & Inspection",
+      "fr": "Arpentage et inspection",
+      "ar": "مسح وفحص"
+    },
+    "Laser Levels": {
+      "en": "Laser Levels",
+      "fr": "Niveaux laser",
+      "ar": "مستويات ليزر"
+    },
+    "Total Stations": {
+      "en": "Total Stations",
+      "fr": "Stations totales",
+      "ar": "محطات مسح متكاملة"
+    },
+    "Thermal Cameras": {
+      "en": "Thermal Cameras",
+      "fr": "Caméras thermiques",
+      "ar": "كاميرات حرارية"
+    },
+    "Inspection Cameras": {
+      "en": "Inspection Cameras",
+      "fr": "Caméras d'inspection",
+      "ar": "كاميرات فحص"
+    },
+    "3D Laser Scanners": {
+      "en": "3D Laser Scanners",
+      "fr": "Scanners laser 3D",
+      "ar": "ماسحات ليزر ثلاثية الأبعاد"
+    },
+    "Robotic Total Stations": {
+      "en": "Robotic Total Stations",
+      "fr": "Stations totales robotisées",
+      "ar": "محطات مسح روبوتية"
+    },
+    "GNSS Survey Receivers": {
+      "en": "GNSS Survey Receivers",
+      "fr": "Récepteurs GNSS d'arpentage",
+      "ar": "مستقبلات GNSS للمسح"
+    },
+    "Digital Levels": {
+      "en": "Digital Levels",
+      "fr": "Niveaux numériques",
+      "ar": "مستويات رقمية"
+    },
+    "Automatic Optical Levels": {
+      "en": "Automatic Optical Levels",
+      "fr": "Niveaux optiques automatiques",
+      "ar": "مستويات بصرية تلقائية"
+    },
+    "Pipe Lasers": {
+      "en": "Pipe Lasers",
+      "fr": "Lasers pour canalisations",
+      "ar": "ليزر أنابيب"
+    },
+    "Underground Utility Detectors": {
+      "en": "Underground Utility Detectors",
+      "fr": "Détecteurs de réseaux souterrains",
+      "ar": "كاشفات مرافق تحت الأرض"
+    },
+    "Automotive Workshop Tools": {
+      "en": "Automotive Workshop Tools",
+      "fr": "Outils d'atelier automobile",
+      "ar": "أدوات ورش السيارات"
+    },
+    "Battery Boosters": {
+      "en": "Battery Boosters",
+      "fr": "Booster de batterie",
+      "ar": "معززات بطارية"
+    },
+    "Battery Testers": {
+      "en": "Battery Testers",
+      "fr": "Testeurs de batterie",
+      "ar": "أجهزة فحص البطاريات"
+    },
+    "Battery Chargers": {
+      "en": "Battery Chargers",
+      "fr": "Chargeurs de batterie",
+      "ar": "شواحن بطاريات"
+    },
+    "Cooling-System Pressure Testers": {
+      "en": "Cooling-System Pressure Testers",
+      "fr": "Testeurs de pression du circuit de refroidissement",
+      "ar": "أجهزة فحص ضغط نظام التبريد"
+    },
+    "Automotive Inspection Borescopes": {
+      "en": "Automotive Inspection Borescopes",
+      "fr": "Endoscopes d'inspection automobile",
+      "ar": "مناظير فحص سيارات"
+    },
+    "Hydraulic Body Repair Kits": {
+      "en": "Hydraulic Body Repair Kits",
+      "fr": "Kits de réparation de carrosserie hydrauliques",
+      "ar": "أطقم إصلاح هيكل هيدروليكية"
+    },
+    "Vibratory Tumblers": {
+      "en": "Vibratory Tumblers",
+      "fr": "Tonneaux vibrants",
+      "ar": "أجهزة صقل اهتزازية"
+    },
+    "Ultrasonic Cleaners": {
+      "en": "Ultrasonic Cleaners",
+      "fr": "Nettoyeurs à ultrasons",
+      "ar": "منظفات بالموجات فوق الصوتية"
+    },
+    "Large Socket & Ratchet Sets": {
+      "en": "Large Socket & Ratchet Sets",
+      "fr": "Grandes douilles et jeux de cliquets",
+      "ar": "أطقم لقمة وسقاطة كبيرة"
+    },
+    "Engine Stands": {
+      "en": "Engine Stands",
+      "fr": "Supports moteur",
+      "ar": "حوامل محرك"
+    },
+    "Jack Stands": {
+      "en": "Jack Stands",
+      "fr": "Chandelles",
+      "ar": "حوامل رفع"
+    },
+    "Transmission Jacks": {
+      "en": "Transmission Jacks",
+      "fr": "Crics de transmission",
+      "ar": "رافعات ناقل حركة"
+    },
+    "Impact Wrenches": {
+      "en": "Impact Wrenches",
+      "fr": "Clés à chocs",
+      "ar": "مفاتيح صدم"
+    },
+    "Torque Wrenches": {
+      "en": "Torque Wrenches",
+      "fr": "Clés dynamométriques",
+      "ar": "مفاتيح عزم"
+    },
+    "Tailpipe Expanders": {
+      "en": "Tailpipe Expanders",
+      "fr": "Élargisseurs de tuyau d'échappement",
+      "ar": "موسعات أنبوب عادم"
+    },
+    "Valve Spring Compressors": {
+      "en": "Valve Spring Compressors",
+      "fr": "Compresseurs de ressorts de soupape",
+      "ar": "ضواغط نوابض صمام"
+    },
+    "Floor Installation & Removal": {
+      "en": "Floor Installation & Removal",
+      "fr": "Pose et retrait de revêtements de sol",
+      "ar": "تركيب وإزالة الأرضيات"
+    },
+    "Drum Floor Sanders": {
+      "en": "Drum Floor Sanders",
+      "fr": "Ponceuses à parquet à tambour",
+      "ar": "صنفرة أرضيات أسطوانية"
+    },
+    "Orbital Floor Sanders": {
+      "en": "Orbital Floor Sanders",
+      "fr": "Ponceuses de sol orbitales",
+      "ar": "صنفرة أرضيات مدارية"
+    },
+    "Floor Edge Sanders": {
+      "en": "Floor Edge Sanders",
+      "fr": "Ponceuses de bordure de sol",
+      "ar": "صنفرة حواف أرضيات"
+    },
+    "Carpet Knee Kickers": {
+      "en": "Carpet Knee Kickers",
+      "fr": "Tendeurs de tapis à genou",
+      "ar": "دافعات سجاد بالركبة"
+    },
+    "Floor Stripping Machines": {
+      "en": "Floor Stripping Machines",
+      "fr": "Machines de décapage de sol",
+      "ar": "ماكينات إزالة طبقات الأرضيات"
+    },
+    "Tile Cutters": {
+      "en": "Tile Cutters",
+      "fr": "Coupe-carreaux",
+      "ar": "قواطع بلاط"
+    },
+    "Vinyl Flooring Cutters": {
+      "en": "Vinyl Flooring Cutters",
+      "fr": "Coupe-revêtements vinyle",
+      "ar": "قواطع أرضيات فينيل"
+    },
+    "Hardwood Floor Nailers": {
+      "en": "Hardwood Floor Nailers",
+      "fr": "Cloueuses pour planchers de bois",
+      "ar": "مسدسات مسامير أرضيات خشبية"
+    },
+    "Concrete Floor Grinders": {
+      "en": "Concrete Floor Grinders",
+      "fr": "Ponceuses de béton",
+      "ar": "جلاخات أرضيات خرسانية"
+    },
+    "Dust Extractors": {
+      "en": "Dust Extractors",
+      "fr": "Extracteurs de poussière",
+      "ar": "شفاطات غبار"
+    },
+    "Baby & Kids": {
+      "en": "Baby & Kids",
+      "fr": "Bébés et enfants",
+      "ar": "الأطفال والرضع"
+    },
+    "Travel & Safety": {
+      "en": "Travel & Safety",
+      "fr": "Voyage et sécurité",
+      "ar": "السفر والسلامة"
+    },
+    "Car Seats": {
+      "en": "Car Seats",
+      "fr": "Sièges d'auto",
+      "ar": "مقاعد سيارات"
+    },
+    "Strollers": {
+      "en": "Strollers",
+      "fr": "Poussettes",
+      "ar": "عربات أطفال"
+    },
+    "Child Wagons": {
+      "en": "Child Wagons",
+      "fr": "Chariots pour enfants",
+      "ar": "عربات نقل للأطفال"
+    },
+    "Nursery & Sleep": {
+      "en": "Nursery & Sleep",
+      "fr": "Chambre et sommeil",
+      "ar": "الحضانة والنوم"
+    },
+    "Cribs": {
+      "en": "Cribs",
+      "fr": "Lits de bébé",
+      "ar": "أسرة أطفال"
+    },
+    "High Chairs": {
+      "en": "High Chairs",
+      "fr": "Chaises hautes",
+      "ar": "كراسي طعام أطفال"
+    },
+    "Baby Bathing Equipment": {
+      "en": "Baby Bathing Equipment",
+      "fr": "Équipement de bain pour bébé",
+      "ar": "معدات استحمام أطفال"
+    },
+    "Bouncers": {
+      "en": "Bouncers",
+      "fr": "Transats",
+      "ar": "كراسي هزازة للأطفال"
+    },
+    "Baby Swings": {
+      "en": "Baby Swings",
+      "fr": "Balancelles pour bébé",
+      "ar": "أراجيح أطفال"
+    },
+    "Toys & Play": {
+      "en": "Toys & Play",
+      "fr": "Jouets et jeux",
+      "ar": "الألعاب واللعب"
+    },
+    "Toys, Books & Games Kits": {
+      "en": "Toys, Books & Games Kits",
+      "fr": "Kits de jouets, livres et jeux",
+      "ar": "أطقم ألعاب وكتب وأنشطة"
+    },
+    "Party & Event Gear": {
+      "en": "Party & Event Gear",
+      "fr": "Équipement de fête",
+      "ar": "معدات حفلات"
+    },
+    "Sports & Outdoors": {
+      "en": "Sports & Outdoors",
+      "fr": "Sports et plein air",
+      "ar": "الرياضة والأنشطة الخارجية"
+    },
+    "Camping & Outdoors": {
+      "en": "Camping & Outdoors",
+      "fr": "Camping et plein air",
+      "ar": "التخييم والأنشطة الخارجية"
+    },
+    "Tents": {
+      "en": "Tents",
+      "fr": "Tentes",
+      "ar": "خيام"
+    },
+    "Sleeping Bags": {
+      "en": "Sleeping Bags",
+      "fr": "Sacs de couchage",
+      "ar": "أكياس نوم"
+    },
+    "Coolers": {
+      "en": "Coolers",
+      "fr": "Glacières",
+      "ar": "مبردات"
+    },
+    "Camping Stoves": {
+      "en": "Camping Stoves",
+      "fr": "Réchauds de camping",
+      "ar": "مواقد تخييم"
+    },
+    "Camping Equipment Kits": {
+      "en": "Camping Equipment Kits",
+      "fr": "Kits d'équipement de camping",
+      "ar": "أطقم معدات تخييم"
+    },
+    "Sleeping Equipment Kits": {
+      "en": "Sleeping Equipment Kits",
+      "fr": "Kits de couchage",
+      "ar": "أطقم نوم للتخييم"
+    },
+    "Packrafts": {
+      "en": "Packrafts",
+      "fr": "Rafts gonflables légers",
+      "ar": "قوارب باكرافت"
+    },
+    "Winter Sports": {
+      "en": "Winter Sports",
+      "fr": "Sports d'hiver",
+      "ar": "رياضات شتوية"
+    },
+    "Skis": {
+      "en": "Skis",
+      "fr": "Skis",
+      "ar": "زلاجات"
+    },
+    "Snowboards": {
+      "en": "Snowboards",
+      "fr": "Planches à neige",
+      "ar": "ألواح تزلج على الثلج"
+    },
+    "Snowshoes": {
+      "en": "Snowshoes",
+      "fr": "Raquettes à neige",
+      "ar": "أحذية ثلج"
+    },
+    "Water Sports": {
+      "en": "Water Sports",
+      "fr": "Sports nautiques",
+      "ar": "رياضات مائية"
+    },
+    "Kayaks": {
+      "en": "Kayaks",
+      "fr": "Kayaks",
+      "ar": "كاياك"
+    },
+    "Canoes": {
+      "en": "Canoes",
+      "fr": "Canoës",
+      "ar": "زوارق كانو"
+    },
+    "Paddleboards": {
+      "en": "Paddleboards",
+      "fr": "Planches à pagaie",
+      "ar": "ألواح تجديف"
+    },
+    "Fitness Equipment": {
+      "en": "Fitness Equipment",
+      "fr": "Équipement de fitness",
+      "ar": "معدات لياقة"
+    },
+    "Treadmills": {
+      "en": "Treadmills",
+      "fr": "Tapis de course",
+      "ar": "أجهزة مشي"
+    },
+    "Exercise Bikes": {
+      "en": "Exercise Bikes",
+      "fr": "Vélos d'exercice",
+      "ar": "دراجات رياضية"
+    },
+    "Weights": {
+      "en": "Weights",
+      "fr": "Poids et haltères",
+      "ar": "أوزان ودمبل"
+    },
+    "Team Sports": {
+      "en": "Team Sports",
+      "fr": "Sports d'équipe",
+      "ar": "رياضات جماعية"
+    },
+    "Fishing Equipment": {
+      "en": "Fishing Equipment",
+      "fr": "Équipement de pêche",
+      "ar": "معدات صيد"
+    },
+    "Books & Learning": {
+      "en": "Books & Learning",
+      "fr": "Livres et apprentissage",
+      "ar": "الكتب والتعلم"
+    },
+    "Books": {
+      "en": "Books",
+      "fr": "Livres",
+      "ar": "كتب"
+    },
+    "Classroom Equipment": {
+      "en": "Classroom Equipment",
+      "fr": "Équipement de classe",
+      "ar": "معدات صفية"
+    },
+    "Lab & Science Kits": {
+      "en": "Lab & Science Kits",
+      "fr": "Kits de laboratoire et sciences",
+      "ar": "أطقم مختبر وعلوم"
+    },
+    "Microscopes": {
+      "en": "Microscopes",
+      "fr": "Microscopes",
+      "ar": "مجاهر"
+    },
+    "Science Kits": {
+      "en": "Science Kits",
+      "fr": "Kits scientifiques",
+      "ar": "أطقم علمية"
+    },
+    "Lab Glassware": {
+      "en": "Lab Glassware",
+      "fr": "Verrerie de laboratoire",
+      "ar": "زجاجيات مختبر"
+    },
+    "Training & Presentation": {
+      "en": "Training & Presentation",
+      "fr": "Formation et présentation",
+      "ar": "تدريب وعروض"
+    },
+    "Events & Production Equipment": {
+      "en": "Events & Production Equipment",
+      "fr": "Équipement événementiel et de production",
+      "ar": "معدات المناسبات والإنتاج"
+    },
+    "Tents & Canopies": {
+      "en": "Tents & Canopies",
+      "fr": "Tentes et auvents",
+      "ar": "الخيام والمظلات"
+    },
+    "Frame Tents": {
+      "en": "Frame Tents",
+      "fr": "Tentes à structure",
+      "ar": "خيام بإطار"
+    },
+    "Pole Tents": {
+      "en": "Pole Tents",
+      "fr": "Tentes à mâts",
+      "ar": "خيام بأعمدة"
+    },
+    "Pop-up Canopies": {
+      "en": "Pop-up Canopies",
+      "fr": "Auvents pliants",
+      "ar": "مظلات قابلة للطي"
+    },
+    "Staging & Flooring": {
+      "en": "Staging & Flooring",
+      "fr": "Scène et planchers",
+      "ar": "منصات وأرضيات"
+    },
+    "Stage Platforms": {
+      "en": "Stage Platforms",
+      "fr": "Plateformes de scène",
+      "ar": "منصات مسرح"
+    },
+    "Risers": {
+      "en": "Risers",
+      "fr": "Estrades",
+      "ar": "منصات مرتفعة"
+    },
+    "Portable Dance Floors": {
+      "en": "Portable Dance Floors",
+      "fr": "Planchers de danse portatifs",
+      "ar": "أرضيات رقص متنقلة"
+    },
+    "Runways": {
+      "en": "Runways",
+      "fr": "Passerelles",
+      "ar": "ممرات عرض"
+    },
+    "Audio Equipment": {
+      "en": "Audio Equipment",
+      "fr": "Équipement audio",
+      "ar": "معدات صوت"
+    },
+    "PA Systems": {
+      "en": "PA Systems",
+      "fr": "Systèmes de sonorisation",
+      "ar": "أنظمة صوت عامة"
+    },
+    "Speakers": {
+      "en": "Speakers",
+      "fr": "Haut-parleurs",
+      "ar": "مكبرات صوت"
+    },
+    "Microphones": {
+      "en": "Microphones",
+      "fr": "Microphones",
+      "ar": "ميكروفونات"
+    },
+    "Mixers": {
+      "en": "Mixers",
+      "fr": "Tables de mixage",
+      "ar": "خلاطات صوت"
+    },
+    "Lavalier Microphones": {
+      "en": "Lavalier Microphones",
+      "fr": "Microphones-cravates",
+      "ar": "ميكروفونات لافالير"
+    },
+    "Shotgun Microphones": {
+      "en": "Shotgun Microphones",
+      "fr": "Microphones canon",
+      "ar": "ميكروفونات شوتغن"
+    },
+    "Boom Poles": {
+      "en": "Boom Poles",
+      "fr": "Perches de prise de son",
+      "ar": "أعمدة بوم صوت"
+    },
+    "Lighting Equipment": {
+      "en": "Lighting Equipment",
+      "fr": "Équipement d'éclairage",
+      "ar": "معدات إضاءة"
+    },
+    "LED Lighting": {
+      "en": "LED Lighting",
+      "fr": "Éclairage DEL",
+      "ar": "إضاءة LED"
+    },
+    "Moving Lights": {
+      "en": "Moving Lights",
+      "fr": "Éclairages mobiles",
+      "ar": "إضاءات متحركة"
+    },
+    "Lighting Controllers": {
+      "en": "Lighting Controllers",
+      "fr": "Contrôleurs d'éclairage",
+      "ar": "وحدات تحكم إضاءة"
+    },
+    "Video & Displays": {
+      "en": "Video & Displays",
+      "fr": "Vidéo et affichage",
+      "ar": "فيديو وشاشات"
+    },
+    "LED Walls": {
+      "en": "LED Walls",
+      "fr": "Murs DEL",
+      "ar": "جدران LED"
+    },
+    "Video Switchers": {
+      "en": "Video Switchers",
+      "fr": "Mélangeurs vidéo",
+      "ar": "مبدلات فيديو"
+    },
+    "Live Streaming Kits": {
+      "en": "Live Streaming Kits",
+      "fr": "Kits de diffusion en direct",
+      "ar": "أطقم بث مباشر"
+    },
+    "Media Servers": {
+      "en": "Media Servers",
+      "fr": "Serveurs média",
+      "ar": "خوادم وسائط"
+    },
+    "Video Production Systems": {
+      "en": "Video Production Systems",
+      "fr": "Systèmes de production vidéo",
+      "ar": "أنظمة إنتاج فيديو"
+    },
+    "Photo Booths & Signage": {
+      "en": "Photo Booths & Signage",
+      "fr": "Photomatons et signalisation",
+      "ar": "أكشاك تصوير ولافتات"
+    },
+    "Photo Booths": {
+      "en": "Photo Booths",
+      "fr": "Photomatons",
+      "ar": "أكشاك تصوير"
+    },
+    "Digital Signage": {
+      "en": "Digital Signage",
+      "fr": "Affichage numérique",
+      "ar": "لافتات رقمية"
+    },
+    "Backdrops": {
+      "en": "Backdrops",
+      "fr": "Toiles de fond",
+      "ar": "خلفيات تصوير"
+    },
+    "Crowd Control & Safety": {
+      "en": "Crowd Control & Safety",
+      "fr": "Gestion des foules et sécurité",
+      "ar": "إدارة الحشود والسلامة"
+    },
+    "Queue Stanchions": {
+      "en": "Queue Stanchions",
+      "fr": "Poteaux de file",
+      "ar": "أعمدة تنظيم الطوابير"
+    },
+    "Temporary Signage": {
+      "en": "Temporary Signage",
+      "fr": "Signalisation temporaire",
+      "ar": "لافتات مؤقتة"
+    },
+    "Emergency Lighting": {
+      "en": "Emergency Lighting",
+      "fr": "Éclairage d’urgence",
+      "ar": "إضاءة طوارئ"
+    },
+    "Tableware & Linen": {
+      "en": "Tableware & Linen",
+      "fr": "Vaisselle et linge",
+      "ar": "أدوات مائدة ومفروشات"
+    },
+    "Dinner Plates": {
+      "en": "Dinner Plates",
+      "fr": "Assiettes de table",
+      "ar": "أطباق طعام"
+    },
+    "Glassware": {
+      "en": "Glassware",
+      "fr": "Verrerie",
+      "ar": "أدوات زجاجية"
+    },
+    "Cutlery Sets": {
+      "en": "Cutlery Sets",
+      "fr": "Services de couverts",
+      "ar": "أطقم أدوات مائدة"
+    },
+    "Canape Serving Dishes": {
+      "en": "Canape Serving Dishes",
+      "fr": "Plats de service pour canapés",
+      "ar": "أطباق تقديم مقبلات"
+    },
+    "Pastry & Serving Cutlery": {
+      "en": "Pastry & Serving Cutlery",
+      "fr": "Couverts à pâtisserie et de service",
+      "ar": "أدوات حلويات وتقديم"
+    },
+    "Table Linen": {
+      "en": "Table Linen",
+      "fr": "Linge de table",
+      "ar": "مفروشات طاولات"
+    },
+    "Service Linen": {
+      "en": "Service Linen",
+      "fr": "Linge de service",
+      "ar": "مفروشات خدمة"
+    },
+    "Chair Sashes": {
+      "en": "Chair Sashes",
+      "fr": "Nœuds de chaise",
+      "ar": "أوشحة كراسي"
+    },
+    "Rigging & Truss": {
+      "en": "Rigging & Truss",
+      "fr": "Accrochage et structures",
+      "ar": "تعليق وهياكل مسرح"
+    },
+    "Rigging Equipment": {
+      "en": "Rigging Equipment",
+      "fr": "Équipement d'accrochage",
+      "ar": "معدات تعليق"
+    },
+    "Pipe-and-Drape Systems": {
+      "en": "Pipe-and-Drape Systems",
+      "fr": "Systèmes de tringles et rideaux",
+      "ar": "أنظمة أنابيب وستائر"
+    },
+    "Interpretation & Tour Audio": {
+      "en": "Interpretation & Tour Audio",
+      "fr": "Interprétation et audio de visite",
+      "ar": "ترجمة فورية وصوت للجولات"
+    },
+    "Soundproof Interpretation Booths": {
+      "en": "Soundproof Interpretation Booths",
+      "fr": "Cabines d'interprétation insonorisées",
+      "ar": "كبائن ترجمة فورية عازلة للصوت"
+    },
+    "Wireless Interpretation Receivers": {
+      "en": "Wireless Interpretation Receivers",
+      "fr": "Récepteurs d'interprétation sans fil",
+      "ar": "مستقبلات ترجمة فورية لاسلكية"
+    },
+    "Interpretation Headsets": {
+      "en": "Interpretation Headsets",
+      "fr": "Casques d'interprétation",
+      "ar": "سماعات ترجمة فورية"
+    },
+    "Portable Tour Audio Systems": {
+      "en": "Portable Tour Audio Systems",
+      "fr": "Systèmes audio portatifs pour visites",
+      "ar": "أنظمة صوت محمولة للجولات"
+    },
+    "Food & Concession Equipment": {
+      "en": "Food & Concession Equipment",
+      "fr": "Équipement de restauration et de concession",
+      "ar": "معدات الطعام وأكشاك البيع"
+    },
+    "Popcorn Equipment": {
+      "en": "Popcorn Equipment",
+      "fr": "Équipement à popcorn",
+      "ar": "معدات الفشار"
+    },
+    "Popcorn Machines": {
+      "en": "Popcorn Machines",
+      "fr": "Machines à popcorn",
+      "ar": "ماكينات فشار"
+    },
+    "Popcorn Warmers": {
+      "en": "Popcorn Warmers",
+      "fr": "Chauffe-popcorn",
+      "ar": "مسخنات فشار"
+    },
+    "Popcorn Carts": {
+      "en": "Popcorn Carts",
+      "fr": "Chariots à popcorn",
+      "ar": "عربات فشار"
+    },
+    "Hot Dog Equipment": {
+      "en": "Hot Dog Equipment",
+      "fr": "Équipement à hot-dogs",
+      "ar": "معدات هوت دوغ"
+    },
+    "Hot Dog Rollers": {
+      "en": "Hot Dog Rollers",
+      "fr": "Rouleurs à hot-dogs",
+      "ar": "دوارات هوت دوغ"
+    },
+    "Hot Dog Steamers": {
+      "en": "Hot Dog Steamers",
+      "fr": "Cuiseurs vapeur à hot-dogs",
+      "ar": "مبخرات هوت دوغ"
+    },
+    "Hot Dog Carts": {
+      "en": "Hot Dog Carts",
+      "fr": "Chariots à hot-dogs",
+      "ar": "عربات هوت دوغ"
+    },
+    "Donut Equipment": {
+      "en": "Donut Equipment",
+      "fr": "Équipement à beignes",
+      "ar": "معدات الدونات"
+    },
+    "Donut Makers": {
+      "en": "Donut Makers",
+      "fr": "Machines à beignes",
+      "ar": "ماكينات دونات"
+    },
+    "Donut Fryers": {
+      "en": "Donut Fryers",
+      "fr": "Friteuses à beignes",
+      "ar": "قلايات دونات"
+    },
+    "Donut Display Equipment": {
+      "en": "Donut Display Equipment",
+      "fr": "Présentoirs à beignes",
+      "ar": "معدات عرض دونات"
+    },
+    "Frozen & Dessert Equipment": {
+      "en": "Frozen & Dessert Equipment",
+      "fr": "Équipement glacé et desserts",
+      "ar": "معدات مجمدة وحلويات"
+    },
+    "Cotton Candy Machines": {
+      "en": "Cotton Candy Machines",
+      "fr": "Machines à barbe à papa",
+      "ar": "ماكينات غزل البنات"
+    },
+    "Slush Machines": {
+      "en": "Slush Machines",
+      "fr": "Machines à granité",
+      "ar": "ماكينات سلاش"
+    },
+    "Soft-Serve Machines": {
+      "en": "Soft-Serve Machines",
+      "fr": "Machines à crème glacée molle",
+      "ar": "ماكينات آيس كريم ناعم"
+    },
+    "Ice Cream Equipment": {
+      "en": "Ice Cream Equipment",
+      "fr": "Équipement de crème glacée",
+      "ar": "معدات آيس كريم"
+    },
+    "Chocolate Fountains": {
+      "en": "Chocolate Fountains",
+      "fr": "Fontaines de chocolat",
+      "ar": "نوافير شوكولاتة"
+    },
+    "Crepe Stations": {
+      "en": "Crepe Stations",
+      "fr": "Stations à crêpes",
+      "ar": "محطات كريب"
+    },
+    "Waffle Makers": {
+      "en": "Waffle Makers",
+      "fr": "Gaufriers",
+      "ar": "ماكينات وافل"
+    },
+    "Shaved Ice Machines": {
+      "en": "Shaved Ice Machines",
+      "fr": "Machines à glace pilée",
+      "ar": "ماكينات ثلج مجروش"
+    },
+    "Nacho Cheese Dispensers": {
+      "en": "Nacho Cheese Dispensers",
+      "fr": "Distributeurs de fromage à nachos",
+      "ar": "موزعات جبن ناتشو"
+    },
+    "Cooking Equipment": {
+      "en": "Cooking Equipment",
+      "fr": "Équipement de cuisson",
+      "ar": "معدات طبخ"
+    },
+    "Commercial Coffee Machines": {
+      "en": "Commercial Coffee Machines",
+      "fr": "Machines à café commerciales",
+      "ar": "ماكينات قهوة تجارية"
+    },
+    "Pizza Ovens": {
+      "en": "Pizza Ovens",
+      "fr": "Fours à pizza",
+      "ar": "أفران بيتزا"
+    },
+    "Commercial Fryers": {
+      "en": "Commercial Fryers",
+      "fr": "Friteuses commerciales",
+      "ar": "قلايات تجارية"
+    },
+    "Grills & Griddles": {
+      "en": "Grills & Griddles",
+      "fr": "Grils et plaques",
+      "ar": "شوايات وصاج"
+    },
+    "Serving & Beverage Equipment": {
+      "en": "Serving & Beverage Equipment",
+      "fr": "Service et boissons",
+      "ar": "معدات تقديم ومشروبات"
+    },
+    "Beverage Dispensers": {
+      "en": "Beverage Dispensers",
+      "fr": "Distributeurs de boissons",
+      "ar": "موزعات مشروبات"
+    },
+    "Mobile Bars": {
+      "en": "Mobile Bars",
+      "fr": "Bars mobiles",
+      "ar": "بارات متنقلة"
+    },
+    "Serving Counters": {
+      "en": "Serving Counters",
+      "fr": "Comptoirs de service",
+      "ar": "كاونترات تقديم"
+    },
+    "Beverage Coolers": {
+      "en": "Beverage Coolers",
+      "fr": "Refroidisseurs de boissons",
+      "ar": "مبردات مشروبات"
+    },
+    "Rectangular Chafing Dishes": {
+      "en": "Rectangular Chafing Dishes",
+      "fr": "Chafing dishes rectangulaires",
+      "ar": "أطباق تسخين مستطيلة"
+    },
+    "Round Roll-Top Chafing Dishes": {
+      "en": "Round Roll-Top Chafing Dishes",
+      "fr": "Chafing dishes ronds à couvercle roulant",
+      "ar": "أطباق تسخين دائرية بغطاء متحرك"
+    },
+    "Insulated Beverage Dispensers": {
+      "en": "Insulated Beverage Dispensers",
+      "fr": "Distributeurs de boissons isothermes",
+      "ar": "موزعات مشروبات معزولة"
+    },
+    "Hot Chocolate Urns": {
+      "en": "Hot Chocolate Urns",
+      "fr": "Urnes à chocolat chaud",
+      "ar": "أوعية شوكولاتة ساخنة"
+    },
+    "Beverage Cooling Troughs": {
+      "en": "Beverage Cooling Troughs",
+      "fr": "Bacs de refroidissement pour boissons",
+      "ar": "أحواض تبريد مشروبات"
+    },
+    "Mobile Food Units": {
+      "en": "Mobile Food Units",
+      "fr": "Unités alimentaires mobiles",
+      "ar": "وحدات طعام متنقلة"
+    },
+    "Mobile Kitchens": {
+      "en": "Mobile Kitchens",
+      "fr": "Cuisines mobiles",
+      "ar": "مطابخ متنقلة"
+    },
+    "Food Trailers": {
+      "en": "Food Trailers",
+      "fr": "Remorques alimentaires",
+      "ar": "مقطورات طعام"
+    },
+    "Food Carts": {
+      "en": "Food Carts",
+      "fr": "Chariots alimentaires",
+      "ar": "عربات طعام"
+    },
+    "Sanitation & Dishwashing": {
+      "en": "Sanitation & Dishwashing",
+      "fr": "Hygiène et lavage de vaisselle",
+      "ar": "نظافة وغسل أطباق"
+    },
+    "Dishwashing Equipment": {
+      "en": "Dishwashing Equipment",
+      "fr": "Équipement de lavage",
+      "ar": "معدات غسل أطباق"
+    },
+    "Commercial Sanitizers": {
+      "en": "Commercial Sanitizers",
+      "fr": "Désinfecteurs commerciaux",
+      "ar": "معدات تعقيم تجارية"
+    },
+    "Commercial Kitchen Equipment": {
+      "en": "Commercial Kitchen Equipment",
+      "fr": "Équipement de cuisine commerciale",
+      "ar": "معدات مطبخ تجاري"
+    },
+    "Catering Ovens": {
+      "en": "Catering Ovens",
+      "fr": "Fours de traiteur",
+      "ar": "أفران تموين"
+    },
+    "Hot Cupboards": {
+      "en": "Hot Cupboards",
+      "fr": "Armoires chauffantes",
+      "ar": "خزائن تسخين"
+    },
+    "Commercial Refrigerators": {
+      "en": "Commercial Refrigerators",
+      "fr": "Réfrigérateurs commerciaux",
+      "ar": "ثلاجات تجارية"
+    },
+    "Commercial Freezers": {
+      "en": "Commercial Freezers",
+      "fr": "Congélateurs commerciaux",
+      "ar": "مجمدات تجارية"
+    },
+    "Preparation Tables": {
+      "en": "Preparation Tables",
+      "fr": "Tables de préparation",
+      "ar": "طاولات تحضير"
+    },
+    "Construction & Industrial Equipment": {
+      "en": "Construction & Industrial Equipment",
+      "fr": "Équipement de construction et industriel",
+      "ar": "معدات البناء والصناعة"
+    },
+    "Earthmoving": {
+      "en": "Earthmoving",
+      "fr": "Terrassement",
+      "ar": "معدات حفر وتسوية"
+    },
+    "Excavators": {
+      "en": "Excavators",
+      "fr": "Excavatrices",
+      "ar": "حفارات"
+    },
+    "Skid Steers": {
+      "en": "Skid Steers",
+      "fr": "Chargeuses compactes",
+      "ar": "لودرات انزلاقية"
+    },
+    "Backhoes": {
+      "en": "Backhoes",
+      "fr": "Rétrocaveuses",
+      "ar": "حفارات خلفية"
+    },
+    "Loaders": {
+      "en": "Loaders",
+      "fr": "Chargeuses",
+      "ar": "لودرات"
+    },
+    "Bulldozers": {
+      "en": "Bulldozers",
+      "fr": "Bouteurs",
+      "ar": "جرافات"
+    },
+    "Aerial Access": {
+      "en": "Aerial Access",
+      "fr": "Accès en hauteur",
+      "ar": "الوصول للارتفاعات"
+    },
+    "Scissor Lifts": {
+      "en": "Scissor Lifts",
+      "fr": "Nacelles à ciseaux",
+      "ar": "رافعات مقصية"
+    },
+    "Boom Lifts": {
+      "en": "Boom Lifts",
+      "fr": "Nacelles articulées",
+      "ar": "رافعات ذراعية"
+    },
+    "Vertical Mast Lifts": {
+      "en": "Vertical Mast Lifts",
+      "fr": "Nacelles à mât vertical",
+      "ar": "رافعات عمودية"
+    },
+    "Concrete & Masonry": {
+      "en": "Concrete & Masonry",
+      "fr": "Béton et maçonnerie",
+      "ar": "خرسانة وبناء"
+    },
+    "Concrete Mixers": {
+      "en": "Concrete Mixers",
+      "fr": "Bétonnières",
+      "ar": "خلاطات خرسانة"
+    },
+    "Concrete Saws": {
+      "en": "Concrete Saws",
+      "fr": "Scies à béton",
+      "ar": "مناشير خرسانة"
+    },
+    "Breakers": {
+      "en": "Breakers",
+      "fr": "Marteaux-piqueurs",
+      "ar": "مطارق تكسير"
+    },
+    "Trowels": {
+      "en": "Trowels",
+      "fr": "Truelles mécaniques",
+      "ar": "ماكينات تسوية خرسانة"
+    },
+    "Mortar Mixers": {
+      "en": "Mortar Mixers",
+      "fr": "Malaxeurs à mortier",
+      "ar": "خلاطات مونة"
+    },
+    "Concrete Vibrators": {
+      "en": "Concrete Vibrators",
+      "fr": "Vibreurs à béton",
+      "ar": "هزازات خرسانة"
+    },
+    "Concrete Buggies": {
+      "en": "Concrete Buggies",
+      "fr": "Buggys à béton",
+      "ar": "عربات خرسانة"
+    },
+    "Concrete Buckets": {
+      "en": "Concrete Buckets",
+      "fr": "Bennes à béton",
+      "ar": "دلاؤ خرسانة"
+    },
+    "Concrete Floor Saws": {
+      "en": "Concrete Floor Saws",
+      "fr": "Scies de sol à béton",
+      "ar": "مناشير أرضيات خرسانية"
+    },
+    "Diamond Core Drills": {
+      "en": "Diamond Core Drills",
+      "fr": "Carotteuses diamantées",
+      "ar": "مثاقب لقم ماسية"
+    },
+    "Masonry Saws": {
+      "en": "Masonry Saws",
+      "fr": "Scies à maçonnerie",
+      "ar": "مناشير بناء"
+    },
+    "Tile Saws": {
+      "en": "Tile Saws",
+      "fr": "Scies à carrelage",
+      "ar": "مناشير بلاط"
+    },
+    "Rebar Cutters": {
+      "en": "Rebar Cutters",
+      "fr": "Coupe-barres d'armature",
+      "ar": "قواطع حديد تسليح"
+    },
+    "Rebar Benders": {
+      "en": "Rebar Benders",
+      "fr": "Cintreuses de barres d'armature",
+      "ar": "ثنيات حديد تسليح"
+    },
+    "Rebar Tying Tools": {
+      "en": "Rebar Tying Tools",
+      "fr": "Outils à ligaturer les armatures",
+      "ar": "أدوات ربط حديد التسليح"
+    },
+    "Concrete Scarifiers": {
+      "en": "Concrete Scarifiers",
+      "fr": "Scarfieuses à béton",
+      "ar": "ماكينات تخشين خرسانة"
+    },
+    "Portable Shot Blasters": {
+      "en": "Portable Shot Blasters",
+      "fr": "Grenailleuses portatives",
+      "ar": "ماكينات قذف حبيبات متنقلة"
+    },
+    "Compaction & Paving": {
+      "en": "Compaction & Paving",
+      "fr": "Compactage et pavage",
+      "ar": "دمك ورصف"
+    },
+    "Plate Compactors": {
+      "en": "Plate Compactors",
+      "fr": "Plaques vibrantes",
+      "ar": "هراسات لوحية"
+    },
+    "Rollers": {
+      "en": "Rollers",
+      "fr": "Rouleaux compresseurs",
+      "ar": "مداحل"
+    },
+    "Asphalt Cutters": {
+      "en": "Asphalt Cutters",
+      "fr": "Scies à asphalte",
+      "ar": "قواطع أسفلت"
+    },
+    "Air & Pneumatic": {
+      "en": "Air & Pneumatic",
+      "fr": "Air et pneumatique",
+      "ar": "هواء ومعدات هوائية"
+    },
+    "Air Compressors": {
+      "en": "Air Compressors",
+      "fr": "Compresseurs d'air",
+      "ar": "ضواغط هواء"
+    },
+    "Pneumatic Tools": {
+      "en": "Pneumatic Tools",
+      "fr": "Outils pneumatiques",
+      "ar": "أدوات هوائية"
+    },
+    "Welding & Fabrication": {
+      "en": "Welding & Fabrication",
+      "fr": "Soudage et fabrication",
+      "ar": "لحام وتصنيع"
+    },
+    "Welders": {
+      "en": "Welders",
+      "fr": "Postes à souder",
+      "ar": "ماكينات لحام"
+    },
+    "Plasma Cutters": {
+      "en": "Plasma Cutters",
+      "fr": "Découpeurs plasma",
+      "ar": "قواطع بلازما"
+    },
+    "Pipe Threaders": {
+      "en": "Pipe Threaders",
+      "fr": "Fileteuses de tuyaux",
+      "ar": "ماكينات قلاوظ أنابيب"
+    },
+    "Welding Power Sources": {
+      "en": "Welding Power Sources",
+      "fr": "Sources de puissance de soudage",
+      "ar": "مصادر طاقة لحام"
+    },
+    "Orbital Welding Systems": {
+      "en": "Orbital Welding Systems",
+      "fr": "Systèmes de soudage orbital",
+      "ar": "أنظمة لحام مداري"
+    },
+    "Tube Cutting Machines": {
+      "en": "Tube Cutting Machines",
+      "fr": "Machines de coupe de tubes",
+      "ar": "ماكينات قطع أنابيب دقيقة"
+    },
+    "Pipe Cutting Machines": {
+      "en": "Pipe Cutting Machines",
+      "fr": "Machines de coupe de tuyaux",
+      "ar": "ماكينات قطع أنابيب"
+    },
+    "Tube Facing Machines": {
+      "en": "Tube Facing Machines",
+      "fr": "Machines de dressage de tubes",
+      "ar": "ماكينات تسوية وجه الأنابيب"
+    },
+    "Trench & Shoring": {
+      "en": "Trench & Shoring",
+      "fr": "Tranchées et étaiement",
+      "ar": "خنادق وتدعيم"
+    },
+    "Trench Boxes": {
+      "en": "Trench Boxes",
+      "fr": "Caissons de tranchée",
+      "ar": "صناديق خنادق"
+    },
+    "Shoring Systems": {
+      "en": "Shoring Systems",
+      "fr": "Systèmes d'étaiement",
+      "ar": "أنظمة تدعيم"
+    },
+    "Confined-Space Gear": {
+      "en": "Confined-Space Gear",
+      "fr": "Équipement d'espace clos",
+      "ar": "معدات أماكن مغلقة"
+    },
+    "Trench Shields": {
+      "en": "Trench Shields",
+      "fr": "Blindages de tranchée",
+      "ar": "دروع خنادق"
+    },
+    "Hydraulic Shoring": {
+      "en": "Hydraulic Shoring",
+      "fr": "Étaiement hydraulique",
+      "ar": "تدعيم هيدروليكي"
+    },
+    "Manhole Braces": {
+      "en": "Manhole Braces",
+      "fr": "Étais de regard",
+      "ar": "دعامات غرف تفتيش"
+    },
+    "Bedding Boxes": {
+      "en": "Bedding Boxes",
+      "fr": "Caissons de lit de pose",
+      "ar": "صناديق فرشة أنابيب"
+    },
+    "Ground Protection Mats": {
+      "en": "Ground Protection Mats",
+      "fr": "Plaques de protection du sol",
+      "ar": "حصائر حماية أرضية"
+    },
+    "Steel Road Plates": {
+      "en": "Steel Road Plates",
+      "fr": "Plaques routières en acier",
+      "ar": "ألواح طرق فولاذية"
+    },
+    "Composite Trench Covers": {
+      "en": "Composite Trench Covers",
+      "fr": "Couvercles de tranchée composites",
+      "ar": "أغطية خنادق مركبة"
+    },
+    "Temporary Guardrails": {
+      "en": "Temporary Guardrails",
+      "fr": "Garde-corps temporaires",
+      "ar": "درابزين مؤقت"
+    },
+    "Trench Bridges": {
+      "en": "Trench Bridges",
+      "fr": "Ponts de tranchée",
+      "ar": "جسور خنادق"
+    },
+    "Manhole Vacuum Testers": {
+      "en": "Manhole Vacuum Testers",
+      "fr": "Testeurs de vide pour regards",
+      "ar": "أجهزة اختبار تفريغ غرف تفتيش"
+    },
+    "Davit & Tripod Retrieval Systems": {
+      "en": "Davit & Tripod Retrieval Systems",
+      "fr": "Systèmes de récupération à potence et trépied",
+      "ar": "أنظمة استرجاع بذراع وحامل ثلاثي"
+    },
+    "Hydraulic Maintenance Tools": {
+      "en": "Hydraulic Maintenance Tools",
+      "fr": "Outils de maintenance hydraulique",
+      "ar": "أدوات صيانة هيدروليكية"
+    },
+    "Hydraulic Torque Wrenches": {
+      "en": "Hydraulic Torque Wrenches",
+      "fr": "Clés dynamométriques hydrauliques",
+      "ar": "مفاتيح عزم هيدروليكية"
+    },
+    "Low-Height Hydraulic Cylinders": {
+      "en": "Low-Height Hydraulic Cylinders",
+      "fr": "Vérins hydrauliques à faible hauteur",
+      "ar": "أسطوانات هيدروليكية منخفضة الارتفاع"
+    },
+    "Hollow-Plunger Hydraulic Cylinders": {
+      "en": "Hollow-Plunger Hydraulic Cylinders",
+      "fr": "Vérins hydrauliques à piston creux",
+      "ar": "أسطوانات هيدروليكية بمكبس مجوف"
+    },
+    "Lock-Nut Hydraulic Cylinders": {
+      "en": "Lock-Nut Hydraulic Cylinders",
+      "fr": "Vérins hydrauliques à écrou de verrouillage",
+      "ar": "أسطوانات هيدروليكية بصمولة قفل"
+    },
+    "Pancake Hydraulic Cylinders": {
+      "en": "Pancake Hydraulic Cylinders",
+      "fr": "Vérins hydrauliques plats",
+      "ar": "أسطوانات هيدروليكية مسطحة"
+    },
+    "Hydraulic Hand Pumps": {
+      "en": "Hydraulic Hand Pumps",
+      "fr": "Pompes hydrauliques manuelles",
+      "ar": "مضخات هيدروليكية يدوية"
+    },
+    "Hydraulic Electric Pumps": {
+      "en": "Hydraulic Electric Pumps",
+      "fr": "Pompes hydrauliques électriques",
+      "ar": "مضخات هيدروليكية كهربائية"
+    },
+    "Hydraulic Nut Splitters": {
+      "en": "Hydraulic Nut Splitters",
+      "fr": "Casse-écrous hydrauliques",
+      "ar": "قواطع صواميل هيدروليكية"
+    },
+    "Hydraulic Punches": {
+      "en": "Hydraulic Punches",
+      "fr": "Poinçonneuses hydrauliques",
+      "ar": "مثاقب هيدروليكية"
+    },
+    "Hydraulic Cutterheads": {
+      "en": "Hydraulic Cutterheads",
+      "fr": "Têtes de coupe hydrauliques",
+      "ar": "رؤوس قطع هيدروليكية"
+    },
+    "Geotextile & Site Textile Tools": {
+      "en": "Geotextile & Site Textile Tools",
+      "fr": "Outils géotextiles et textiles de chantier",
+      "ar": "أدوات جيوتكستيل ونسيج مواقع"
+    },
+    "Portable Geotextile Sewing Machines": {
+      "en": "Portable Geotextile Sewing Machines",
+      "fr": "Machines à coudre géotextiles portatives",
+      "ar": "ماكينات خياطة جيوتكستيل محمولة"
+    },
+    "Agriculture & Landscaping": {
+      "en": "Agriculture & Landscaping",
+      "fr": "Agriculture et aménagement paysager",
+      "ar": "الزراعة وتنسيق الحدائق"
+    },
+    "Tractors & Implements": {
+      "en": "Tractors & Implements",
+      "fr": "Tracteurs et accessoires",
+      "ar": "جرارات وملحقات"
+    },
+    "Compact Tractors": {
+      "en": "Compact Tractors",
+      "fr": "Tracteurs compacts",
+      "ar": "جرارات صغيرة"
+    },
+    "Tillers": {
+      "en": "Tillers",
+      "fr": "Motobineuses",
+      "ar": "آلات حرث"
+    },
+    "Seeders": {
+      "en": "Seeders",
+      "fr": "Semoirs",
+      "ar": "بذارات"
+    },
+    "Harvesting Equipment": {
+      "en": "Harvesting Equipment",
+      "fr": "Équipement de récolte",
+      "ar": "معدات حصاد"
+    },
+    "Tractors": {
+      "en": "Tractors",
+      "fr": "Tracteurs",
+      "ar": "جرارات"
+    },
+    "Utility Terrain Vehicles": {
+      "en": "Utility Terrain Vehicles",
+      "fr": "Véhicules utilitaires tout-terrain",
+      "ar": "مركبات تضاريس متعددة الاستخدام"
+    },
+    "Cultivation Equipment": {
+      "en": "Cultivation Equipment",
+      "fr": "Équipement de culture",
+      "ar": "معدات زراعة وحراثة"
+    },
+    "Post-Hole Borers": {
+      "en": "Post-Hole Borers",
+      "fr": "Tarières",
+      "ar": "مثاقب حفر أعمدة"
+    },
+    "Agricultural Trailers": {
+      "en": "Agricultural Trailers",
+      "fr": "Remorques agricoles",
+      "ar": "مقطورات زراعية"
+    },
+    "Lawn & Garden": {
+      "en": "Lawn & Garden",
+      "fr": "Pelouse et jardin",
+      "ar": "العشب والحدائق"
+    },
+    "Mowers": {
+      "en": "Mowers",
+      "fr": "Tondeuses",
+      "ar": "جزازات"
+    },
+    "Aerators": {
+      "en": "Aerators",
+      "fr": "Aérateurs",
+      "ar": "مهويات تربة"
+    },
+    "Trimmers": {
+      "en": "Trimmers",
+      "fr": "Coupe-bordures",
+      "ar": "مشذبات"
+    },
+    "Leaf Blowers": {
+      "en": "Leaf Blowers",
+      "fr": "Souffleurs à feuilles",
+      "ar": "منفاخ أوراق"
+    },
+    "Hedge Cutters": {
+      "en": "Hedge Cutters",
+      "fr": "Taille-haies",
+      "ar": "قواطع سياج"
+    },
+    "Lawn Dethatchers": {
+      "en": "Lawn Dethatchers",
+      "fr": "Démousseurs de pelouse",
+      "ar": "ماكينات إزالة قش العشب"
+    },
+    "Broadcast Seed Spreaders": {
+      "en": "Broadcast Seed Spreaders",
+      "fr": "Épandeurs à semences",
+      "ar": "موزعات بذور"
+    },
+    "Sod Cutters": {
+      "en": "Sod Cutters",
+      "fr": "Découpeuses de gazon",
+      "ar": "قواطع عشب"
+    },
+    "Forestry & Tree Care": {
+      "en": "Forestry & Tree Care",
+      "fr": "Foresterie et entretien des arbres",
+      "ar": "الغابات والعناية بالأشجار"
+    },
+    "Chainsaws": {
+      "en": "Chainsaws",
+      "fr": "Scies à chaîne",
+      "ar": "مناشير جنزير"
+    },
+    "Wood Chippers": {
+      "en": "Wood Chippers",
+      "fr": "Broyeurs de branches",
+      "ar": "فرامات أغصان"
+    },
+    "Stump Grinders": {
+      "en": "Stump Grinders",
+      "fr": "Dessoucheuses",
+      "ar": "ماكينات طحن جذوع"
+    },
+    "Irrigation & Water": {
+      "en": "Irrigation & Water",
+      "fr": "Irrigation et eau",
+      "ar": "الري والمياه"
+    },
+    "Water Pumps": {
+      "en": "Water Pumps",
+      "fr": "Pompes à eau",
+      "ar": "مضخات مياه"
+    },
+    "Irrigation Systems": {
+      "en": "Irrigation Systems",
+      "fr": "Systèmes d'irrigation",
+      "ar": "أنظمة ري"
+    },
+    "Water Tanks": {
+      "en": "Water Tanks",
+      "fr": "Réservoirs d'eau",
+      "ar": "خزانات مياه"
+    },
+    "Livestock & Farm Handling": {
+      "en": "Livestock & Farm Handling",
+      "fr": "Bétail et manutention agricole",
+      "ar": "مواشي ومناولة زراعية"
+    },
+    "Fencing Equipment": {
+      "en": "Fencing Equipment",
+      "fr": "Équipement de clôture",
+      "ar": "معدات أسوار"
+    },
+    "Small-Harvest Processing": {
+      "en": "Small-Harvest Processing",
+      "fr": "Transformation de petites récoltes",
+      "ar": "معالجة محاصيل صغيرة"
+    },
+    "Honey Extractor Kits": {
+      "en": "Honey Extractor Kits",
+      "fr": "Kits d'extracteur de miel",
+      "ar": "أطقم استخراج عسل"
+    },
+    "Apple Crushers": {
+      "en": "Apple Crushers",
+      "fr": "Broyeurs de pommes",
+      "ar": "طواحين تفاح"
+    },
+    "Apple Presses": {
+      "en": "Apple Presses",
+      "fr": "Presses à pommes",
+      "ar": "مكابس تفاح"
+    },
+    "Orchard Tripod Ladders": {
+      "en": "Orchard Tripod Ladders",
+      "fr": "Échelles tripodes de verger",
+      "ar": "سلالم بستان ثلاثية"
+    },
+    "Warehousing & Logistics": {
+      "en": "Warehousing & Logistics",
+      "fr": "Entreposage et logistique",
+      "ar": "المستودعات واللوجستيات"
+    },
+    "Forklifts & Telehandlers": {
+      "en": "Forklifts & Telehandlers",
+      "fr": "Chariots élévateurs et télescopiques",
+      "ar": "رافعات شوكية وتلسكوبية"
+    },
+    "Forklifts": {
+      "en": "Forklifts",
+      "fr": "Chariots élévateurs",
+      "ar": "رافعات شوكية"
+    },
+    "Reach Trucks": {
+      "en": "Reach Trucks",
+      "fr": "Chariots à mât rétractable",
+      "ar": "رافعات ممرات ضيقة"
+    },
+    "Telehandlers": {
+      "en": "Telehandlers",
+      "fr": "Chariots télescopiques",
+      "ar": "رافعات تلسكوبية"
+    },
+    "Pallet Stackers": {
+      "en": "Pallet Stackers",
+      "fr": "Gerbeurs",
+      "ar": "مكدسات منصات"
+    },
+    "Pallet & Manual Handling": {
+      "en": "Pallet & Manual Handling",
+      "fr": "Palettes et manutention manuelle",
+      "ar": "منصات ومناولة يدوية"
+    },
+    "Pallet Jacks": {
+      "en": "Pallet Jacks",
+      "fr": "Transpalettes",
+      "ar": "رافعات منصات يدوية"
+    },
+    "Dollies": {
+      "en": "Dollies",
+      "fr": "Diables",
+      "ar": "عربات نقل"
+    },
+    "Hand Trucks": {
+      "en": "Hand Trucks",
+      "fr": "Chariots manuels",
+      "ar": "عربات يد"
+    },
+    "Utility Carts": {
+      "en": "Utility Carts",
+      "fr": "Chariots utilitaires",
+      "ar": "عربات متعددة الاستخدام"
+    },
+    "Air-Cushion Appliance Lifters": {
+      "en": "Air-Cushion Appliance Lifters",
+      "fr": "Élévateurs d'appareils à coussin d'air",
+      "ar": "رافعات أجهزة بوسادة هوائية"
+    },
+    "Powered Stair-Climbing Dollies": {
+      "en": "Powered Stair-Climbing Dollies",
+      "fr": "Diables motorisés monte-escaliers",
+      "ar": "عربات صعود سلالم كهربائية"
+    },
+    "Tree Dollies": {
+      "en": "Tree Dollies",
+      "fr": "Chariots pour arbres",
+      "ar": "عربات نقل أشجار"
+    },
+    "Storage & Containers": {
+      "en": "Storage & Containers",
+      "fr": "Entreposage et conteneurs",
+      "ar": "تخزين وحاويات"
+    },
+    "Shipping Containers": {
+      "en": "Shipping Containers",
+      "fr": "Conteneurs maritimes",
+      "ar": "حاويات شحن"
+    },
+    "Mobile Storage Containers": {
+      "en": "Mobile Storage Containers",
+      "fr": "Conteneurs d'entreposage mobiles",
+      "ar": "حاويات تخزين متنقلة"
+    },
+    "Refrigerated Containers": {
+      "en": "Refrigerated Containers",
+      "fr": "Conteneurs réfrigérés",
+      "ar": "حاويات مبردة"
+    },
+    "Loading & Dock": {
+      "en": "Loading & Dock",
+      "fr": "Chargement et quai",
+      "ar": "تحميل وأرصفة"
+    },
+    "Loading Ramps": {
+      "en": "Loading Ramps",
+      "fr": "Rampes de chargement",
+      "ar": "منحدرات تحميل"
+    },
+    "Dock Plates": {
+      "en": "Dock Plates",
+      "fr": "Plaques de quai",
+      "ar": "ألواح رصيف"
+    },
+    "Conveyors": {
+      "en": "Conveyors",
+      "fr": "Convoyeurs",
+      "ar": "سيور ناقلة"
+    },
+    "Packaging & Labeling": {
+      "en": "Packaging & Labeling",
+      "fr": "Emballage et étiquetage",
+      "ar": "تغليف ووضع ملصقات"
+    },
+    "Label Printers": {
+      "en": "Label Printers",
+      "fr": "Imprimantes d'étiquettes",
+      "ar": "طابعات ملصقات"
+    },
+    "Stretch Wrappers": {
+      "en": "Stretch Wrappers",
+      "fr": "Filmeuses",
+      "ar": "ماكينات تغليف مطاطي"
+    },
+    "Vacuum Packaging Machines": {
+      "en": "Vacuum Packaging Machines",
+      "fr": "Machines d'emballage sous vide",
+      "ar": "ماكينات تغليف مفرغ"
+    },
+    "Temporary Infrastructure & Site Services": {
+      "en": "Temporary Infrastructure & Site Services",
+      "fr": "Infrastructure temporaire et services de chantier",
+      "ar": "بنية تحتية مؤقتة وخدمات موقع"
+    },
+    "Power Generation": {
+      "en": "Power Generation",
+      "fr": "Production d'énergie",
+      "ar": "توليد الطاقة"
+    },
+    "Generators": {
+      "en": "Generators",
+      "fr": "Génératrices",
+      "ar": "مولدات"
+    },
+    "Load Banks": {
+      "en": "Load Banks",
+      "fr": "Bancs de charge",
+      "ar": "بنوك أحمال"
+    },
+    "Power Distribution Panels": {
+      "en": "Power Distribution Panels",
+      "fr": "Panneaux de distribution",
+      "ar": "لوحات توزيع طاقة"
+    },
+    "Battery Storage": {
+      "en": "Battery Storage",
+      "fr": "Stockage sur batteries",
+      "ar": "تخزين بطاريات"
+    },
+    "Transfer Switches": {
+      "en": "Transfer Switches",
+      "fr": "Commutateurs de transfert",
+      "ar": "مفاتيح تحويل"
+    },
+    "Transformers": {
+      "en": "Transformers",
+      "fr": "Transformateurs",
+      "ar": "محولات كهربائية"
+    },
+    "Temporary Power Cables": {
+      "en": "Temporary Power Cables",
+      "fr": "Câbles d'alimentation temporaires",
+      "ar": "كابلات طاقة مؤقتة"
+    },
+    "Climate Control": {
+      "en": "Climate Control",
+      "fr": "Contrôle climatique",
+      "ar": "التحكم بالمناخ"
+    },
+    "Portable Air Conditioners": {
+      "en": "Portable Air Conditioners",
+      "fr": "Climatiseurs portatifs",
+      "ar": "مكيفات متنقلة"
+    },
+    "Heaters": {
+      "en": "Heaters",
+      "fr": "Chauffages",
+      "ar": "مدافئ"
+    },
+    "Air Handlers": {
+      "en": "Air Handlers",
+      "fr": "Traitement d'air",
+      "ar": "وحدات معالجة هواء"
+    },
+    "Chillers": {
+      "en": "Chillers",
+      "fr": "Refroidisseurs",
+      "ar": "مبردات صناعية"
+    },
+    "Spot Coolers": {
+      "en": "Spot Coolers",
+      "fr": "Refroidisseurs ponctuels",
+      "ar": "مبردات موضعية"
+    },
+    "Cooling Towers": {
+      "en": "Cooling Towers",
+      "fr": "Tours de refroidissement",
+      "ar": "أبراج تبريد"
+    },
+    "Electric Heaters": {
+      "en": "Electric Heaters",
+      "fr": "Chauffages électriques",
+      "ar": "مدافئ كهربائية"
+    },
+    "Indirect-Fired Heaters": {
+      "en": "Indirect-Fired Heaters",
+      "fr": "Chauffages à combustion indirecte",
+      "ar": "مدافئ احتراق غير مباشر"
+    },
+    "Ground Heaters": {
+      "en": "Ground Heaters",
+      "fr": "Chauffages de sol",
+      "ar": "مدافئ أرضية"
+    },
+    "Drying & Air Quality": {
+      "en": "Drying & Air Quality",
+      "fr": "Séchage et qualité de l'air",
+      "ar": "التجفيف وجودة الهواء"
+    },
+    "Dehumidifiers": {
+      "en": "Dehumidifiers",
+      "fr": "Déshumidificateurs",
+      "ar": "مزيلات رطوبة"
+    },
+    "Air Scrubbers": {
+      "en": "Air Scrubbers",
+      "fr": "Épurateurs d'air",
+      "ar": "منقيات هواء"
+    },
+    "Industrial Fans": {
+      "en": "Industrial Fans",
+      "fr": "Ventilateurs industriels",
+      "ar": "مراوح صناعية"
+    },
+    "Refrigerant Dehumidifiers": {
+      "en": "Refrigerant Dehumidifiers",
+      "fr": "Déshumidificateurs à réfrigérant",
+      "ar": "مزيلات رطوبة بالتبريد"
+    },
+    "Desiccant Dehumidifiers": {
+      "en": "Desiccant Dehumidifiers",
+      "fr": "Déshumidificateurs à dessiccant",
+      "ar": "مزيلات رطوبة مجففة"
+    },
+    "Carpet Dryers & Air Movers": {
+      "en": "Carpet Dryers & Air Movers",
+      "fr": "Séchoirs de tapis et ventilateurs",
+      "ar": "مجففات سجاد ومحركات هواء"
+    },
+    "Sanitation": {
+      "en": "Sanitation",
+      "fr": "Installations sanitaires",
+      "ar": "خدمات صحية"
+    },
+    "Portable Toilets": {
+      "en": "Portable Toilets",
+      "fr": "Toilettes portatives",
+      "ar": "مراحيض متنقلة"
+    },
+    "Mobile Showers": {
+      "en": "Mobile Showers",
+      "fr": "Douches mobiles",
+      "ar": "حمامات متنقلة"
+    },
+    "Restroom Trailers": {
+      "en": "Restroom Trailers",
+      "fr": "Remorques sanitaires",
+      "ar": "مقطورات دورات مياه"
+    },
+    "Handwash Stations": {
+      "en": "Handwash Stations",
+      "fr": "Stations de lavage des mains",
+      "ar": "محطات غسل يدين"
+    },
+    "Fencing & Traffic Control": {
+      "en": "Fencing & Traffic Control",
+      "fr": "Clôtures et contrôle de la circulation",
+      "ar": "أسوار وتحكم مروري"
+    },
+    "Temporary Fencing": {
+      "en": "Temporary Fencing",
+      "fr": "Clôtures temporaires",
+      "ar": "أسوار مؤقتة"
+    },
+    "Crowd Barriers": {
+      "en": "Crowd Barriers",
+      "fr": "Barrières de foule",
+      "ar": "حواجز حشود"
+    },
+    "Traffic Signs & Cones": {
+      "en": "Traffic Signs & Cones",
+      "fr": "Panneaux et cônes de circulation",
+      "ar": "إشارات وأقماع مرورية"
+    },
+    "Mobile Offices & Structures": {
+      "en": "Mobile Offices & Structures",
+      "fr": "Bureaux mobiles et structures",
+      "ar": "مكاتب وهياكل متنقلة"
+    },
+    "Mobile Offices": {
+      "en": "Mobile Offices",
+      "fr": "Bureaux mobiles",
+      "ar": "مكاتب متنقلة"
+    },
+    "Construction Trailers": {
+      "en": "Construction Trailers",
+      "fr": "Remorques de chantier",
+      "ar": "مقطورات بناء"
+    },
+    "Temporary Structures": {
+      "en": "Temporary Structures",
+      "fr": "Structures temporaires",
+      "ar": "هياكل مؤقتة"
+    },
+    "Pumps & Water Management": {
+      "en": "Pumps & Water Management",
+      "fr": "Pompes et gestion de l'eau",
+      "ar": "مضخات وإدارة مياه"
+    },
+    "Centrifugal Pumps": {
+      "en": "Centrifugal Pumps",
+      "fr": "Pompes centrifuges",
+      "ar": "مضخات طرد مركزي"
+    },
+    "Submersible Pumps": {
+      "en": "Submersible Pumps",
+      "fr": "Pompes submersibles",
+      "ar": "مضخات غاطسة"
+    },
+    "Water Treatment Units": {
+      "en": "Water Treatment Units",
+      "fr": "Unités de traitement de l'eau",
+      "ar": "وحدات معالجة مياه"
+    },
+    "Diaphragm Pumps": {
+      "en": "Diaphragm Pumps",
+      "fr": "Pompes à diaphragme",
+      "ar": "مضخات غشائية"
+    },
+    "Dewatering Pumps": {
+      "en": "Dewatering Pumps",
+      "fr": "Pompes d'assèchement",
+      "ar": "مضخات نزح مياه"
+    },
+    "Fluid Storage Tanks": {
+      "en": "Fluid Storage Tanks",
+      "fr": "Réservoirs de stockage de fluides",
+      "ar": "خزانات تخزين سوائل"
+    },
+    "Marine & Watercraft": {
+      "en": "Marine & Watercraft",
+      "fr": "Maritime et embarcations",
+      "ar": "البحرية والمراكب"
+    },
+    "Boats": {
+      "en": "Boats",
+      "fr": "Bateaux",
+      "ar": "القوارب"
+    },
+    "Fishing Boats": {
+      "en": "Fishing Boats",
+      "fr": "Bateaux de pêche",
+      "ar": "قوارب صيد"
+    },
+    "Pontoon Boats": {
+      "en": "Pontoon Boats",
+      "fr": "Bateaux pontons",
+      "ar": "قوارب بونتون"
+    },
+    "Sailboats": {
+      "en": "Sailboats",
+      "fr": "Voiliers",
+      "ar": "قوارب شراعية"
+    },
+    "Speedboats": {
+      "en": "Speedboats",
+      "fr": "Bateaux rapides",
+      "ar": "قوارب سريعة"
+    },
+    "Sailing Catamarans": {
+      "en": "Sailing Catamarans",
+      "fr": "Catamarans à voile",
+      "ar": "قوارب كاتاماران شراعية"
+    },
+    "Monohull Sailboats": {
+      "en": "Monohull Sailboats",
+      "fr": "Voiliers monocoques",
+      "ar": "قوارب شراعية أحادية الهيكل"
+    },
+    "Power Yachts": {
+      "en": "Power Yachts",
+      "fr": "Yachts à moteur",
+      "ar": "يخوت بمحرك"
+    },
+    "Personal Watercraft": {
+      "en": "Personal Watercraft",
+      "fr": "Motomarines",
+      "ar": "مراكب شخصية مائية"
+    },
+    "Jet Skis": {
+      "en": "Jet Skis",
+      "fr": "Motomarines",
+      "ar": "جت سكي"
+    },
+    "Water Scooters": {
+      "en": "Water Scooters",
+      "fr": "Scooters des mers",
+      "ar": "سكوترات مائية"
+    },
+    "Marine Gear": {
+      "en": "Marine Gear",
+      "fr": "Équipement nautique",
+      "ar": "معدات بحرية"
+    },
+    "Life Jackets & Safety Gear": {
+      "en": "Life Jackets & Safety Gear",
+      "fr": "Gilets de sauvetage et équipement de sécurité",
+      "ar": "سترات نجاة ومعدات سلامة"
+    },
+    "Anchors & Docking Gear": {
+      "en": "Anchors & Docking Gear",
+      "fr": "Ancres et équipement d’amarrage",
+      "ar": "مراسي ومعدات رسو"
+    },
+    "Marine Navigation Gear": {
+      "en": "Marine Navigation Gear",
+      "fr": "Équipement de navigation maritime",
+      "ar": "معدات ملاحة بحرية"
+    },
+    "Spaces & Studios": {
+      "en": "Spaces & Studios",
+      "fr": "Espaces et studios",
+      "ar": "مساحات واستوديوهات"
+    },
+    "Event Venues": {
+      "en": "Event Venues",
+      "fr": "Lieux événementiels",
+      "ar": "أماكن مناسبات"
+    },
+    "Banquet Halls": {
+      "en": "Banquet Halls",
+      "fr": "Salles de banquet",
+      "ar": "قاعات حفلات"
+    },
+    "Conference Rooms": {
+      "en": "Conference Rooms",
+      "fr": "Salles de conférence",
+      "ar": "قاعات مؤتمرات"
+    },
+    "Outdoor Venues": {
+      "en": "Outdoor Venues",
+      "fr": "Lieux extérieurs",
+      "ar": "أماكن خارجية"
+    },
+    "Studios": {
+      "en": "Studios",
+      "fr": "Studios",
+      "ar": "استوديوهات"
+    },
+    "Photo Studios": {
+      "en": "Photo Studios",
+      "fr": "Studios photo",
+      "ar": "استوديوهات تصوير"
+    },
+    "Film Studios": {
+      "en": "Film Studios",
+      "fr": "Studios de cinéma",
+      "ar": "استوديوهات أفلام"
+    },
+    "Podcast Studios": {
+      "en": "Podcast Studios",
+      "fr": "Studios de balado",
+      "ar": "استوديوهات بودكاست"
+    },
+    "Music Rehearsal Studios": {
+      "en": "Music Rehearsal Studios",
+      "fr": "Studios de répétition musicale",
+      "ar": "استوديوهات تدريب موسيقي"
+    },
+    "Meeting & Workspaces": {
+      "en": "Meeting & Workspaces",
+      "fr": "Réunion et espaces de travail",
+      "ar": "اجتماعات ومساحات عمل"
+    },
+    "Meeting Rooms": {
+      "en": "Meeting Rooms",
+      "fr": "Salles de réunion",
+      "ar": "غرف اجتماعات"
+    },
+    "Training Rooms": {
+      "en": "Training Rooms",
+      "fr": "Salles de formation",
+      "ar": "غرف تدريب"
+    },
+    "Coworking Offices": {
+      "en": "Coworking Offices",
+      "fr": "Bureaux partagés",
+      "ar": "مكاتب عمل مشترك"
+    },
+    "Workshops & Maker Spaces": {
+      "en": "Workshops & Maker Spaces",
+      "fr": "Ateliers et espaces de fabrication",
+      "ar": "ورش ومساحات تصنيع"
+    },
+    "Woodworking Workshops": {
+      "en": "Woodworking Workshops",
+      "fr": "Ateliers de menuiserie",
+      "ar": "ورش نجارة"
+    },
+    "Fabrication Shops": {
+      "en": "Fabrication Shops",
+      "fr": "Ateliers de fabrication",
+      "ar": "ورش تصنيع"
+    },
+    "Craft Studios": {
+      "en": "Craft Studios",
+      "fr": "Studios d'artisanat",
+      "ar": "استوديوهات حرف"
+    },
+    "Sewing Workstations": {
+      "en": "Sewing Workstations",
+      "fr": "Postes de couture",
+      "ar": "محطات خياطة"
+    },
+    "Heat-Press Workstations": {
+      "en": "Heat-Press Workstations",
+      "fr": "Postes de presse à chaud",
+      "ar": "محطات مكبس حراري"
+    },
+    "Commercial Kitchens": {
+      "en": "Commercial Kitchens",
+      "fr": "Cuisines commerciales",
+      "ar": "مطابخ تجارية"
+    },
+    "Shared Kitchens": {
+      "en": "Shared Kitchens",
+      "fr": "Cuisines partagées",
+      "ar": "مطابخ مشتركة"
+    },
+    "Production Kitchens": {
+      "en": "Production Kitchens",
+      "fr": "Cuisines de production",
+      "ar": "مطابخ إنتاج"
+    },
+    "Retail & Pop-up Spaces": {
+      "en": "Retail & Pop-up Spaces",
+      "fr": "Espaces de vente éphémères",
+      "ar": "مساحات بيع مؤقتة"
+    },
+    "Pop-up Retail Spaces": {
+      "en": "Pop-up Retail Spaces",
+      "fr": "Espaces de vente éphémères",
+      "ar": "مساحات بيع مؤقتة"
+    },
+    "Retail & Vending Equipment": {
+      "en": "Retail & Vending Equipment",
+      "fr": "Équipement de commerce et de vente",
+      "ar": "معدات التجزئة والبيع"
+    },
+    "Display & Merchandising": {
+      "en": "Display & Merchandising",
+      "fr": "Présentation et marchandisage",
+      "ar": "العرض والترويج"
+    },
+    "Shelving": {
+      "en": "Shelving",
+      "fr": "Rayonnage",
+      "ar": "أرفف"
+    },
+    "Display Cases": {
+      "en": "Display Cases",
+      "fr": "Vitrines",
+      "ar": "واجهات عرض"
+    },
+    "Garment Racks": {
+      "en": "Garment Racks",
+      "fr": "Portants à vêtements",
+      "ar": "حوامل ملابس"
+    },
+    "Mannequins": {
+      "en": "Mannequins",
+      "fr": "Mannequins",
+      "ar": "دمى عرض"
+    },
+    "POS & Checkout": {
+      "en": "POS & Checkout",
+      "fr": "Point de vente et caisse",
+      "ar": "نقاط البيع والصندوق"
+    },
+    "Cash Registers": {
+      "en": "Cash Registers",
+      "fr": "Caisses enregistreuses",
+      "ar": "صناديق تسجيل"
+    },
+    "Receipt Printers": {
+      "en": "Receipt Printers",
+      "fr": "Imprimantes de reçus",
+      "ar": "طابعات إيصالات"
+    },
+    "Barcode Scanners": {
+      "en": "Barcode Scanners",
+      "fr": "Lecteurs de codes-barres",
+      "ar": "ماسحات باركود"
+    },
+    "POS Hardware Kits": {
+      "en": "POS Hardware Kits",
+      "fr": "Kits de matériel de point de vente",
+      "ar": "أطقم أجهزة نقاط بيع"
+    },
+    "Inventory Scanning Terminals": {
+      "en": "Inventory Scanning Terminals",
+      "fr": "Terminaux de lecture d'inventaire",
+      "ar": "أجهزة مسح مخزون"
+    },
+    "Thermal Badge Printers": {
+      "en": "Thermal Badge Printers",
+      "fr": "Imprimantes thermiques de badges",
+      "ar": "طابعات شارات حرارية"
+    },
+    "Kiosks & Booths": {
+      "en": "Kiosks & Booths",
+      "fr": "Kiosques et stands",
+      "ar": "أكشاك وأجنحة"
+    },
+    "Pop-up Kiosks": {
+      "en": "Pop-up Kiosks",
+      "fr": "Kiosques éphémères",
+      "ar": "أكشاك مؤقتة"
+    },
+    "Market Stalls": {
+      "en": "Market Stalls",
+      "fr": "Étalages de marché",
+      "ar": "أكشاك سوق"
+    },
+    "Exhibition Booths": {
+      "en": "Exhibition Booths",
+      "fr": "Stands d'exposition",
+      "ar": "أجنحة معرض"
+    },
+    "Vending & Refrigerated Merchandising": {
+      "en": "Vending & Refrigerated Merchandising",
+      "fr": "Distributeurs et présentation réfrigérée",
+      "ar": "بيع آلي وعرض مبرد"
+    },
+    "Vending Machines": {
+      "en": "Vending Machines",
+      "fr": "Distributeurs automatiques",
+      "ar": "ماكينات بيع آلي"
+    },
+    "Cold Beverage Vending": {
+      "en": "Cold Beverage Vending",
+      "fr": "Distributeurs de boissons froides",
+      "ar": "بيع مشروبات باردة آلي"
+    },
+    "Music & Performance Equipment": {
+      "en": "Music & Performance Equipment",
+      "fr": "Équipement musical et de spectacle",
+      "ar": "معدات الموسيقى والعروض"
+    },
+    "Musical Instruments": {
+      "en": "Musical Instruments",
+      "fr": "Instruments de musique",
+      "ar": "آلات موسيقية"
+    },
+    "Guitars": {
+      "en": "Guitars",
+      "fr": "Guitares",
+      "ar": "قيثارات"
+    },
+    "Keyboards": {
+      "en": "Keyboards",
+      "fr": "Claviers",
+      "ar": "لوحات مفاتيح موسيقية"
+    },
+    "Drum Kits": {
+      "en": "Drum Kits",
+      "fr": "Batteries",
+      "ar": "طبول"
+    },
+    "String Instruments": {
+      "en": "String Instruments",
+      "fr": "Instruments à cordes",
+      "ar": "آلات وترية"
+    },
+    "Bass Guitars": {
+      "en": "Bass Guitars",
+      "fr": "Guitares basses",
+      "ar": "قيثارات باس"
+    },
+    "Synthesizers": {
+      "en": "Synthesizers",
+      "fr": "Synthétiseurs",
+      "ar": "آلات سينث"
+    },
+    "Orchestral Instruments": {
+      "en": "Orchestral Instruments",
+      "fr": "Instruments d'orchestre",
+      "ar": "آلات أوركسترالية"
+    },
+    "DJ Equipment": {
+      "en": "DJ Equipment",
+      "fr": "Équipement de DJ",
+      "ar": "معدات دي جي"
+    },
+    "DJ Controllers": {
+      "en": "DJ Controllers",
+      "fr": "Contrôleurs DJ",
+      "ar": "وحدات تحكم دي جي"
+    },
+    "Turntables": {
+      "en": "Turntables",
+      "fr": "Platines",
+      "ar": "مشغلات أسطوانات"
+    },
+    "DJ Mixers": {
+      "en": "DJ Mixers",
+      "fr": "Tables de mixage DJ",
+      "ar": "خلاطات دي جي"
+    },
+    "Amplification & Backline": {
+      "en": "Amplification & Backline",
+      "fr": "Amplification et backline",
+      "ar": "تضخيم ومعدات فرقة"
+    },
+    "Guitar Amplifiers": {
+      "en": "Guitar Amplifiers",
+      "fr": "Amplificateurs de guitare",
+      "ar": "مضخمات غيتار"
+    },
+    "Bass Amplifiers": {
+      "en": "Bass Amplifiers",
+      "fr": "Amplificateurs de basse",
+      "ar": "مضخمات باس"
+    },
+    "Keyboard Amplifiers": {
+      "en": "Keyboard Amplifiers",
+      "fr": "Amplificateurs de clavier",
+      "ar": "مضخمات كيبورد"
+    },
+    "Instrument Amplifiers": {
+      "en": "Instrument Amplifiers",
+      "fr": "Amplificateurs d'instruments",
+      "ar": "مضخمات آلات موسيقية"
+    },
+    "Rehearsal & Performance Gear": {
+      "en": "Rehearsal & Performance Gear",
+      "fr": "Équipement de répétition et scène",
+      "ar": "معدات تدريب وعروض"
+    },
+    "Music Stands": {
+      "en": "Music Stands",
+      "fr": "Pupitres",
+      "ar": "حوامل نوتة موسيقية"
+    },
+    "Stage Monitors": {
+      "en": "Stage Monitors",
+      "fr": "Retours de scène",
+      "ar": "شاشات مراقبة مسرح"
+    },
+    "Recording & Studio Equipment": {
+      "en": "Recording & Studio Equipment",
+      "fr": "Équipement d'enregistrement et de studio",
+      "ar": "معدات تسجيل واستوديو"
+    },
+    "Recording Equipment": {
+      "en": "Recording Equipment",
+      "fr": "Équipement d'enregistrement",
+      "ar": "معدات تسجيل"
+    },
+    "Hobbies & Creative Equipment": {
+      "en": "Hobbies & Creative Equipment",
+      "fr": "Équipement de loisirs et création",
+      "ar": "معدات الهوايات والإبداع"
+    },
+    "Printing & Fabrication": {
+      "en": "Printing & Fabrication",
+      "fr": "Impression et fabrication",
+      "ar": "طباعة وتصنيع"
+    },
+    "3D Printers": {
+      "en": "3D Printers",
+      "fr": "Imprimantes 3D",
+      "ar": "طابعات ثلاثية الأبعاد"
+    },
+    "Laser Cutters": {
+      "en": "Laser Cutters",
+      "fr": "Découpeuses laser",
+      "ar": "قواطع ليزر"
+    },
+    "Heat Presses": {
+      "en": "Heat Presses",
+      "fr": "Presses à chaud",
+      "ar": "مكابس حرارية"
+    },
+    "Sewing & Textile": {
+      "en": "Sewing & Textile",
+      "fr": "Couture et textile",
+      "ar": "خياطة ونسيج"
+    },
+    "Sewing Machines": {
+      "en": "Sewing Machines",
+      "fr": "Machines à coudre",
+      "ar": "ماكينات خياطة"
+    },
+    "Embroidery Machines": {
+      "en": "Embroidery Machines",
+      "fr": "Machines à broder",
+      "ar": "ماكينات تطريز"
+    },
+    "Serger Machines": {
+      "en": "Serger Machines",
+      "fr": "Surjeteuses",
+      "ar": "ماكينات أوفرلوك"
+    },
+    "Coverstitch Machines": {
+      "en": "Coverstitch Machines",
+      "fr": "Machines à point de recouvrement",
+      "ar": "ماكينات كوفرستيتش"
+    },
+    "Fabric Cutting Tables": {
+      "en": "Fabric Cutting Tables",
+      "fr": "Tables de coupe de tissu",
+      "ar": "طاولات قص قماش"
+    },
+    "Ironing Stations": {
+      "en": "Ironing Stations",
+      "fr": "Postes de repassage",
+      "ar": "محطات كي"
+    },
+    "Fabric Die-Cutting Machines": {
+      "en": "Fabric Die-Cutting Machines",
+      "fr": "Machines de découpe de tissu",
+      "ar": "ماكينات قطع قماش بالقوالب"
+    },
+    "Arts & Crafts": {
+      "en": "Arts & Crafts",
+      "fr": "Arts et artisanat",
+      "ar": "فنون وحرف"
+    },
+    "Pottery Wheels": {
+      "en": "Pottery Wheels",
+      "fr": "Tours de potier",
+      "ar": "دواليب فخار"
+    },
+    "Easels": {
+      "en": "Easels",
+      "fr": "Chevalets",
+      "ar": "حوامل رسم"
+    },
+    "Craft Tools": {
+      "en": "Craft Tools",
+      "fr": "Outils d'artisanat",
+      "ar": "أدوات حرف"
+    },
+    "Button Badge Press Kits": {
+      "en": "Button Badge Press Kits",
+      "fr": "Kits de presse à badges",
+      "ar": "أطقم مكبس شارات"
+    },
+    "Games & Recreation": {
+      "en": "Games & Recreation",
+      "fr": "Jeux et loisirs",
+      "ar": "ألعاب وترفيه"
+    },
+    "Board Games": {
+      "en": "Board Games",
+      "fr": "Jeux de société",
+      "ar": "ألعاب لوحية"
+    },
+    "Arcade Machines": {
+      "en": "Arcade Machines",
+      "fr": "Bornes d'arcade",
+      "ar": "ماكينات أركيد"
+    },
+    "Table Games": {
+      "en": "Table Games",
+      "fr": "Jeux de table",
+      "ar": "ألعاب طاولة"
+    },
+    "Test & Measurement Equipment": {
+      "en": "Test & Measurement Equipment",
+      "fr": "Équipement d'essai et de mesure",
+      "ar": "معدات الاختبار والقياس"
+    },
+    "Electrical Test Instruments": {
+      "en": "Electrical Test Instruments",
+      "fr": "Instruments de test électrique",
+      "ar": "أجهزة اختبار كهربائية"
+    },
+    "Ground Resistance Testers": {
+      "en": "Ground Resistance Testers",
+      "fr": "Testeurs de résistance de terre",
+      "ar": "أجهزة اختبار مقاومة التأريض"
+    },
+    "Low-Resistance Ohmmeters": {
+      "en": "Low-Resistance Ohmmeters",
+      "fr": "Ohmmètres basse résistance",
+      "ar": "أوميترات مقاومة منخفضة"
+    },
+    "Insulation Resistance Testers": {
+      "en": "Insulation Resistance Testers",
+      "fr": "Testeurs de résistance d'isolement",
+      "ar": "أجهزة اختبار عزل"
+    },
+    "Phase Meters": {
+      "en": "Phase Meters",
+      "fr": "Indicateurs de phase",
+      "ar": "أجهزة قياس الطور"
+    },
+    "Cable Locators": {
+      "en": "Cable Locators",
+      "fr": "Localisateurs de câbles",
+      "ar": "كاشفات كابلات"
+    },
+    "Clamp Meters": {
+      "en": "Clamp Meters",
+      "fr": "Pinces ampèremétriques",
+      "ar": "مقاييس تيار كماشية"
+    },
+    "High-Voltage Meters": {
+      "en": "High-Voltage Meters",
+      "fr": "Voltmètres haute tension",
+      "ar": "مقاييس جهد عال"
+    },
+    "Hipot Testers": {
+      "en": "Hipot Testers",
+      "fr": "Testeurs Hipot",
+      "ar": "أجهزة اختبار Hipot"
+    },
+    "Electronic Loads": {
+      "en": "Electronic Loads",
+      "fr": "Charges électroniques",
+      "ar": "أحمال إلكترونية"
+    },
+    "Network Cable Testers": {
+      "en": "Network Cable Testers",
+      "fr": "Testeurs de câbles réseau",
+      "ar": "أجهزة اختبار كابلات شبكة"
+    },
+    "Optical Test Equipment": {
+      "en": "Optical Test Equipment",
+      "fr": "Équipement de test optique",
+      "ar": "معدات اختبار بصري"
+    },
+    "Power Analyzers": {
+      "en": "Power Analyzers",
+      "fr": "Analyseurs de puissance",
+      "ar": "محللات طاقة"
+    },
+    "RF Amplifiers": {
+      "en": "RF Amplifiers",
+      "fr": "Amplificateurs RF",
+      "ar": "مضخمات تردد لاسلكي"
+    },
+    "Solar PV Testers": {
+      "en": "Solar PV Testers",
+      "fr": "Testeurs photovoltaïques",
+      "ar": "أجهزة اختبار ألواح شمسية"
+    },
+    "Environmental Monitoring": {
+      "en": "Environmental Monitoring",
+      "fr": "Surveillance environnementale",
+      "ar": "مراقبة بيئية"
+    },
+    "Water Quality Meters": {
+      "en": "Water Quality Meters",
+      "fr": "Compteurs de qualité de l'eau",
+      "ar": "مقاييس جودة المياه"
+    },
+    "Water Sampling Equipment": {
+      "en": "Water Sampling Equipment",
+      "fr": "Équipement d'échantillonnage de l'eau",
+      "ar": "معدات أخذ عينات مياه"
+    },
+    "Water-Level Meters": {
+      "en": "Water-Level Meters",
+      "fr": "Mesureurs de niveau d'eau",
+      "ar": "مقاييس مستوى الماء"
+    },
+    "Pressure Transducers": {
+      "en": "Pressure Transducers",
+      "fr": "Transducteurs de pression",
+      "ar": "محولات ضغط"
+    },
+    "Flow Probes": {
+      "en": "Flow Probes",
+      "fr": "Sondes de débit",
+      "ar": "مجسات تدفق"
+    },
+    "Gas Detectors": {
+      "en": "Gas Detectors",
+      "fr": "Détecteurs de gaz",
+      "ar": "كاشفات غاز"
+    },
+    "PID Detectors": {
+      "en": "PID Detectors",
+      "fr": "Détecteurs PID",
+      "ar": "كاشفات PID"
+    },
+    "Noise & Sound Meters": {
+      "en": "Noise & Sound Meters",
+      "fr": "Sonomètres",
+      "ar": "مقاييس ضوضاء وصوت"
+    },
+    "Indoor Air Monitoring Equipment": {
+      "en": "Indoor Air Monitoring Equipment",
+      "fr": "Équipement de surveillance de l'air intérieur",
+      "ar": "معدات مراقبة هواء داخلي"
+    },
+    "Digital Accounts": {
+      "en": "Digital Accounts",
+      "fr": "Comptes numériques",
+      "ar": "الحسابات الرقمية"
+    },
+    "Movies & Streaming": {
+      "en": "Movies & Streaming",
+      "fr": "Films et streaming",
+      "ar": "الأفلام والبث"
+    },
+    "Netflix": {
+      "en": "Netflix",
+      "fr": "Netflix",
+      "ar": "Netflix"
+    },
+    "Amazon Prime Video": {
+      "en": "Amazon Prime Video",
+      "fr": "Amazon Prime Video",
+      "ar": "Amazon Prime Video"
+    },
+    "Disney+": {
+      "en": "Disney+",
+      "fr": "Disney+",
+      "ar": "Disney+"
+    },
+    "Apple TV+": {
+      "en": "Apple TV+",
+      "fr": "Apple TV+",
+      "ar": "Apple TV+"
+    },
+    "Max": {
+      "en": "Max",
+      "fr": "Max",
+      "ar": "Max"
+    },
+    "Hulu": {
+      "en": "Hulu",
+      "fr": "Hulu",
+      "ar": "Hulu"
+    },
+    "Paramount+": {
+      "en": "Paramount+",
+      "fr": "Paramount+",
+      "ar": "Paramount+"
+    },
+    "Peacock": {
+      "en": "Peacock",
+      "fr": "Peacock",
+      "ar": "Peacock"
+    },
+    "STARZ": {
+      "en": "STARZ",
+      "fr": "STARZ",
+      "ar": "STARZ"
+    },
+    "SHOWTIME": {
+      "en": "SHOWTIME",
+      "fr": "SHOWTIME",
+      "ar": "SHOWTIME"
+    },
+    "AMC+": {
+      "en": "AMC+",
+      "fr": "AMC+",
+      "ar": "AMC+"
+    },
+    "Discovery+": {
+      "en": "Discovery+",
+      "fr": "Discovery+",
+      "ar": "Discovery+"
+    },
+    "Crave": {
+      "en": "Crave",
+      "fr": "Crave",
+      "ar": "Crave"
+    },
+    "Canal+": {
+      "en": "Canal+",
+      "fr": "Canal+",
+      "ar": "Canal+"
+    },
+    "OCS": {
+      "en": "OCS",
+      "fr": "OCS",
+      "ar": "OCS"
+    },
+    "Molotov": {
+      "en": "Molotov",
+      "fr": "Molotov",
+      "ar": "Molotov"
+    },
+    "BritBox": {
+      "en": "BritBox",
+      "fr": "BritBox",
+      "ar": "BritBox"
+    },
+    "Acorn TV": {
+      "en": "Acorn TV",
+      "fr": "Acorn TV",
+      "ar": "Acorn TV"
+    },
+    "MUBI": {
+      "en": "MUBI",
+      "fr": "MUBI",
+      "ar": "MUBI"
+    },
+    "Criterion Channel": {
+      "en": "Criterion Channel",
+      "fr": "Criterion Channel",
+      "ar": "Criterion Channel"
+    },
+    "Rakuten TV": {
+      "en": "Rakuten TV",
+      "fr": "Rakuten TV",
+      "ar": "Rakuten TV"
+    },
+    "Plex Pass": {
+      "en": "Plex Pass",
+      "fr": "Plex Pass",
+      "ar": "Plex Pass"
+    },
+    "YouTube Premium": {
+      "en": "YouTube Premium",
+      "fr": "YouTube Premium",
+      "ar": "YouTube Premium"
+    },
+    "Crunchyroll": {
+      "en": "Crunchyroll",
+      "fr": "Crunchyroll",
+      "ar": "Crunchyroll"
+    },
+    "HIDIVE": {
+      "en": "HIDIVE",
+      "fr": "HIDIVE",
+      "ar": "HIDIVE"
+    },
+    "Shahid": {
+      "en": "Shahid",
+      "fr": "Shahid",
+      "ar": "Shahid"
+    },
+    "OSN+": {
+      "en": "OSN+",
+      "fr": "OSN+",
+      "ar": "OSN+"
+    },
+    "TOD": {
+      "en": "TOD",
+      "fr": "TOD",
+      "ar": "TOD"
+    },
+    "STARZPLAY": {
+      "en": "STARZPLAY",
+      "fr": "STARZPLAY",
+      "ar": "STARZPLAY"
+    },
+    "Viaplay": {
+      "en": "Viaplay",
+      "fr": "Viaplay",
+      "ar": "Viaplay"
+    },
+    "NOW": {
+      "en": "NOW",
+      "fr": "NOW",
+      "ar": "NOW"
+    },
+    "Sky Go": {
+      "en": "Sky Go",
+      "fr": "Sky Go",
+      "ar": "Sky Go"
+    },
+    "Sky services": {
+      "en": "Sky services",
+      "fr": "Sky services",
+      "ar": "Sky services"
+    },
+    "ITVX Premium": {
+      "en": "ITVX Premium",
+      "fr": "ITVX Premium",
+      "ar": "ITVX Premium"
+    },
+    "BBC-related paid services where available": {
+      "en": "BBC-related paid services where available",
+      "fr": "BBC-related paid services where available",
+      "ar": "BBC-related paid services where available"
+    },
+    "Stan": {
+      "en": "Stan",
+      "fr": "Stan",
+      "ar": "Stan"
+    },
+    "Binge": {
+      "en": "Binge",
+      "fr": "Binge",
+      "ar": "Binge"
+    },
+    "Kayo-related bundles": {
+      "en": "Kayo-related bundles",
+      "fr": "Kayo-related bundles",
+      "ar": "Kayo-related bundles"
+    },
+    "Paramount regional services": {
+      "en": "Paramount regional services",
+      "fr": "Paramount regional services",
+      "ar": "Paramount regional services"
+    },
+    "Sports": {
+      "en": "Sports",
+      "fr": "Sports",
+      "ar": "الرياضة"
+    },
+    "beIN Sports": {
+      "en": "beIN Sports",
+      "fr": "beIN Sports",
+      "ar": "beIN Sports"
+    },
+    "DAZN": {
+      "en": "DAZN",
+      "fr": "DAZN",
+      "ar": "DAZN"
+    },
+    "ESPN+": {
+      "en": "ESPN+",
+      "fr": "ESPN+",
+      "ar": "ESPN+"
+    },
+    "Fubo": {
+      "en": "Fubo",
+      "fr": "Fubo",
+      "ar": "Fubo"
+    },
+    "YouTube TV sports packages": {
+      "en": "YouTube TV sports packages",
+      "fr": "YouTube TV sports packages",
+      "ar": "YouTube TV sports packages"
+    },
+    "Sling sports packages": {
+      "en": "Sling sports packages",
+      "fr": "Sling sports packages",
+      "ar": "Sling sports packages"
+    },
+    "Canal+ Sport": {
+      "en": "Canal+ Sport",
+      "fr": "Canal+ Sport",
+      "ar": "Canal+ Sport"
+    },
+    "RMC Sport": {
+      "en": "RMC Sport",
+      "fr": "RMC Sport",
+      "ar": "RMC Sport"
+    },
+    "Eurosport": {
+      "en": "Eurosport",
+      "fr": "Eurosport",
+      "ar": "Eurosport"
+    },
+    "TNT Sports": {
+      "en": "TNT Sports",
+      "fr": "TNT Sports",
+      "ar": "TNT Sports"
+    },
+    "Sky Sports": {
+      "en": "Sky Sports",
+      "fr": "Sky Sports",
+      "ar": "Sky Sports"
+    },
+    "NOW Sports": {
+      "en": "NOW Sports",
+      "fr": "NOW Sports",
+      "ar": "NOW Sports"
+    },
+    "TSN+": {
+      "en": "TSN+",
+      "fr": "TSN+",
+      "ar": "TSN+"
+    },
+    "Sportsnet+": {
+      "en": "Sportsnet+",
+      "fr": "Sportsnet+",
+      "ar": "Sportsnet+"
+    },
+    "TVA Sports-related services": {
+      "en": "TVA Sports-related services",
+      "fr": "TVA Sports-related services",
+      "ar": "TVA Sports-related services"
+    },
+    "MLS Season Pass": {
+      "en": "MLS Season Pass",
+      "fr": "MLS Season Pass",
+      "ar": "MLS Season Pass"
+    },
+    "NBA League Pass": {
+      "en": "NBA League Pass",
+      "fr": "NBA League Pass",
+      "ar": "NBA League Pass"
+    },
+    "NFL Game Pass": {
+      "en": "NFL Game Pass",
+      "fr": "NFL Game Pass",
+      "ar": "NFL Game Pass"
+    },
+    "MLB.TV": {
+      "en": "MLB.TV",
+      "fr": "MLB.TV",
+      "ar": "MLB.TV"
+    },
+    "NHL services": {
+      "en": "NHL services",
+      "fr": "NHL services",
+      "ar": "NHL services"
+    },
+    "UFC Fight Pass": {
+      "en": "UFC Fight Pass",
+      "fr": "UFC Fight Pass",
+      "ar": "UFC Fight Pass"
+    },
+    "WWE-related streaming": {
+      "en": "WWE-related streaming",
+      "fr": "WWE-related streaming",
+      "ar": "WWE-related streaming"
+    },
+    "F1 TV": {
+      "en": "F1 TV",
+      "fr": "F1 TV",
+      "ar": "F1 TV"
+    },
+    "MotoGP VideoPass": {
+      "en": "MotoGP VideoPass",
+      "fr": "MotoGP VideoPass",
+      "ar": "MotoGP VideoPass"
+    },
+    "Tennis TV": {
+      "en": "Tennis TV",
+      "fr": "Tennis TV",
+      "ar": "Tennis TV"
+    },
+    "ATP/WTA-related streaming services": {
+      "en": "ATP/WTA-related streaming services",
+      "fr": "ATP/WTA-related streaming services",
+      "ar": "ATP/WTA-related streaming services"
+    },
+    "FloSports": {
+      "en": "FloSports",
+      "fr": "FloSports",
+      "ar": "FloSports"
+    },
+    "Peacock Sports": {
+      "en": "Peacock Sports",
+      "fr": "Peacock Sports",
+      "ar": "Peacock Sports"
+    },
+    "Paramount+ Sports": {
+      "en": "Paramount+ Sports",
+      "fr": "Paramount+ Sports",
+      "ar": "Paramount+ Sports"
+    },
+    "TOD Sports": {
+      "en": "TOD Sports",
+      "fr": "TOD Sports",
+      "ar": "TOD Sports"
+    },
+    "Gaming": {
+      "en": "Gaming",
+      "fr": "Jeux vidéo",
+      "ar": "ألعاب الفيديو"
+    },
+    "PlayStation Network": {
+      "en": "PlayStation Network",
+      "fr": "PlayStation Network",
+      "ar": "PlayStation Network"
+    },
+    "PlayStation Plus Essential": {
+      "en": "PlayStation Plus Essential",
+      "fr": "PlayStation Plus Essential",
+      "ar": "PlayStation Plus Essential"
+    },
+    "PlayStation Plus Extra": {
+      "en": "PlayStation Plus Extra",
+      "fr": "PlayStation Plus Extra",
+      "ar": "PlayStation Plus Extra"
+    },
+    "PlayStation Plus Premium": {
+      "en": "PlayStation Plus Premium",
+      "fr": "PlayStation Plus Premium",
+      "ar": "PlayStation Plus Premium"
+    },
+    "Xbox": {
+      "en": "Xbox",
+      "fr": "Xbox",
+      "ar": "Xbox"
+    },
+    "Xbox Game Pass Core": {
+      "en": "Xbox Game Pass Core",
+      "fr": "Xbox Game Pass Core",
+      "ar": "Xbox Game Pass Core"
+    },
+    "Xbox Game Pass Standard": {
+      "en": "Xbox Game Pass Standard",
+      "fr": "Xbox Game Pass Standard",
+      "ar": "Xbox Game Pass Standard"
+    },
+    "PC Game Pass": {
+      "en": "PC Game Pass",
+      "fr": "PC Game Pass",
+      "ar": "PC Game Pass"
+    },
+    "Xbox Game Pass Ultimate": {
+      "en": "Xbox Game Pass Ultimate",
+      "fr": "Xbox Game Pass Ultimate",
+      "ar": "Xbox Game Pass Ultimate"
+    },
+    "Nintendo Switch Online": {
+      "en": "Nintendo Switch Online",
+      "fr": "Nintendo Switch Online",
+      "ar": "Nintendo Switch Online"
+    },
+    "Nintendo Switch Online + Expansion Pack": {
+      "en": "Nintendo Switch Online + Expansion Pack",
+      "fr": "Nintendo Switch Online + Expansion Pack",
+      "ar": "Nintendo Switch Online + Expansion Pack"
+    },
+    "Steam": {
+      "en": "Steam",
+      "fr": "Steam",
+      "ar": "Steam"
+    },
+    "Epic Games": {
+      "en": "Epic Games",
+      "fr": "Epic Games",
+      "ar": "Epic Games"
+    },
+    "EA Play": {
+      "en": "EA Play",
+      "fr": "EA Play",
+      "ar": "EA Play"
+    },
+    "EA Play Pro": {
+      "en": "EA Play Pro",
+      "fr": "EA Play Pro",
+      "ar": "EA Play Pro"
+    },
+    "Ubisoft+": {
+      "en": "Ubisoft+",
+      "fr": "Ubisoft+",
+      "ar": "Ubisoft+"
+    },
+    "Battle.net": {
+      "en": "Battle.net",
+      "fr": "Battle.net",
+      "ar": "Battle.net"
+    },
+    "Riot Games": {
+      "en": "Riot Games",
+      "fr": "Riot Games",
+      "ar": "Riot Games"
+    },
+    "Rockstar Games": {
+      "en": "Rockstar Games",
+      "fr": "Rockstar Games",
+      "ar": "Rockstar Games"
+    },
+    "Minecraft": {
+      "en": "Minecraft",
+      "fr": "Minecraft",
+      "ar": "Minecraft"
+    },
+    "Roblox": {
+      "en": "Roblox",
+      "fr": "Roblox",
+      "ar": "Roblox"
+    },
+    "Fortnite": {
+      "en": "Fortnite",
+      "fr": "Fortnite",
+      "ar": "Fortnite"
+    },
+    "Epic Games / Fortnite": {
+      "en": "Epic Games / Fortnite",
+      "fr": "Epic Games / Fortnite",
+      "ar": "Epic Games / Fortnite"
+    },
+    "GeForce NOW": {
+      "en": "GeForce NOW",
+      "fr": "GeForce NOW",
+      "ar": "GeForce NOW"
+    },
+    "Amazon Luna": {
+      "en": "Amazon Luna",
+      "fr": "Amazon Luna",
+      "ar": "Amazon Luna"
+    },
+    "Boosteroid": {
+      "en": "Boosteroid",
+      "fr": "Boosteroid",
+      "ar": "Boosteroid"
+    },
+    "Shadow PC": {
+      "en": "Shadow PC",
+      "fr": "Shadow PC",
+      "ar": "Shadow PC"
+    },
+    "Apple Arcade": {
+      "en": "Apple Arcade",
+      "fr": "Apple Arcade",
+      "ar": "Apple Arcade"
+    },
+    "Google Play Pass": {
+      "en": "Google Play Pass",
+      "fr": "Google Play Pass",
+      "ar": "Google Play Pass"
+    },
+    "Meta Quest services": {
+      "en": "Meta Quest services",
+      "fr": "Meta Quest services",
+      "ar": "Meta Quest services"
+    },
+    "Music & Audio": {
+      "en": "Music & Audio",
+      "fr": "Musique et audio",
+      "ar": "الموسيقى والصوت"
+    },
+    "Spotify Premium": {
+      "en": "Spotify Premium",
+      "fr": "Spotify Premium",
+      "ar": "Spotify Premium"
+    },
+    "Apple Music": {
+      "en": "Apple Music",
+      "fr": "Apple Music",
+      "ar": "Apple Music"
+    },
+    "Amazon Music Unlimited": {
+      "en": "Amazon Music Unlimited",
+      "fr": "Amazon Music Unlimited",
+      "ar": "Amazon Music Unlimited"
+    },
+    "YouTube Music Premium": {
+      "en": "YouTube Music Premium",
+      "fr": "YouTube Music Premium",
+      "ar": "YouTube Music Premium"
+    },
+    "Deezer": {
+      "en": "Deezer",
+      "fr": "Deezer",
+      "ar": "Deezer"
+    },
+    "Tidal": {
+      "en": "Tidal",
+      "fr": "Tidal",
+      "ar": "Tidal"
+    },
+    "SoundCloud Go+": {
+      "en": "SoundCloud Go+",
+      "fr": "SoundCloud Go+",
+      "ar": "SoundCloud Go+"
+    },
+    "Anghami": {
+      "en": "Anghami",
+      "fr": "Anghami",
+      "ar": "Anghami"
+    },
+    "Qobuz": {
+      "en": "Qobuz",
+      "fr": "Qobuz",
+      "ar": "Qobuz"
+    },
+    "Pandora": {
+      "en": "Pandora",
+      "fr": "Pandora",
+      "ar": "Pandora"
+    },
+    "iHeartRadio services": {
+      "en": "iHeartRadio services",
+      "fr": "iHeartRadio services",
+      "ar": "iHeartRadio services"
+    },
+    "SiriusXM": {
+      "en": "SiriusXM",
+      "fr": "SiriusXM",
+      "ar": "SiriusXM"
+    },
+    "Audible": {
+      "en": "Audible",
+      "fr": "Audible",
+      "ar": "Audible"
+    },
+    "Storytel": {
+      "en": "Storytel",
+      "fr": "Storytel",
+      "ar": "Storytel"
+    },
+    "Pocket Casts Plus": {
+      "en": "Pocket Casts Plus",
+      "fr": "Pocket Casts Plus",
+      "ar": "Pocket Casts Plus"
+    },
+    "AI Tools": {
+      "en": "AI Tools",
+      "fr": "Outils d’IA",
+      "ar": "أدوات الذكاء الاصطناعي"
+    },
+    "ChatGPT": {
+      "en": "ChatGPT",
+      "fr": "ChatGPT",
+      "ar": "ChatGPT"
+    },
+    "Claude": {
+      "en": "Claude",
+      "fr": "Claude",
+      "ar": "Claude"
+    },
+    "Gemini": {
+      "en": "Gemini",
+      "fr": "Gemini",
+      "ar": "Gemini"
+    },
+    "Perplexity": {
+      "en": "Perplexity",
+      "fr": "Perplexity",
+      "ar": "Perplexity"
+    },
+    "Microsoft Copilot": {
+      "en": "Microsoft Copilot",
+      "fr": "Microsoft Copilot",
+      "ar": "Microsoft Copilot"
+    },
+    "GitHub Copilot": {
+      "en": "GitHub Copilot",
+      "fr": "GitHub Copilot",
+      "ar": "GitHub Copilot"
+    },
+    "Midjourney": {
+      "en": "Midjourney",
+      "fr": "Midjourney",
+      "ar": "Midjourney"
+    },
+    "Leonardo AI": {
+      "en": "Leonardo AI",
+      "fr": "Leonardo AI",
+      "ar": "Leonardo AI"
+    },
+    "Runway": {
+      "en": "Runway",
+      "fr": "Runway",
+      "ar": "Runway"
+    },
+    "Pika": {
+      "en": "Pika",
+      "fr": "Pika",
+      "ar": "Pika"
+    },
+    "Kling AI": {
+      "en": "Kling AI",
+      "fr": "Kling AI",
+      "ar": "Kling AI"
+    },
+    "Luma": {
+      "en": "Luma",
+      "fr": "Luma",
+      "ar": "Luma"
+    },
+    "ElevenLabs": {
+      "en": "ElevenLabs",
+      "fr": "ElevenLabs",
+      "ar": "ElevenLabs"
+    },
+    "Suno": {
+      "en": "Suno",
+      "fr": "Suno",
+      "ar": "Suno"
+    },
+    "Udio": {
+      "en": "Udio",
+      "fr": "Udio",
+      "ar": "Udio"
+    },
+    "Synthesia": {
+      "en": "Synthesia",
+      "fr": "Synthesia",
+      "ar": "Synthesia"
+    },
+    "HeyGen": {
+      "en": "HeyGen",
+      "fr": "HeyGen",
+      "ar": "HeyGen"
+    },
+    "Character.AI paid plans": {
+      "en": "Character.AI paid plans",
+      "fr": "Character.AI paid plans",
+      "ar": "Character.AI paid plans"
+    },
+    "Poe": {
+      "en": "Poe",
+      "fr": "Poe",
+      "ar": "Poe"
+    },
+    "Cursor": {
+      "en": "Cursor",
+      "fr": "Cursor",
+      "ar": "Cursor"
+    },
+    "Replit": {
+      "en": "Replit",
+      "fr": "Replit",
+      "ar": "Replit"
+    },
+    "Notion AI": {
+      "en": "Notion AI",
+      "fr": "Notion AI",
+      "ar": "Notion AI"
+    },
+    "Canva AI": {
+      "en": "Canva AI",
+      "fr": "Canva AI",
+      "ar": "Canva AI"
+    },
+    "Adobe Firefly": {
+      "en": "Adobe Firefly",
+      "fr": "Adobe Firefly",
+      "ar": "Adobe Firefly"
+    },
+    "Grammarly AI": {
+      "en": "Grammarly AI",
+      "fr": "Grammarly AI",
+      "ar": "Grammarly AI"
+    },
+    "Jasper": {
+      "en": "Jasper",
+      "fr": "Jasper",
+      "ar": "Jasper"
+    },
+    "Copy.ai": {
+      "en": "Copy.ai",
+      "fr": "Copy.ai",
+      "ar": "Copy.ai"
+    },
+    "Writesonic": {
+      "en": "Writesonic",
+      "fr": "Writesonic",
+      "ar": "Writesonic"
+    },
+    "DeepL Pro": {
+      "en": "DeepL Pro",
+      "fr": "DeepL Pro",
+      "ar": "DeepL Pro"
+    },
+    "Software & Productivity": {
+      "en": "Software & Productivity",
+      "fr": "Logiciels et productivité",
+      "ar": "البرامج والإنتاجية"
+    },
+    "Microsoft 365": {
+      "en": "Microsoft 365",
+      "fr": "Microsoft 365",
+      "ar": "Microsoft 365"
+    },
+    "Google Workspace": {
+      "en": "Google Workspace",
+      "fr": "Google Workspace",
+      "ar": "Google Workspace"
+    },
+    "Adobe Creative Cloud": {
+      "en": "Adobe Creative Cloud",
+      "fr": "Adobe Creative Cloud",
+      "ar": "Adobe Creative Cloud"
+    },
+    "Canva Pro": {
+      "en": "Canva Pro",
+      "fr": "Canva Pro",
+      "ar": "Canva Pro"
+    },
+    "Notion": {
+      "en": "Notion",
+      "fr": "Notion",
+      "ar": "Notion"
+    },
+    "Slack": {
+      "en": "Slack",
+      "fr": "Slack",
+      "ar": "Slack"
+    },
+    "Zoom": {
+      "en": "Zoom",
+      "fr": "Zoom",
+      "ar": "Zoom"
+    },
+    "Dropbox": {
+      "en": "Dropbox",
+      "fr": "Dropbox",
+      "ar": "Dropbox"
+    },
+    "OneDrive": {
+      "en": "OneDrive",
+      "fr": "OneDrive",
+      "ar": "OneDrive"
+    },
+    "iCloud+": {
+      "en": "iCloud+",
+      "fr": "iCloud+",
+      "ar": "iCloud+"
+    },
+    "Google One": {
+      "en": "Google One",
+      "fr": "Google One",
+      "ar": "Google One"
+    },
+    "Evernote": {
+      "en": "Evernote",
+      "fr": "Evernote",
+      "ar": "Evernote"
+    },
+    "Grammarly": {
+      "en": "Grammarly",
+      "fr": "Grammarly",
+      "ar": "Grammarly"
+    },
+    "Todoist": {
+      "en": "Todoist",
+      "fr": "Todoist",
+      "ar": "Todoist"
+    },
+    "ClickUp": {
+      "en": "ClickUp",
+      "fr": "ClickUp",
+      "ar": "ClickUp"
+    },
+    "Monday.com": {
+      "en": "Monday.com",
+      "fr": "Monday.com",
+      "ar": "Monday.com"
+    },
+    "Asana": {
+      "en": "Asana",
+      "fr": "Asana",
+      "ar": "Asana"
+    },
+    "Trello": {
+      "en": "Trello",
+      "fr": "Trello",
+      "ar": "Trello"
+    },
+    "Airtable": {
+      "en": "Airtable",
+      "fr": "Airtable",
+      "ar": "Airtable"
+    },
+    "Calendly": {
+      "en": "Calendly",
+      "fr": "Calendly",
+      "ar": "Calendly"
+    },
+    "DocuSign": {
+      "en": "DocuSign",
+      "fr": "DocuSign",
+      "ar": "DocuSign"
+    },
+    "Dropbox Sign": {
+      "en": "Dropbox Sign",
+      "fr": "Dropbox Sign",
+      "ar": "Dropbox Sign"
+    },
+    "Office apps": {
+      "en": "Office apps",
+      "fr": "Office apps",
+      "ar": "Office apps"
+    },
+    "PDF editors": {
+      "en": "PDF editors",
+      "fr": "PDF editors",
+      "ar": "PDF editors"
+    },
+    "Antivirus software": {
+      "en": "Antivirus software",
+      "fr": "Antivirus software",
+      "ar": "Antivirus software"
+    },
+    "Security software": {
+      "en": "Security software",
+      "fr": "Security software",
+      "ar": "Security software"
+    },
+    "Design / Photo / Video": {
+      "en": "Design / Photo / Video",
+      "fr": "Design / photo / vidéo",
+      "ar": "التصميم / الصور / الفيديو"
+    },
+    "Adobe Photoshop": {
+      "en": "Adobe Photoshop",
+      "fr": "Adobe Photoshop",
+      "ar": "Adobe Photoshop"
+    },
+    "Adobe Illustrator": {
+      "en": "Adobe Illustrator",
+      "fr": "Adobe Illustrator",
+      "ar": "Adobe Illustrator"
+    },
+    "Adobe Lightroom": {
+      "en": "Adobe Lightroom",
+      "fr": "Adobe Lightroom",
+      "ar": "Adobe Lightroom"
+    },
+    "Adobe Premiere Pro": {
+      "en": "Adobe Premiere Pro",
+      "fr": "Adobe Premiere Pro",
+      "ar": "Adobe Premiere Pro"
+    },
+    "Adobe After Effects": {
+      "en": "Adobe After Effects",
+      "fr": "Adobe After Effects",
+      "ar": "Adobe After Effects"
+    },
+    "Adobe Acrobat Pro": {
+      "en": "Adobe Acrobat Pro",
+      "fr": "Adobe Acrobat Pro",
+      "ar": "Adobe Acrobat Pro"
+    },
+    "Figma Professional": {
+      "en": "Figma Professional",
+      "fr": "Figma Professional",
+      "ar": "Figma Professional"
+    },
+    "CapCut Pro": {
+      "en": "CapCut Pro",
+      "fr": "CapCut Pro",
+      "ar": "CapCut Pro"
+    },
+    "Filmora": {
+      "en": "Filmora",
+      "fr": "Filmora",
+      "ar": "Filmora"
+    },
+    "Envato Elements": {
+      "en": "Envato Elements",
+      "fr": "Envato Elements",
+      "ar": "Envato Elements"
+    },
+    "Motion Array": {
+      "en": "Motion Array",
+      "fr": "Motion Array",
+      "ar": "Motion Array"
+    },
+    "Storyblocks": {
+      "en": "Storyblocks",
+      "fr": "Storyblocks",
+      "ar": "Storyblocks"
+    },
+    "Freepik Premium": {
+      "en": "Freepik Premium",
+      "fr": "Freepik Premium",
+      "ar": "Freepik Premium"
+    },
+    "Shutterstock subscriptions": {
+      "en": "Shutterstock subscriptions",
+      "fr": "Shutterstock subscriptions",
+      "ar": "Shutterstock subscriptions"
+    },
+    "Adobe Stock": {
+      "en": "Adobe Stock",
+      "fr": "Adobe Stock",
+      "ar": "Adobe Stock"
+    },
+    "Epidemic Sound": {
+      "en": "Epidemic Sound",
+      "fr": "Epidemic Sound",
+      "ar": "Epidemic Sound"
+    },
+    "Artlist": {
+      "en": "Artlist",
+      "fr": "Artlist",
+      "ar": "Artlist"
+    },
+    "VSCO": {
+      "en": "VSCO",
+      "fr": "VSCO",
+      "ar": "VSCO"
+    },
+    "Picsart": {
+      "en": "Picsart",
+      "fr": "Picsart",
+      "ar": "Picsart"
+    },
+    "Placeit": {
+      "en": "Placeit",
+      "fr": "Placeit",
+      "ar": "Placeit"
+    },
+    "Creative Market memberships": {
+      "en": "Creative Market memberships",
+      "fr": "Creative Market memberships",
+      "ar": "Creative Market memberships"
+    },
+    "Cloud & Storage": {
+      "en": "Cloud & Storage",
+      "fr": "Cloud et stockage",
+      "ar": "السحابة والتخزين"
+    },
+    "Microsoft OneDrive": {
+      "en": "Microsoft OneDrive",
+      "fr": "Microsoft OneDrive",
+      "ar": "Microsoft OneDrive"
+    },
+    "Box": {
+      "en": "Box",
+      "fr": "Box",
+      "ar": "Box"
+    },
+    "MEGA": {
+      "en": "MEGA",
+      "fr": "MEGA",
+      "ar": "MEGA"
+    },
+    "pCloud": {
+      "en": "pCloud",
+      "fr": "pCloud",
+      "ar": "pCloud"
+    },
+    "Proton Drive": {
+      "en": "Proton Drive",
+      "fr": "Proton Drive",
+      "ar": "Proton Drive"
+    },
+    "Sync.com": {
+      "en": "Sync.com",
+      "fr": "Sync.com",
+      "ar": "Sync.com"
+    },
+    "IDrive": {
+      "en": "IDrive",
+      "fr": "IDrive",
+      "ar": "IDrive"
+    },
+    "Backblaze": {
+      "en": "Backblaze",
+      "fr": "Backblaze",
+      "ar": "Backblaze"
+    },
+    "Education": {
+      "en": "Education",
+      "fr": "Éducation",
+      "ar": "التعليم"
+    },
+    "Coursera Plus": {
+      "en": "Coursera Plus",
+      "fr": "Coursera Plus",
+      "ar": "Coursera Plus"
+    },
+    "Udemy subscriptions": {
+      "en": "Udemy subscriptions",
+      "fr": "Udemy subscriptions",
+      "ar": "Udemy subscriptions"
+    },
+    "Skillshare": {
+      "en": "Skillshare",
+      "fr": "Skillshare",
+      "ar": "Skillshare"
+    },
+    "MasterClass": {
+      "en": "MasterClass",
+      "fr": "MasterClass",
+      "ar": "MasterClass"
+    },
+    "LinkedIn Learning": {
+      "en": "LinkedIn Learning",
+      "fr": "LinkedIn Learning",
+      "ar": "LinkedIn Learning"
+    },
+    "Pluralsight": {
+      "en": "Pluralsight",
+      "fr": "Pluralsight",
+      "ar": "Pluralsight"
+    },
+    "Codecademy": {
+      "en": "Codecademy",
+      "fr": "Codecademy",
+      "ar": "Codecademy"
+    },
+    "DataCamp": {
+      "en": "DataCamp",
+      "fr": "DataCamp",
+      "ar": "DataCamp"
+    },
+    "Brilliant": {
+      "en": "Brilliant",
+      "fr": "Brilliant",
+      "ar": "Brilliant"
+    },
+    "Duolingo Super": {
+      "en": "Duolingo Super",
+      "fr": "Duolingo Super",
+      "ar": "Duolingo Super"
+    },
+    "Duolingo Max": {
+      "en": "Duolingo Max",
+      "fr": "Duolingo Max",
+      "ar": "Duolingo Max"
+    },
+    "Babbel": {
+      "en": "Babbel",
+      "fr": "Babbel",
+      "ar": "Babbel"
+    },
+    "Busuu": {
+      "en": "Busuu",
+      "fr": "Busuu",
+      "ar": "Busuu"
+    },
+    "Rosetta Stone": {
+      "en": "Rosetta Stone",
+      "fr": "Rosetta Stone",
+      "ar": "Rosetta Stone"
+    },
+    "Quizlet Plus": {
+      "en": "Quizlet Plus",
+      "fr": "Quizlet Plus",
+      "ar": "Quizlet Plus"
+    },
+    "Chegg": {
+      "en": "Chegg",
+      "fr": "Chegg",
+      "ar": "Chegg"
+    },
+    "Study.com": {
+      "en": "Study.com",
+      "fr": "Study.com",
+      "ar": "Study.com"
+    },
+    "Khan-related paid offerings if applicable": {
+      "en": "Khan-related paid offerings if applicable",
+      "fr": "Khan-related paid offerings if applicable",
+      "ar": "Khan-related paid offerings if applicable"
+    },
+    "News & Reading": {
+      "en": "News & Reading",
+      "fr": "Actualités et lecture",
+      "ar": "الأخبار والقراءة"
+    },
+    "Kindle Unlimited": {
+      "en": "Kindle Unlimited",
+      "fr": "Kindle Unlimited",
+      "ar": "Kindle Unlimited"
+    },
+    "Everand": {
+      "en": "Everand",
+      "fr": "Everand",
+      "ar": "Everand"
+    },
+    "Kobo Plus": {
+      "en": "Kobo Plus",
+      "fr": "Kobo Plus",
+      "ar": "Kobo Plus"
+    },
+    "Blinkist": {
+      "en": "Blinkist",
+      "fr": "Blinkist",
+      "ar": "Blinkist"
+    },
+    "Medium": {
+      "en": "Medium",
+      "fr": "Medium",
+      "ar": "Medium"
+    },
+    "The New York Times": {
+      "en": "The New York Times",
+      "fr": "The New York Times",
+      "ar": "The New York Times"
+    },
+    "Wall Street Journal": {
+      "en": "Wall Street Journal",
+      "fr": "Wall Street Journal",
+      "ar": "Wall Street Journal"
+    },
+    "Financial Times": {
+      "en": "Financial Times",
+      "fr": "Financial Times",
+      "ar": "Financial Times"
+    },
+    "Bloomberg": {
+      "en": "Bloomberg",
+      "fr": "Bloomberg",
+      "ar": "Bloomberg"
+    },
+    "The Economist": {
+      "en": "The Economist",
+      "fr": "The Economist",
+      "ar": "The Economist"
+    },
+    "Washington Post": {
+      "en": "Washington Post",
+      "fr": "Washington Post",
+      "ar": "Washington Post"
+    },
+    "Le Monde": {
+      "en": "Le Monde",
+      "fr": "Le Monde",
+      "ar": "Le Monde"
+    },
+    "Le Figaro": {
+      "en": "Le Figaro",
+      "fr": "Le Figaro",
+      "ar": "Le Figaro"
+    },
+    "The Athletic": {
+      "en": "The Athletic",
+      "fr": "The Athletic",
+      "ar": "The Athletic"
+    },
+    "Readly": {
+      "en": "Readly",
+      "fr": "Readly",
+      "ar": "Readly"
+    },
+    "PressReader": {
+      "en": "PressReader",
+      "fr": "PressReader",
+      "ar": "PressReader"
+    },
+    "Social & Creator": {
+      "en": "Social & Creator",
+      "fr": "Réseaux sociaux et créateurs",
+      "ar": "التواصل الاجتماعي وصنّاع المحتوى"
+    },
+    "X Premium": {
+      "en": "X Premium",
+      "fr": "X Premium",
+      "ar": "X Premium"
+    },
+    "Snapchat+": {
+      "en": "Snapchat+",
+      "fr": "Snapchat+",
+      "ar": "Snapchat+"
+    },
+    "Telegram Premium": {
+      "en": "Telegram Premium",
+      "fr": "Telegram Premium",
+      "ar": "Telegram Premium"
+    },
+    "Discord Nitro": {
+      "en": "Discord Nitro",
+      "fr": "Discord Nitro",
+      "ar": "Discord Nitro"
+    },
+    "LinkedIn Premium": {
+      "en": "LinkedIn Premium",
+      "fr": "LinkedIn Premium",
+      "ar": "LinkedIn Premium"
+    },
+    "Twitch subscriptions": {
+      "en": "Twitch subscriptions",
+      "fr": "Twitch subscriptions",
+      "ar": "Twitch subscriptions"
+    },
+    "Twitch Turbo": {
+      "en": "Twitch Turbo",
+      "fr": "Twitch Turbo",
+      "ar": "Twitch Turbo"
+    },
+    "Patreon memberships": {
+      "en": "Patreon memberships",
+      "fr": "Patreon memberships",
+      "ar": "Patreon memberships"
+    },
+    "YouTube channel memberships": {
+      "en": "YouTube channel memberships",
+      "fr": "YouTube channel memberships",
+      "ar": "YouTube channel memberships"
+    },
+    "vidIQ": {
+      "en": "vidIQ",
+      "fr": "vidIQ",
+      "ar": "vidIQ"
+    },
+    "TubeBuddy": {
+      "en": "TubeBuddy",
+      "fr": "TubeBuddy",
+      "ar": "TubeBuddy"
+    },
+    "StreamYard": {
+      "en": "StreamYard",
+      "fr": "StreamYard",
+      "ar": "StreamYard"
+    },
+    "Restream": {
+      "en": "Restream",
+      "fr": "Restream",
+      "ar": "Restream"
+    },
+    "Later": {
+      "en": "Later",
+      "fr": "Later",
+      "ar": "Later"
+    },
+    "Buffer": {
+      "en": "Buffer",
+      "fr": "Buffer",
+      "ar": "Buffer"
+    },
+    "Hootsuite": {
+      "en": "Hootsuite",
+      "fr": "Hootsuite",
+      "ar": "Hootsuite"
+    },
+    "Business & Marketing": {
+      "en": "Business & Marketing",
+      "fr": "Entreprise et marketing",
+      "ar": "الأعمال والتسويق"
+    },
+    "Shopify": {
+      "en": "Shopify",
+      "fr": "Shopify",
+      "ar": "Shopify"
+    },
+    "Wix": {
+      "en": "Wix",
+      "fr": "Wix",
+      "ar": "Wix"
+    },
+    "Squarespace": {
+      "en": "Squarespace",
+      "fr": "Squarespace",
+      "ar": "Squarespace"
+    },
+    "Webflow": {
+      "en": "Webflow",
+      "fr": "Webflow",
+      "ar": "Webflow"
+    },
+    "Framer": {
+      "en": "Framer",
+      "fr": "Framer",
+      "ar": "Framer"
+    },
+    "WordPress paid services": {
+      "en": "WordPress paid services",
+      "fr": "WordPress paid services",
+      "ar": "WordPress paid services"
+    },
+    "HubSpot": {
+      "en": "HubSpot",
+      "fr": "HubSpot",
+      "ar": "HubSpot"
+    },
+    "Salesforce": {
+      "en": "Salesforce",
+      "fr": "Salesforce",
+      "ar": "Salesforce"
+    },
+    "Zendesk": {
+      "en": "Zendesk",
+      "fr": "Zendesk",
+      "ar": "Zendesk"
+    },
+    "Intercom": {
+      "en": "Intercom",
+      "fr": "Intercom",
+      "ar": "Intercom"
+    },
+    "Mailchimp": {
+      "en": "Mailchimp",
+      "fr": "Mailchimp",
+      "ar": "Mailchimp"
+    },
+    "Brevo": {
+      "en": "Brevo",
+      "fr": "Brevo",
+      "ar": "Brevo"
+    },
+    "Semrush": {
+      "en": "Semrush",
+      "fr": "Semrush",
+      "ar": "Semrush"
+    },
+    "Ahrefs": {
+      "en": "Ahrefs",
+      "fr": "Ahrefs",
+      "ar": "Ahrefs"
+    },
+    "Moz": {
+      "en": "Moz",
+      "fr": "Moz",
+      "ar": "Moz"
+    },
+    "Ubersuggest": {
+      "en": "Ubersuggest",
+      "fr": "Ubersuggest",
+      "ar": "Ubersuggest"
+    },
+    "Similarweb": {
+      "en": "Similarweb",
+      "fr": "Similarweb",
+      "ar": "Similarweb"
+    },
+    "QuickBooks": {
+      "en": "QuickBooks",
+      "fr": "QuickBooks",
+      "ar": "QuickBooks"
+    },
+    "Xero": {
+      "en": "Xero",
+      "fr": "Xero",
+      "ar": "Xero"
+    },
+    "FreshBooks": {
+      "en": "FreshBooks",
+      "fr": "FreshBooks",
+      "ar": "FreshBooks"
+    },
+    "Hosting & Developer": {
+      "en": "Hosting & Developer",
+      "fr": "Hébergement et développement",
+      "ar": "الاستضافة والتطوير"
+    },
+    "GitHub": {
+      "en": "GitHub",
+      "fr": "GitHub",
+      "ar": "GitHub"
+    },
+    "GitLab": {
+      "en": "GitLab",
+      "fr": "GitLab",
+      "ar": "GitLab"
+    },
+    "JetBrains": {
+      "en": "JetBrains",
+      "fr": "JetBrains",
+      "ar": "JetBrains"
+    },
+    "Vercel": {
+      "en": "Vercel",
+      "fr": "Vercel",
+      "ar": "Vercel"
+    },
+    "Render": {
+      "en": "Render",
+      "fr": "Render",
+      "ar": "Render"
+    },
+    "Netlify": {
+      "en": "Netlify",
+      "fr": "Netlify",
+      "ar": "Netlify"
+    },
+    "DigitalOcean": {
+      "en": "DigitalOcean",
+      "fr": "DigitalOcean",
+      "ar": "DigitalOcean"
+    },
+    "AWS": {
+      "en": "AWS",
+      "fr": "AWS",
+      "ar": "AWS"
+    },
+    "Microsoft Azure": {
+      "en": "Microsoft Azure",
+      "fr": "Microsoft Azure",
+      "ar": "Microsoft Azure"
+    },
+    "Google Cloud": {
+      "en": "Google Cloud",
+      "fr": "Google Cloud",
+      "ar": "Google Cloud"
+    },
+    "Cloudflare": {
+      "en": "Cloudflare",
+      "fr": "Cloudflare",
+      "ar": "Cloudflare"
+    },
+    "Hostinger": {
+      "en": "Hostinger",
+      "fr": "Hostinger",
+      "ar": "Hostinger"
+    },
+    "GoDaddy": {
+      "en": "GoDaddy",
+      "fr": "GoDaddy",
+      "ar": "GoDaddy"
+    },
+    "Namecheap": {
+      "en": "Namecheap",
+      "fr": "Namecheap",
+      "ar": "Namecheap"
+    },
+    "Heroku": {
+      "en": "Heroku",
+      "fr": "Heroku",
+      "ar": "Heroku"
+    },
+    "Railway": {
+      "en": "Railway",
+      "fr": "Railway",
+      "ar": "Railway"
+    },
+    "Supabase": {
+      "en": "Supabase",
+      "fr": "Supabase",
+      "ar": "Supabase"
+    },
+    "Firebase paid plans": {
+      "en": "Firebase paid plans",
+      "fr": "Firebase paid plans",
+      "ar": "Firebase paid plans"
+    },
+    "VPN & Security": {
+      "en": "VPN & Security",
+      "fr": "VPN et sécurité",
+      "ar": "VPN والأمان"
+    },
+    "NordVPN": {
+      "en": "NordVPN",
+      "fr": "NordVPN",
+      "ar": "NordVPN"
+    },
+    "ExpressVPN": {
+      "en": "ExpressVPN",
+      "fr": "ExpressVPN",
+      "ar": "ExpressVPN"
+    },
+    "Surfshark": {
+      "en": "Surfshark",
+      "fr": "Surfshark",
+      "ar": "Surfshark"
+    },
+    "Proton VPN": {
+      "en": "Proton VPN",
+      "fr": "Proton VPN",
+      "ar": "Proton VPN"
+    },
+    "CyberGhost": {
+      "en": "CyberGhost",
+      "fr": "CyberGhost",
+      "ar": "CyberGhost"
+    },
+    "Private Internet Access": {
+      "en": "Private Internet Access",
+      "fr": "Private Internet Access",
+      "ar": "Private Internet Access"
+    },
+    "Mullvad": {
+      "en": "Mullvad",
+      "fr": "Mullvad",
+      "ar": "Mullvad"
+    },
+    "Norton": {
+      "en": "Norton",
+      "fr": "Norton",
+      "ar": "Norton"
+    },
+    "McAfee": {
+      "en": "McAfee",
+      "fr": "McAfee",
+      "ar": "McAfee"
+    },
+    "Bitdefender": {
+      "en": "Bitdefender",
+      "fr": "Bitdefender",
+      "ar": "Bitdefender"
+    },
+    "Malwarebytes": {
+      "en": "Malwarebytes",
+      "fr": "Malwarebytes",
+      "ar": "Malwarebytes"
+    },
+    "Kaspersky where legally available": {
+      "en": "Kaspersky where legally available",
+      "fr": "Kaspersky where legally available",
+      "ar": "Kaspersky where legally available"
+    },
+    "1Password": {
+      "en": "1Password",
+      "fr": "1Password",
+      "ar": "1Password"
+    },
+    "Dashlane": {
+      "en": "Dashlane",
+      "fr": "Dashlane",
+      "ar": "Dashlane"
+    },
+    "Proton Pass": {
+      "en": "Proton Pass",
+      "fr": "Proton Pass",
+      "ar": "Proton Pass"
+    },
+    "Regional TV & Entertainment": {
+      "en": "Regional TV & Entertainment",
+      "fr": "TV régionale et divertissement",
+      "ar": "التلفزيون الإقليمي والترفيه"
+    },
+    "beIN": {
+      "en": "beIN",
+      "fr": "beIN",
+      "ar": "beIN"
+    },
+    "Sky": {
+      "en": "Sky",
+      "fr": "Sky",
+      "ar": "Sky"
+    },
+    "Kayo": {
+      "en": "Kayo",
+      "fr": "Kayo",
+      "ar": "Kayo"
+    },
+    "Hotstar": {
+      "en": "Hotstar",
+      "fr": "Hotstar",
+      "ar": "Hotstar"
+    },
+    "JioHotstar": {
+      "en": "JioHotstar",
+      "fr": "JioHotstar",
+      "ar": "JioHotstar"
+    },
+    "Zee5": {
+      "en": "Zee5",
+      "fr": "Zee5",
+      "ar": "Zee5"
+    },
+    "SonyLIV": {
+      "en": "SonyLIV",
+      "fr": "SonyLIV",
+      "ar": "SonyLIV"
+    },
+    "Viki Pass": {
+      "en": "Viki Pass",
+      "fr": "Viki Pass",
+      "ar": "Viki Pass"
+    },
+    "iQIYI": {
+      "en": "iQIYI",
+      "fr": "iQIYI",
+      "ar": "iQIYI"
+    },
+    "WeTV": {
+      "en": "WeTV",
+      "fr": "WeTV",
+      "ar": "WeTV"
+    },
+    "General Subscriptions": {
+      "en": "General Subscriptions",
+      "fr": "Abonnements généraux",
+      "ar": "الاشتراكات العامة"
+    },
+    "Amazon Prime": {
+      "en": "Amazon Prime",
+      "fr": "Amazon Prime",
+      "ar": "Amazon Prime"
+    }
+  }
+}
+

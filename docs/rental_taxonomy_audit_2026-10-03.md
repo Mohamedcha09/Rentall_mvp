@@ -156,7 +156,11 @@ Sources were consulted on 2026-10-03. They demonstrate that these are actual ren
 | --- | --- |
 | `app/rental_catalog.py` | New immutable-in-process central rental definition, labels, aliases, topology safeguards, and seed contract. |
 | `app/catalog_taxonomy.py` | Merges the rental tree with Digital Accounts; provides one validation/presentation/translation path, including generic `Other` labels. |
+| `app/database.py` | Uses `DATABASE_URL_FULL` when `DATABASE_URL` is absent and refuses a silent SQLite fallback on Render. |
 | `db_migrations/versions/20261004_expand_rental_catalog.py` | New additive static L1/L2 seed migration, revision `rental_catalog_20261004` after `digital_catalog_20261003`; no Item rewrite or deletion. |
+| `db_migrations/versions/20261004_taxonomy_production_bridge.py` | Scoped idempotent bridge from the observed production base; adds only the three nullable Item taxonomy columns, the taxonomy index, and L1/L2 lookup rows without Finder. |
+| `db_migrations/versions/20261004_merge_taxonomy_bridge.py` | Records one future repository head without stamping the un-applied Finder lineage. |
+| `scripts/render_taxonomy_preflight.py` | Read-only, secret-safe Render preflight and post-check for backend, schema, revision, and all configured L1/L2 rows. |
 | `app/items.py` | Preserves unchanged legacy one- and two-level edit paths while requiring L2/L3 for new or moved configured paths; Explore reads compatible L1 aliases without rewriting rows. |
 | `app/templates/items_new.html` / `items_edit.html` | Data-driven labels and L3 prompts, progressive behavior, localized generic validation copy, and accessible client-side option filters that preserve a selected native option. |
 | `app/finder_service.py` / `app/routes_finder.py` | Finder reads configured plus lookup taxonomy, including zero-listing categories, without per-category rules. |
@@ -172,9 +176,10 @@ All database tests used temporary SQLite files, never `app.db`, `database.db`, o
 - `tests.test_rental_catalog`: 5 passing checks for no missing parent, no duplicate sibling, depth at most 3, translation presence, aliases, and an immutable L1/L2 migration-seed contract.
 - `tests.test_item_taxonomy`: 9 passing checks for every Create-form payload node in EN/FR/AR, every resolver path, forged relationships, Digital Accounts, `Other`, representative rental branches, alias normalization, and legacy blank-L3 compatibility.
 - `tests.test_item_taxonomy_route_flow`: 3 passing isolated migrations/HTTP flows.
+- `tests.test_database_connection_selection` and `tests.test_taxonomy_production_bridge`: 3 passing checks for `DATABASE_URL_FULL`, Render fail-closed behavior, and the scoped production-base migration.
 - `tests.test_finder`: 30 passing isolated checks for configured zero-listing branches, lookup-table additions, localized taxonomy matching, and legacy category compatibility.
 - Complete Create-form coverage audit: with all central lookup rows seeded in an isolated SQLite database, the real `_taxonomy_form_payload` exposed exactly 21 L1, 121 L2, and 701 L3 values in English, French, and Arabic. The real resolver accepted all 25 two-level paths and all 701 third-level values; the 96 parent-scoped `Other` choices required and retained a custom name.
-- Combined focused run: 47 tests passed in 17.440 seconds with `DATABASE_URL` explicitly set to an in-memory SQLite URL; no checked-in or production database was targeted.
+- Focused local checks passed in isolated SQLite databases: 51 checks across catalog, routes, bridge, database selection, message-migration regression, and Finder suites. No checked-in or production database was targeted.
 - The end-to-end flow runs: migration → Create → persisted Item → Pending → Admin approval → Explore L1/L2/L3 filters → Details → Edit.
 - Route examples include School Buses, Popcorn Machines, a non-Digital `Other` custom value, a two-level Housing branch, Digital Accounts → Amazon Prime Video, an old untyped Cars listing, and an L1-only legacy `vehicle` listing viewed under canonical Vehicles, retained after a validation-error re-render, and saved unchanged after Edit.
 - Create and Explore are asserted to render seeded zero-listing categories.
@@ -186,11 +191,11 @@ Not executed: a live browser/device visual run at 320/360/375/390/430 px, a phys
 
 1. Review the uncommitted local changes and the baseline/report files. Do not stage, commit, push, deploy, or point a local process at a production `DATABASE_URL` as part of this task.
 2. On an isolated development or staging database only, inspect the existing `categories` and `subcategories` rows for case-insensitive duplicates before applying the migration. Resolve ambiguity manually; the migration intentionally aborts instead of merging it.
-3. With an explicitly isolated database URL, run `alembic upgrade head` and confirm `rental_catalog_20261004` is the resulting local/staging revision.
+3. With an explicitly isolated database URL, run `alembic upgrade head` and confirm `merge_taxonomy_20261004` is the resulting local/staging revision. For the observed production base, use the separate scoped bridge runbook rather than `head`.
 4. Repeat the focused test commands from the test evidence section using an isolated environment.
 5. Before any separate production rollout, take an approved backup and perform a read-only inventory comparison. Production rollout is outside this task and was not attempted.
 
-No Git write command, Render deployment, production migration, production restart, or production reindex was performed.
+The production-only sequence is documented in [render_taxonomy_bridge_runbook.md](render_taxonomy_bridge_runbook.md). No Git write command, Render deployment, production migration, production restart, or production reindex was performed.
 
 ## I. Out-of-scope observation
 

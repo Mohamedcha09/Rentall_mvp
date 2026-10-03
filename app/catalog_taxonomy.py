@@ -21,6 +21,7 @@ from .rental_catalog import (
     RENTAL_CATEGORY_TREE,
     RENTAL_VALUE_LABELS,
     canonical_rental_category,
+    rental_path_aliases,
 )
 
 
@@ -488,6 +489,21 @@ def taxonomy_label(value: Any, language: str | None = None) -> str:
         return labels.get(language, raw)
     canonical = canonical_rental_category(raw)
     return _VALUE_LABELS.get(canonical, {}).get(language, raw)
+
+
+def taxonomy_path_aliases(
+    category_name: str | None,
+    subcategory_name: str | None = None,
+    third_level_name: str | None = None,
+) -> tuple[str, ...]:
+    """Return central research wording aliases for one rental path.
+
+    The aliases power search and Finder discovery only.  Form submission and
+    server-side hierarchy validation remain canonical and database-backed.
+    Digital Accounts has no research-source aliases in this expansion, so it
+    naturally returns an empty tuple without a category-specific route rule.
+    """
+    return rental_path_aliases(category_name, subcategory_name, third_level_name)
 
 
 def category_storage_values(category_name: str | None) -> tuple[str, ...]:

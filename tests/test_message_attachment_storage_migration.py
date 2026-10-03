@@ -22,7 +22,7 @@ from app.catalog_taxonomy import DIGITAL_ACCOUNTS_CATEGORY, DIGITAL_ACCOUNTS_SER
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 ALEMBIC_CONFIG = REPOSITORY_ROOT / "alembic.ini"
 MIGRATIONS_PATH = REPOSITORY_ROOT / "db_migrations"
-EXPECTED_HEAD = "digital_catalog_20261003"
+EXPECTED_HEAD = "research_catalog_20261005"
 STORAGE_COLUMNS = (
     "storage_backend",
     "storage_key",
@@ -96,6 +96,21 @@ class MessageAttachmentStorageMigrationTests(unittest.TestCase):
                     )
                 }
                 self.assertEqual(seeded_types, set(DIGITAL_ACCOUNTS_SERVICES))
+                research_category = connection.execute(
+                    "SELECT id FROM categories WHERE name = ?",
+                    ("Test & Measurement Equipment",),
+                ).fetchone()
+                self.assertIsNotNone(research_category)
+                self.assertEqual(
+                    {
+                        row[0]
+                        for row in connection.execute(
+                            "SELECT name FROM subcategories WHERE category_id = ?",
+                            (research_category[0],),
+                        )
+                    },
+                    {"Electrical Test Instruments", "Environmental Monitoring"},
+                )
                 legacy_category = connection.execute(
                     "SELECT id FROM categories WHERE name = ?",
                     ("Baby & Kids",),
@@ -103,8 +118,8 @@ class MessageAttachmentStorageMigrationTests(unittest.TestCase):
                 self.assertIsNotNone(legacy_category)
                 self.assertEqual(
                     connection.execute(
-                        "SELECT name FROM subcategories WHERE category_id = ?",
-                        (legacy_category[0],),
+                        "SELECT name FROM subcategories WHERE category_id = ? AND name = ?",
+                        (legacy_category[0], "Car Seats"),
                     ).fetchone()[0],
                     "Car Seats",
                 )

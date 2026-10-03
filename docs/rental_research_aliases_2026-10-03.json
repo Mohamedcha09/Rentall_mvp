@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "source_manifest": "rental_research_coverage_2026-10-03.json",
+  "row_count": 60,
+  "aliases": [
+    {
+      "source_reference": "R01-01",
+      "source_label": "Popcorn machine",
+      "canonical_path": "Food & Concession Equipment → Popcorn Equipment → Popcorn Machines",
+      "reason": "Mapped from supplied research entry. Portable concession equipment; supplies remain separate consumables."
+    },
+    {
+      "source_reference": "R01-02",
+      "source_label": "Cotton candy machine",
+      "canonical_path": "Food & Concession Equipment → Frozen & Dessert Equipment → Cotton Candy Machines",
+      "reason": "Mapped from supplied research entry. Portable concession equipment."
+    },
+    {
+      "source_reference": "R01-04",
+      "source_label": "Soft-serve ice cream machine",
+      "canonical_path": "Food & Concession Equipment → Frozen & Dessert Equipment → Soft-Serve Machines",
+      "reason": "Mapped from supplied research entry. Portable/venue equipment; listing describes power and cleaning requirements."
+    },
+    {
+      "source_reference": "R01-05",
+      "source_label": "Hot dog roller",
+      "canonical_path": "Food & Concession Equipment → Hot Dog Equipment → Hot Dog Rollers",
+      "reason": "Mapped from supplied research entry. Portable concession equipment."
+    },
+    {
+      "source_reference": "R01-06",
+      "source_label": "Slush machine",
+      "canonical_path": "Food & Concession Equipment → Frozen & Dessert Equipment → Slush Machines",
+      "reason": "Mapped from supplied research entry. Portable concession equipment."
+    },
+    {
+      "source_reference": "R01-07",
+      "source_label": "Chocolate fountain",
+      "canonical_path": "Food & Concession Equipment → Frozen & Dessert Equipment → Chocolate Fountains",
+      "reason": "Mapped from supplied research entry. Portable event equipment; chocolate is not a rental asset."
+    },
+    {
+      "source_reference": "R02-01",
+      "source_label": "Mini doughnut maker",
+      "canonical_path": "Food & Concession Equipment → Donut Equipment → Donut Makers",
+      "reason": "Mapped from supplied research entry. Equipment only; ingredients and oil are consumables."
+    },
+    {
+      "source_reference": "R02-02",
+      "source_label": "Heated holding and proofing cabinet",
+      "canonical_path": "Food & Concession Equipment → Commercial Kitchen Equipment → Hot Cupboards",
+      "reason": "Mapped from supplied research entry. Broader heated holding path; proofing capability belongs in listing details."
+    },
+    {
+      "source_reference": "R02-03",
+      "source_label": "Commercial gas deep fryer",
+      "canonical_path": "Food & Concession Equipment → Cooking Equipment → Commercial Fryers",
+      "reason": "Mapped from supplied research entry. Gas type and installation requirements are attributes, not taxonomy children."
+    },
+    {
+      "source_reference": "R02-04",
+      "source_label": "Double bench fryer",
+      "canonical_path": "Food & Concession Equipment → Cooking Equipment → Commercial Fryers",
+      "reason": "Mapped from supplied research entry. Bench/double configuration is listing detail."
+    },
+    {
+      "source_reference": "R03-05",
+      "source_label": "Barbecue equipment",
+      "canonical_path": "Food & Concession Equipment → Cooking Equipment → Grills & Griddles",
+      "reason": "Mapped from supplied research entry. BBQ fuel/form factor remains a listing attribute."
+    },
+    {
+      "source_reference": "R04-05",
+      "source_label": "Beverage dispenser",
+      "canonical_path": "Food & Concession Equipment → Serving & Beverage Equipment → Beverage Dispensers",
+      "reason": "Mapped from supplied research entry. Canonical plural path covers container form factor."
+    },
+    {
+      "source_reference": "R06-02",
+      "source_label": "Pallet stretch wrapper",
+      "canonical_path": "Warehousing & Logistics → Packaging & Labeling → Stretch Wrappers",
+      "reason": "Mapped from supplied research entry. May be long-term program; duration/pricing are listing terms. Existing canonical leaf; pallet wording is an alias."
+    },
+    {
+      "source_reference": "R07-01",
+      "source_label": "Sewing machine",
+      "canonical_path": "Hobbies & Creative Equipment → Sewing & Textile → Sewing Machines",
+      "reason": "Mapped from supplied research entry. Can be portable or an on-site offer; listing declares mode."
+    },
+    {
+      "source_reference": "R07-02",
+      "source_label": "Overlocker or serger",
+      "canonical_path": "Hobbies & Creative Equipment → Sewing & Textile → Serger Machines",
+      "reason": "Mapped from supplied research entry. “Overlocker” maps to the canonical serger label."
+    },
+    {
+      "source_reference": "R11-01",
+      "source_label": "Pottery wheel",
+      "canonical_path": "Hobbies & Creative Equipment → Arts & Crafts → Pottery Wheels",
+      "reason": "Mapped from supplied research entry. Singular source label maps to existing canonical plural."
+    },
+    {
+      "source_reference": "R19-01",
+      "source_label": "Concrete mixer",
+      "canonical_path": "Construction & Industrial Equipment → Concrete & Masonry → Concrete Mixers",
+      "reason": "Mapped from supplied research entry. Singular source label maps to existing canonical plural."
+    },
+    {
+      "source_reference": "R19-06",
+      "source_label": "Power trowel",
+      "canonical_path": "Construction & Industrial Equipment → Concrete & Masonry → Trowels",
+      "reason": "Mapped from supplied research entry. Existing broad canonical type; powered operation belongs in listing details."
+    },
+    {
+      "source_reference": "R21-03",
+      "source_label": "Portable air scrubber",
+      "canonical_path": "Temporary Infrastructure & Site Services → Drying & Air Quality → Air Scrubbers",
+      "reason": "Mapped from supplied research entry. Existing canonical type covers the portable form factor."
+    },
+    {
+      "source_reference": "R21-05",
+      "source_label": "High-volume fan",
+      "canonical_path": "Temporary Infrastructure & Site Services → Drying & Air Quality → Industrial Fans",
+      "reason": "Mapped from supplied research entry. Equipment hire. High-volume fan maps to the existing industrial-fan leaf."
+    },
+    {
+      "source_reference": "R21-07",
+      "source_label": "Portable air conditioner",
+      "canonical_path": "Temporary Infrastructure & Site Services → Climate Control → Portable Air Conditioners",
+      "reason": "Mapped from supplied research entry. Singular source label maps to existing canonical plural."
+    },
+    {
+      "source_reference": "R21-08",
+      "source_label": "Industrial chiller",
+      "canonical_path": "Temporary Infrastructure & Site Services → Climate Control → Chillers",
+      "reason": "Mapped from supplied research entry. The industrial qualifier maps to the established chiller leaf."
+    },
+    {
+      "source_reference": "R21-10",
+      "source_label": "Air handler",
+      "canonical_path": "Temporary Infrastructure & Site Services → Climate Control → Air Handlers",
+      "reason": "Mapped from supplied research entry. Singular source label maps to existing canonical plural."
+    },
+    {
+      "source_reference": "R22-01",
+      "source_label": "Portable generator",
+      "canonical_path": "Temporary Infrastructure & Site Services → Power Generation → Generators",
+      "reason": "Mapped from supplied research entry. Portability, output, and fuel are listing attributes."
+    },
+    {
+      "source_reference": "R22-02",
+      "source_label": "Diesel generator",
+      "canonical_path": "Temporary Infrastructure & Site Services → Power Generation → Generators",
+      "reason": "Mapped from supplied research entry. Fuel is an attribute, not a separate type."
+    },
+    {
+      "source_reference": "R22-03",
+      "source_label": "Natural-gas generator",
+      "canonical_path": "Temporary Infrastructure & Site Services → Power Generation → Generators",
+      "reason": "Mapped from supplied research entry. Fuel is an attribute, not a separate type."
+    },
+    {
+      "source_reference": "R22-04",
+      "source_label": "Battery energy storage system",
+      "canonical_path": "Temporary Infrastructure & Site Services → Power Generation → Battery Storage",
+      "reason": "Mapped from supplied research entry. Canonical label avoids duplicate wording."
+    },
+    {
+      "source_reference": "R22-05",
+      "source_label": "Power distribution panel",
+      "canonical_path": "Temporary Infrastructure & Site Services → Power Generation → Power Distribution Panels",
+      "reason": "Mapped from supplied research entry. Singular source label maps to existing canonical plural."
+    },
+    {
+      "source_reference": "R22-09",
+      "source_label": "Resistive load bank",
+      "canonical_path": "Temporary Infrastructure & Site Services → Power Generation → Load Banks",
+      "reason": "Mapped from supplied research entry. Resistive/reactive behavior is a technical attribute."
+    },
+    {
+      "source_reference": "R22-10",
+      "source_label": "Resistive-reactive load bank",
+      "canonical_path": "Temporary Infrastructure & Site Services → Power Generation → Load Banks",
+      "reason": "Mapped from supplied research entry. Resistive/reactive behavior is a technical attribute."
+    },
+    {
+      "source_reference": "R23-02",
+      "source_label": "Trash or dewatering pump",
+      "canonical_path": "Temporary Infrastructure & Site Services → Pumps & Water Management → Dewatering Pumps",
+      "reason": "Mapped from supplied research entry. “Trash” and dewatering capability map to the canonical dewatering type; fluid compatibility stays on listing."
+    },
+    {
+      "source_reference": "R23-04",
+      "source_label": "Industrial water filtration equipment",
+      "canonical_path": "Temporary Infrastructure & Site Services → Pumps & Water Management → Water Treatment Units",
+      "reason": "Mapped from supplied research entry. Canonical operational category; filtering configuration stays on listing."
+    },
+    {
+      "source_reference": "R24-10",
+      "source_label": "Pipe plug",
+      "canonical_path": "Tools & Equipment → Plumbing & Pipe Tools → Pipe Plugs",
+      "reason": "Mapped from supplied research entry. This is a plumbing-tool path already introduced for the overlapping reference."
+    },
+    {
+      "source_reference": "R25-03",
+      "source_label": "Handwashing station",
+      "canonical_path": "Temporary Infrastructure & Site Services → Sanitation → Handwash Stations",
+      "reason": "Mapped from supplied research entry. Singular source label maps to current plural leaf."
+    },
+    {
+      "source_reference": "R25-05",
+      "source_label": "Storage container",
+      "canonical_path": "Warehousing & Logistics → Storage & Containers → Mobile Storage Containers",
+      "reason": "Mapped from supplied research entry. Generic source term; do not duplicate `Shipping Containers`."
+    },
+    {
+      "source_reference": "R25-07",
+      "source_label": "Temporary industrial tent",
+      "canonical_path": "Temporary Infrastructure & Site Services → Mobile Offices & Structures → Temporary Structures",
+      "reason": "Mapped from supplied research entry. Industrial tent is a temporary-structure synonym; size/install stays a listing attribute."
+    },
+    {
+      "source_reference": "R26-02",
+      "source_label": "Appliance dolly",
+      "canonical_path": "Warehousing & Logistics → Pallet & Manual Handling → Dollies",
+      "reason": "Mapped from supplied research entry. Appliance use is a search alias, not a duplicate node."
+    },
+    {
+      "source_reference": "R26-04",
+      "source_label": "Utility hand truck",
+      "canonical_path": "Warehousing & Logistics → Pallet & Manual Handling → Hand Trucks",
+      "reason": "Mapped from supplied research entry. “Utility” is a use qualifier."
+    },
+    {
+      "source_reference": "R26-05",
+      "source_label": "Heavy-duty inflatable-equipment dolly",
+      "canonical_path": "Warehousing & Logistics → Pallet & Manual Handling → Dollies",
+      "reason": "Mapped from supplied research entry. Heavy-duty/use configuration is not a separate equipment identity."
+    },
+    {
+      "source_reference": "R26-07",
+      "source_label": "Four-wheel furniture dolly",
+      "canonical_path": "Warehousing & Logistics → Pallet & Manual Handling → Dollies",
+      "reason": "Mapped from supplied research entry. Wheel count/furniture use is a description/search alias."
+    },
+    {
+      "source_reference": "R26-08",
+      "source_label": "Three-wheel furniture dolly set",
+      "canonical_path": "Warehousing & Logistics → Pallet & Manual Handling → Dollies",
+      "reason": "Mapped from supplied research entry. Set/wheel configuration remains listing inventory detail."
+    },
+    {
+      "source_reference": "R27-03",
+      "source_label": "Manual total station",
+      "canonical_path": "Tools & Equipment → Surveying & Inspection → Total Stations",
+      "reason": "Mapped from supplied research entry. Current generic leaf represents ordinary/manual units."
+    },
+    {
+      "source_reference": "R27-07",
+      "source_label": "Rotating laser level",
+      "canonical_path": "Tools & Equipment → Surveying & Inspection → Laser Levels",
+      "reason": "Mapped from supplied research entry. Rotating form is a search alias under the present generic leaf."
+    },
+    {
+      "source_reference": "R31-01",
+      "source_label": "Lawn aerator",
+      "canonical_path": "Agriculture & Landscaping → Lawn & Garden → Aerators",
+      "reason": "Mapped from supplied research entry. Singular source label maps to existing leaf."
+    },
+    {
+      "source_reference": "R31-02",
+      "source_label": "Brush mower",
+      "canonical_path": "Agriculture & Landscaping → Lawn & Garden → Mowers",
+      "reason": "Mapped from supplied research entry. Mower use/type is a search alias, avoiding a near-duplicate."
+    },
+    {
+      "source_reference": "R31-03",
+      "source_label": "Slit seeder",
+      "canonical_path": "Agriculture & Landscaping → Tractors & Implements → Seeders",
+      "reason": "Mapped from supplied research entry. Current generic seeder leaf covers it."
+    },
+    {
+      "source_reference": "R34-02",
+      "source_label": "Handheld barcode scanner",
+      "canonical_path": "Retail & Vending Equipment → POS & Checkout → Barcode Scanners",
+      "reason": "Mapped from supplied research entry. Handheld form is a current-leaf synonym."
+    },
+    {
+      "source_reference": "R34-05",
+      "source_label": "Thermal label printer",
+      "canonical_path": "Warehousing & Logistics → Packaging & Labeling → Label Printers",
+      "reason": "Mapped from supplied research entry. Thermal technology is a variant; labels are consumables."
+    },
+    {
+      "source_reference": "R35-01",
+      "source_label": "Adult display mannequin",
+      "canonical_path": "Retail & Vending Equipment → Display & Merchandising → Mannequins",
+      "reason": "Mapped from supplied research entry. Age/style is a listing attribute."
+    },
+    {
+      "source_reference": "R35-02",
+      "source_label": "Child display mannequin",
+      "canonical_path": "Retail & Vending Equipment → Display & Merchandising → Mannequins",
+      "reason": "Mapped from supplied research entry. Age/style is a listing attribute."
+    },
+    {
+      "source_reference": "R35-03",
+      "source_label": "Glass display cabinet",
+      "canonical_path": "Retail & Vending Equipment → Display & Merchandising → Display Cases",
+      "reason": "Mapped from supplied research entry. Glass is a construction/material attribute."
+    },
+    {
+      "source_reference": "R36-10",
+      "source_label": "Audio mixer",
+      "canonical_path": "Events & Production Equipment → Audio Equipment → Mixers",
+      "reason": "Mapped from supplied research entry. Singular source label maps to current leaf."
+    },
+    {
+      "source_reference": "R37-02",
+      "source_label": "Video projector",
+      "canonical_path": "Electronics → Office Tech → Projectors",
+      "reason": "Mapped from supplied research entry. Event use is a listing context, not duplicate equipment."
+    },
+    {
+      "source_reference": "R37-04",
+      "source_label": "Presentation monitor",
+      "canonical_path": "Electronics → Computers & Tablets → Monitors",
+      "reason": "Mapped from supplied research entry. Presentation use is a listing context."
+    },
+    {
+      "source_reference": "R37-07",
+      "source_label": "Stage lighting",
+      "canonical_path": "Events & Production Equipment → Lighting Equipment",
+      "reason": "Mapped from supplied research entry. Broad system family already exists; fixture/model stays a listing detail."
+    },
+    {
+      "source_reference": "R37-09",
+      "source_label": "Conference audio system",
+      "canonical_path": "Events & Production Equipment → Audio Equipment → PA Systems",
+      "reason": "Mapped from supplied research entry. System-level equipment family. Conference-audio system maps to the existing PA-systems leaf."
+    },
+    {
+      "source_reference": "R39-04",
+      "source_label": "Keyboard or synthesizer",
+      "canonical_path": "Music & Performance Equipment → Musical Instruments → Keyboards",
+      "reason": "Mapped from supplied research entry. Current generic keyboard leaf covers source’s alternative wording."
+    },
+    {
+      "source_reference": "R41-02",
+      "source_label": "Event space",
+      "canonical_path": "Spaces & Studios → Event Venues",
+      "reason": "Mapped from supplied research entry. Broad source term cannot be assumed to be a hall/room/outdoor venue. Generic event space maps to the established event-venues branch."
+    },
+    {
+      "source_reference": "R44-01",
+      "source_label": "Camping tent",
+      "canonical_path": "Sports & Outdoors → Camping & Outdoors → Tents",
+      "reason": "Mapped from supplied research entry. Source wording maps to current leaf."
+    },
+    {
+      "source_reference": "R44-07",
+      "source_label": "Stand-up paddleboard",
+      "canonical_path": "Sports & Outdoors → Water Sports → Paddleboards",
+      "reason": "Mapped from supplied research entry. Source wording maps to current leaf."
+    }
+  ]
+}

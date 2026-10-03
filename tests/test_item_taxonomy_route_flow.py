@@ -72,7 +72,7 @@ try:
     assert "subcategory" in columns
     assert connection.execute(
         "SELECT version_num FROM alembic_version"
-    ).fetchone()[0] == "rental_catalog_20261004"
+    ).fetchone()[0] == "research_catalog_20261005"
     index = connection.execute(
         "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
         ("ix_items_category_subcategory_third_level",),
@@ -181,7 +181,7 @@ try:
     )
     assert connection.execute("SELECT third_level FROM items WHERE id = 4").fetchone()[0] == 'Zee5'
     assert connection.execute("SELECT version_num FROM alembic_version").fetchone()[0] == (
-        'rental_catalog_20261004'
+        'research_catalog_20261005'
     )
 finally:
     connection.close()
@@ -286,7 +286,7 @@ try:
     item_columns = {row[1] for row in connection.execute("PRAGMA table_info('items')")}
     assert {"subcategory", "third_level", "custom_third_level"}.issubset(item_columns)
     revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-    assert revision == "rental_catalog_20261004", revision
+    assert revision == "research_catalog_20261005", revision
     digital = connection.execute(
         "SELECT id FROM categories WHERE name = ?", ("Digital Accounts",)
     ).fetchone()
@@ -383,6 +383,13 @@ try:
     parking = db.query(Subcategory).filter(
         Subcategory.category_id == housing.id, Subcategory.name == "Parking & Storage"
     ).one()
+    test_measurement = db.query(Category).filter(
+        Category.name == "Test & Measurement Equipment"
+    ).one()
+    electrical_test = db.query(Subcategory).filter(
+        Subcategory.category_id == test_measurement.id,
+        Subcategory.name == "Electrical Test Instruments",
+    ).one()
     ids = {
         "movies": movies.id,
         "sports": sports.id,
@@ -396,6 +403,8 @@ try:
         "popcorn": popcorn.id,
         "housing": housing.id,
         "parking": parking.id,
+        "test_measurement": test_measurement.id,
+        "electrical_test": electrical_test.id,
     }
 finally:
     db.close()
@@ -442,10 +451,12 @@ with TestClient(main_module.app) as client:
     assert f'value="Digital Accounts" data-id="{ids["digital"]}"' in create.text
     assert f'value="Vehicles" data-id="{ids["vehicles"]}"' in create.text
     assert f'value="Food &amp; Concession Equipment" data-id="{ids["food"]}"' in create.text
+    assert f'value="Test &amp; Measurement Equipment" data-id="{ids["test_measurement"]}"' in create.text
     assert "Movies \\u0026 Streaming" in create.text
     assert "beIN Sports" in create.text
     assert "School Buses" in create.text
     assert "Popcorn Machines" in create.text
+    assert "Ground Resistance Testers" in create.text
 
     # A server validation failure is a real form response, not a redirect; it
     # retains the submitted valid taxonomy so the client JS can rebuild it.
@@ -647,6 +658,18 @@ with TestClient(main_module.app) as client:
         follow_redirects=False,
     )
     assert popcorn_other_response.status_code == 303, popcorn_other_response.text[:1000]
+    ground_resistance_response = client.post(
+        "/owner/items/new",
+        data=listing_form(
+            title="Ground resistance tester for field survey",
+            category="Test & Measurement Equipment",
+            subcategory_id=ids["electrical_test"],
+            third_level="Ground Resistance Testers",
+        ),
+        files=listing_image(),
+        follow_redirects=False,
+    )
+    assert ground_resistance_response.status_code == 303, ground_resistance_response.text[:1000]
     parking_response = client.post(
         "/owner/items/new",
         data=listing_form(
@@ -670,6 +693,9 @@ with TestClient(main_module.app) as client:
         school_bus = db.query(Item).filter(Item.title == "School bus for field trip").one()
         popcorn_machine = db.query(Item).filter(Item.title == "Popcorn machine for event").one()
         popcorn_other = db.query(Item).filter(Item.title == "Vintage popcorn cart").one()
+        ground_resistance = db.query(Item).filter(
+            Item.title == "Ground resistance tester for field survey"
+        ).one()
         parking_space = db.query(Item).filter(Item.title == "Temporary storage space").one()
         assert (bein.category, bein.subcategory, bein.third_level, bein.custom_third_level) == (
             "Digital Accounts", "Sports", "beIN Sports", None,
@@ -696,6 +722,9 @@ with TestClient(main_module.app) as client:
         assert (popcorn_other.category, popcorn_other.subcategory, popcorn_other.third_level, popcorn_other.custom_third_level) == (
             "Food & Concession Equipment", "Popcorn Equipment", "Other", "Vintage Popcorn Cart",
         )
+        assert (ground_resistance.category, ground_resistance.subcategory, ground_resistance.third_level, ground_resistance.custom_third_level) == (
+            "Test & Measurement Equipment", "Electrical Test Instruments", "Ground Resistance Testers", None,
+        )
         assert (parking_space.category, parking_space.subcategory, parking_space.third_level, parking_space.custom_third_level) == (
             "Housing & Stays", "Parking & Storage", None, None,
         )
@@ -710,6 +739,7 @@ with TestClient(main_module.app) as client:
                 "school_bus_item": school_bus.id,
                 "popcorn_item": popcorn_machine.id,
                 "popcorn_other_item": popcorn_other.id,
+                "ground_resistance_item": ground_resistance.id,
                 "parking_item": parking_space.id,
             }
         )
@@ -726,6 +756,7 @@ with TestClient(main_module.app) as client:
         "School bus for field trip", "Vehicles", "Buses", "School Buses",
         "Popcorn machine for event", "Food &amp; Concession Equipment", "Popcorn Equipment", "Popcorn Machines",
         "Vintage popcorn cart", "Vintage Popcorn Cart", "Temporary storage space", "Parking &amp; Storage",
+        "Ground resistance tester for field survey", "Test &amp; Measurement Equipment", "Electrical Test Instruments", "Ground Resistance Testers",
     ):
         assert expected in pending.text, expected
 
@@ -741,6 +772,7 @@ with TestClient(main_module.app) as client:
         ids["school_bus_item"],
         ids["popcorn_item"],
         ids["popcorn_other_item"],
+        ids["ground_resistance_item"],
         ids["parking_item"],
     ):
         approved = client.post(f"/admin/items/{item_id}/approve", follow_redirects=False)
@@ -773,6 +805,9 @@ with TestClient(main_module.app) as client:
         )
         assert (db.get(Item, ids["popcorn_other_item"]).third_level, db.get(Item, ids["popcorn_other_item"]).custom_third_level, db.get(Item, ids["popcorn_other_item"]).status) == (
             "Other", "Vintage Popcorn Cart", "approved",
+        )
+        assert (db.get(Item, ids["ground_resistance_item"]).category, db.get(Item, ids["ground_resistance_item"]).subcategory, db.get(Item, ids["ground_resistance_item"]).third_level, db.get(Item, ids["ground_resistance_item"]).custom_third_level, db.get(Item, ids["ground_resistance_item"]).status) == (
+            "Test & Measurement Equipment", "Electrical Test Instruments", "Ground Resistance Testers", None, "approved",
         )
         assert (db.get(Item, ids["parking_item"]).category, db.get(Item, ids["parking_item"]).subcategory, db.get(Item, ids["parking_item"]).third_level, db.get(Item, ids["parking_item"]).custom_third_level, db.get(Item, ids["parking_item"]).status) == (
             "Housing & Stays", "Parking & Storage", None, None, "approved",
@@ -890,6 +925,13 @@ with TestClient(main_module.app) as client:
     assert parking_explore.status_code == 200
     assert "Temporary storage space" in parking_explore.text
     assert "School bus for field trip" not in parking_explore.text
+    test_measurement_explore = client.get(
+        "/items?category=Test%20%26%20Measurement%20Equipment"
+        "&sub=Electrical%20Test%20Instruments&service=Ground%20Resistance%20Testers"
+    )
+    assert test_measurement_explore.status_code == 200, test_measurement_explore.text[:1000]
+    assert "Ground resistance tester for field survey" in test_measurement_explore.text
+    assert "Popcorn machine for event" not in test_measurement_explore.text
 
     for item_id, expected_hierarchy in (
         (ids["netflix_item"], ("Digital Accounts", "Movies & Streaming", "Netflix")),
@@ -898,6 +940,7 @@ with TestClient(main_module.app) as client:
         (ids["playstation_item"], ("Digital Accounts", "Gaming", "PlayStation Plus Premium")),
         (ids["school_bus_item"], ("Vehicles", "Buses", "School Buses")),
         (ids["popcorn_item"], ("Food & Concession Equipment", "Popcorn Equipment", "Popcorn Machines")),
+        (ids["ground_resistance_item"], ("Test & Measurement Equipment", "Electrical Test Instruments", "Ground Resistance Testers")),
     ):
         detail = client.get(f"/items/{item_id}")
         assert detail.status_code == 200, detail.text[:1000]

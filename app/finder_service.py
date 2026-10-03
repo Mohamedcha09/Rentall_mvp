@@ -31,6 +31,7 @@ from .catalog_taxonomy import (
     canonical_rental_category,
     configured_catalog_rows,
     taxonomy_label,
+    taxonomy_path_aliases,
 )
 from .models import Booking, Category, FinderListingIndex, FxRate, Item, ItemReview, Subcategory
 from .rental_catalog import RENTAL_CATEGORY_ALIASES
@@ -537,7 +538,11 @@ def _static_catalog_concepts() -> tuple[CatalogConcept, ...]:
             seen,
             subcategory,
             "subcategory",
-            aliases=(taxonomy_label(subcategory, "fr"), taxonomy_label(subcategory, "ar")),
+            aliases=(
+                taxonomy_label(subcategory, "fr"),
+                taxonomy_label(subcategory, "ar"),
+                *taxonomy_path_aliases(canonical_category, subcategory),
+            ),
             category=canonical_category,
             subcategory=subcategory,
         )
@@ -547,7 +552,11 @@ def _static_catalog_concepts() -> tuple[CatalogConcept, ...]:
                 seen,
                 service,
                 "service",
-                aliases=(taxonomy_label(service, "fr"), taxonomy_label(service, "ar")),
+                aliases=(
+                    taxonomy_label(service, "fr"),
+                    taxonomy_label(service, "ar"),
+                    *taxonomy_path_aliases(canonical_category, subcategory, service),
+                ),
                 category=canonical_category,
                 subcategory=subcategory,
                 service=service,
@@ -950,6 +959,19 @@ def _resolve_catalog_request(db: Session, text: str) -> ResolvedCatalogRequest:
             if concept.kind in {"category", "subcategory", "service"}
             and any(normalize_text(alias) == normalized for alias in concept.aliases)
         ]
+        # A supplied source alias can occur inside a longer, exact public
+        # listing title from a future admin-defined category.  For example,
+        # ``projection screen`` is a valid configured term, but ``foldaway
+        # projection screen`` may be the precise title of a live listing
+        # whose category is intentionally outside this static tree.  A whole
+        # taxonomy query still wins below; otherwise preserve the established
+        # bounded live-title discovery before turning the embedded alias into
+        # a restrictive hierarchy filter.
+        if not whole_taxonomy_matches and not matched_anchors:
+            title_concept = _discover_title_concept(db, source)
+            if title_concept:
+                _apply_concept_to_request(result, title_concept, confidence="high")
+                return result
         # Preserve the established clarification behavior for a one-word
         # service family such as ``beIN`` versus ``beIN Sports``.  A longer
         # translated/type phrase is the case where the precise hierarchy is

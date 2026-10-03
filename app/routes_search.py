@@ -9,7 +9,12 @@ from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
-from .catalog_taxonomy import CATEGORY_TREE, canonical_rental_category, taxonomy_label
+from .catalog_taxonomy import (
+    CATEGORY_TREE,
+    canonical_rental_category,
+    taxonomy_label,
+    taxonomy_path_aliases,
+)
 from .database import get_db
 from .models import User, Item
 from .rental_catalog import RENTAL_CATEGORY_ALIASES
@@ -79,9 +84,15 @@ def _taxonomy_alias_index() -> dict[str, tuple[str, ...]]:
         )
         register(category, category=True, aliases=category_aliases)
         for subcategory, third_levels in subcategories.items():
-            register(subcategory)
+            register(
+                subcategory,
+                aliases=taxonomy_path_aliases(category, subcategory),
+            )
             for third_level in third_levels:
-                register(third_level)
+                register(
+                    third_level,
+                    aliases=taxonomy_path_aliases(category, subcategory, third_level),
+                )
     return {key: tuple(sorted(values, key=str.casefold)) for key, values in index.items()}
 
 

@@ -367,8 +367,12 @@ try:
                     "custom_third_level": custom_name or None,
                 }
                 third_level_values += 1
-    assert two_level_paths == 25
-    assert third_level_values == 701
+    # The research expansion deliberately keeps ordinary two-level branches
+    # intact while adding active, parent-scoped type choices where they are
+    # useful.  These totals make a dropped branch or an accidental duplicate
+    # visible to the generic resolver test rather than testing only a sample.
+    assert two_level_paths == 19
+    assert third_level_values == 951
 
     normal = resolve_listing_hierarchy(
         db, category_name="Baby & Kids", subcategory_id=seats.id,
